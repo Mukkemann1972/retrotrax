@@ -67,7 +67,7 @@ juce::String PatternGrid::noteName (int note)
     static const char* names[] = { "C-", "C#", "D-", "D#", "E-", "F-",
                                    "F#", "G-", "G#", "A-", "A#", "B-" };
     if (note < 0)
-        return "···";
+        return "---";
     return juce::String (names[note % 12]) + juce::String (note / 12);
 }
 
@@ -258,12 +258,12 @@ void PatternGrid::paint (juce::Graphics& g)
             g.drawText (noteName (cell.note), noteX, y, noteW, kRowH, juce::Justification::centredLeft);
 
             g.setColour (cell.instrument < 0 ? rt::textDim.withAlpha (0.55f) : rt::instCol);
-            g.drawText (cell.instrument < 0 ? juce::String ("··")
+            g.drawText (cell.instrument < 0 ? juce::String ("00")
                                             : juce::String::formatted ("%02d", cell.instrument + 1),
                         instX, y, instW, kRowH, juce::Justification::centredLeft);
 
             g.setColour (cell.volume < 0 ? rt::textDim.withAlpha (0.55f) : rt::volCol);
-            g.drawText (cell.volume < 0 ? juce::String ("··")
+            g.drawText (cell.volume < 0 ? juce::String ("00")
                                         : juce::String::formatted ("%02d", cell.volume),
                         volX, y, volW, kRowH, juce::Justification::centredLeft);
         }

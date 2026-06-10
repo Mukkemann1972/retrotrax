@@ -49,8 +49,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     hintLabel.setFont (rt::mono (13.0f));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centred);
-    hintLabel.setText ("Noten: YXCVBNM (+ SDGHJ = Halbtoene) · Q2W3ER... = Oktave hoeher · Pfeile = Cursor · "
-                       "Tab = Spur · Leertaste = Play/Stop · Entf = Loeschen · +/- = Oktave",
+    hintLabel.setText ("Noten: YXCVBNM (+ SDGHJ = Halbtoene) | Q2W3ER... = Oktave hoeher | Pfeile = Cursor | "
+                       "Tab = Spur | Leertaste = Play/Stop | Entf = Loeschen | +/- = Oktave",
                        juce::dontSendNotification);
 
     grid.onTransportChange = [this] { updateTransportButtons(); };
@@ -139,7 +139,7 @@ void RetroTraxEditor::paint (juce::Graphics& g)
 
     g.setFont (rt::mono (13.0f));
     g.setColour (rt::text);
-    g.drawText ("v0.1 · Etappe 1: Sampler · SID kommt!", getWidth() - 320, 0, 304, header.getHeight(),
+    g.drawText ("v0.1 | Etappe 1: Sampler | SID kommt!", getWidth() - 320, 0, 304, header.getHeight(),
                 juce::Justification::centredRight);
 }
 
