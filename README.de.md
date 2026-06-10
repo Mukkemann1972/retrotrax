@@ -4,6 +4,8 @@
 
 🇬🇧 [English version](README.md)
 
+**[⬇ Download (Windows / macOS / Linux)](https://github.com/Mukkemann1972/retrotrax/releases/latest)**
+
 Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II und OctaMED —
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
