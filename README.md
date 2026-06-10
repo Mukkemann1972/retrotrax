@@ -1,47 +1,49 @@
 # Mukkemann RetroTrax
 
-**Der Tracker mit Herz: Amiga-Gefühl + C64-SID, für heute gebaut.**
+**The tracker with heart: Amiga feeling + C64 SID, built for today.**
 
-Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II und OctaMED —
-aber modern, anfängerfreundlich und für Windows, macOS und Linux.
-Ein Projekt aus dem Mukkemann-Universum.
+🇩🇪 [Deutsche Version / German version](README.de.md)
 
-## Stand: Etappe 1 (v0.1) — Sampler
+A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
+OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
+A project from the Mukkemann universe.
 
-- 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
-- 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3
-- Pattern-Grid im ProTracker-Look: Cursor-Zeile bleibt in der Mitte, das Pattern scrollt
-- Tastatur als Klavier (deutsches QWERTZ-Layout)
-- MIDI-Eingang zum Vorhören
-- Läuft als VST3 in jeder DAW **und** als eigenständiges Programm
+## Status: Stage 1 (v0.1) — Sampler
 
-## Fahrplan
+- 8 tracks, 64-row patterns (track count becomes flexible later)
+- 16 instrument slots, loads WAV / AIFF / FLAC / OGG / MP3
+- Pattern grid in classic ProTracker style: the cursor row stays centered, the pattern scrolls
+- Computer keyboard as piano
+- MIDI input for previewing notes
+- Runs as a VST3 inside any DAW **and** as a standalone program
 
-- **Etappe 2:** Echte C64-SID-Emulation (reSIDfp), klassische Effekte
-  (Arpeggio, Portamento, Vibrato, Sample-Offset …), MOD/XM-Import, mehrere Patterns + Song-Reihenfolge,
-  **CLAP-Format** (zusätzlich zu VST3, via clap-juce-extensions)
-- **Etappe 3:** Beliebig viele Spuren, die Filter der alten Sampler
-  (Akai S900/S950/S1000 inkl. 12-Bit-Charakter, Emulator, Ensoniq …),
-  16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus malen wie mit dem Lichtgriffel),
-  Anfänger-Modus
+## Roadmap
 
-## Bedienung
+- **Stage 2:** Real C64 SID emulation (reSIDfp), classic effects
+  (arpeggio, portamento, vibrato, sample offset …), MOD/XM import, multiple patterns + song order,
+  **CLAP format** (in addition to VST3, via clap-juce-extensions)
+- **Stage 3:** Unlimited tracks, filters of the classic samplers
+  (Akai S900/S950/S1000 incl. 12-bit character, Emulator, Ensoniq …),
+  16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms with the mouse, light-pen style),
+  beginner mode
 
-| Taste | Funktion |
+## Controls
+
+| Key | Function |
 |---|---|
-| `Y X C V B N M` (+ `S D G H J` für Halbtöne) | Noten, aktuelle Oktave |
-| `Q 2 W 3 E R 5 T 6 Z 7 U …` | Noten, eine Oktave höher |
-| Pfeiltasten / Bild↑↓ / Pos1 / Ende | Cursor bewegen |
-| `Tab` / `Shift+Tab` | Nächste / vorherige Spur |
-| `Leertaste` | Play / Stop |
-| `Entf` / `Rücktaste` | Zelle löschen |
-| `+` / `-` | Oktave wechseln |
-| Ziffern (auf Instrument-/Lautstärke-Spalte) | Wert eintippen |
+| `Z X C V B N M` row (+ `S D G H J` for semitones) | Notes, current octave |
+| `Q 2 W 3 E R 5 T 6 Y 7 U …` | Notes, one octave up |
+| Arrow keys / PgUp/PgDn / Home / End | Move cursor |
+| `Tab` / `Shift+Tab` | Next / previous track |
+| `Space` | Play / stop |
+| `Del` / `Backspace` | Clear cell |
+| `+` / `-` | Change octave |
+| Digits (on instrument/volume column) | Type a value |
 
-## Selbst bauen
+## Building from source
 
-Benötigt: CMake ≥ 3.22, einen C++17-Compiler, unter Linux die üblichen
-Audio/X11-Entwicklungspakete (`libasound2-dev`, `libx11-dev`, `libfreetype-dev`, …).
+Requires: CMake ≥ 3.22, a C++17 compiler, and on Linux the usual
+audio/X11 development packages (`libasound2-dev`, `libx11-dev`, `libfreetype-dev`, …).
 
 ```bash
 git clone --depth 1 --branch 8.0.8 https://github.com/juce-framework/JUCE.git libs/JUCE
@@ -49,9 +51,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j2
 ```
 
-Ergebnisse landen in `build/RetroTrax_artefacts/Release/`:
-`Standalone/` (Programm) und `VST3/` (Plugin für die DAW).
+Results end up in `build/RetroTrax_artefacts/Release/`:
+`Standalone/` (app) and `VST3/` (plugin for your DAW).
 
-## Lizenz
+## License
 
-GPL-3.0 — frei für alle. Wenn dir RetroTrax Freude macht, unterstütze das Mukkemann-Universum.
+GPL-3.0 — free for everyone. If RetroTrax brings you joy, consider supporting the Mukkemann universe.
