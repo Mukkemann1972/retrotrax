@@ -54,6 +54,11 @@ cmake --build build -j2
 Results end up in `build/RetroTrax_artefacts/Release/`:
 `Standalone/` (app) and `VST3/` (plugin for your DAW).
 
+## Support ❤️
+
+RetroTrax is free and always will be. If it brings you joy, you can
+[buy me a coffee on Ko-fi](https://ko-fi.com/mukkemann) — every cup keeps the Mukkemann universe running.
+
 ## License
 
-GPL-3.0 — free for everyone. If RetroTrax brings you joy, consider supporting the Mukkemann universe.
+GPL-3.0 — free for everyone.
