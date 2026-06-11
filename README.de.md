@@ -14,6 +14,11 @@ Ein Projekt aus dem Mukkemann-Universum.
 
 - 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
 - 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3
+- **ST-XX Sample-Disks eingebaut:** die legendären Amiga-Sample-Disketten
+  (ST-01 bis ST-XX, 96 Disketten / ~5.900 Sounds, Public Domain) durchstöbern
+  und per Klick laden — die Sounds kommen einzeln vom
+  [Internet Archive](https://archive.org/details/AmigaSTXX_originals_plus_conversions)
+  und werden lokal gecacht, das Plugin selbst bleibt klein
 - Pattern-Grid im ProTracker-Look: Cursor-Zeile bleibt in der Mitte, das Pattern scrollt
 - Tastatur als Klavier (deutsches QWERTZ-Layout)
 - MIDI-Eingang zum Vorhören

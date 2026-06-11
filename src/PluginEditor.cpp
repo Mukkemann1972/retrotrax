@@ -1,14 +1,16 @@
 #include "PluginEditor.h"
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p)
+    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p)
 {
     setLookAndFeel (&lnf);
 
     addAndMakeVisible (grid);
+    addChildComponent (diskBrowser); // unsichtbar, bis ST-DISKS gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadButton);
+    addAndMakeVisible (stDisksButton);
     addAndMakeVisible (bpmSlider);
     addAndMakeVisible (instrumentBox);
     addAndMakeVisible (octaveBox);
@@ -19,6 +21,26 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     playButton.onClick = [this] { proc.engine.play(); updateTransportButtons(); };
     stopButton.onClick = [this] { proc.engine.stop(); updateTransportButtons(); };
     loadButton.onClick = [this] { loadSampleClicked(); };
+
+    stDisksButton.onClick = [this]
+    {
+        const bool show = ! diskBrowser.isVisible();
+        diskBrowser.setVisible (show);
+        stDisksButton.setToggleState (show, juce::dontSendNotification);
+        if (show)
+            diskBrowser.toFront (false);
+        else
+            grid.grabKeyboardFocus();
+    };
+    diskBrowser.onClose = [this] { stDisksButton.onClick(); };
+    diskBrowser.onSampleLoaded = [this] (const juce::String& name, int slot)
+    {
+        refreshInstrumentBox();
+        hintLabel.setText ("ST-Sample \"" + name + "\" in Slot "
+                               + juce::String::formatted ("%02d", slot + 1)
+                               + " geladen und angespielt.",
+                           juce::dontSendNotification);
+    };
 
     bpmSlider.setSliderStyle (juce::Slider::LinearBar);
     bpmSlider.setRange (60.0, 220.0, 1.0);
@@ -57,7 +79,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     updateTransportButtons();
 
     setResizable (true, true);
-    setResizeLimits (840, 520, 1920, 1200);
+    setResizeLimits (960, 520, 1920, 1200);
     setSize (1000, 640);
 
     juce::MessageManager::callAsync ([sp = juce::Component::SafePointer<PatternGrid> (&grid)]
@@ -162,7 +184,11 @@ void RetroTraxEditor::resized()
     instrumentBox.setBounds (controls.removeFromLeft (190));
     controls.removeFromLeft (10);
     loadButton.setBounds (controls.removeFromLeft (130));
+    controls.removeFromLeft (6);
+    stDisksButton.setBounds (controls.removeFromLeft (96));
 
     hintLabel.setBounds (area.removeFromBottom (26));
-    grid.setBounds (area.reduced (8, 4));
+    const auto gridArea = area.reduced (8, 4);
+    grid.setBounds (gridArea);
+    diskBrowser.setBounds (gridArea); // liegt als Overlay genau ueber dem Grid
 }

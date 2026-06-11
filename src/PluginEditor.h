@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "PatternGrid.h"
 #include "RetroLookAndFeel.h"
+#include "SampleDiskBrowser.h"
 
 class RetroTraxEditor : public juce::AudioProcessorEditor
 {
@@ -25,6 +26,7 @@ private:
     juce::TextButton playButton { "PLAY" };
     juce::TextButton stopButton { "STOP" };
     juce::TextButton loadButton { "SAMPLE LADEN" };
+    juce::TextButton stDisksButton { "ST-DISKS" };
     juce::Slider bpmSlider;
     juce::ComboBox instrumentBox;
     juce::ComboBox octaveBox;
@@ -33,6 +35,7 @@ private:
     juce::Label hintLabel;
 
     PatternGrid grid;
+    SampleDiskBrowser diskBrowser;
     std::unique_ptr<juce::FileChooser> chooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroTraxEditor)

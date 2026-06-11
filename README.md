@@ -14,6 +14,11 @@ A project from the Mukkemann universe.
 
 - 8 tracks, 64-row patterns (track count becomes flexible later)
 - 16 instrument slots, loads WAV / AIFF / FLAC / OGG / MP3
+- **Built-in ST-XX sample disks:** browse the legendary Amiga sample disks
+  (ST-01 through ST-XX, 96 disks / ~5,900 sounds, public domain) and load any
+  sound with one click — samples are fetched individually from the
+  [Internet Archive](https://archive.org/details/AmigaSTXX_originals_plus_conversions)
+  and cached locally, so the plugin itself stays small
 - Pattern grid in classic ProTracker style: the cursor row stays centered, the pattern scrolls
 - Computer keyboard as piano
 - MIDI input for previewing notes
