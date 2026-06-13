@@ -254,10 +254,13 @@ void PatternGrid::paint (juce::Graphics& g)
             }
 
             const bool empty = cell.note < 0;
-            g.setColour (empty ? rt::textDim.withAlpha (0.55f) : rt::noteCol);
+            // Jede Note leuchtet in der Farbe ihres Instruments
+            g.setColour (empty ? rt::textDim.withAlpha (0.55f)
+                               : rt::instColour (cell.instrument));
             g.drawText (noteName (cell.note), noteX, y, noteW, kRowH, juce::Justification::centredLeft);
 
-            g.setColour (cell.instrument < 0 ? rt::textDim.withAlpha (0.55f) : rt::instCol);
+            g.setColour (cell.instrument < 0 ? rt::textDim.withAlpha (0.55f)
+                                             : rt::instColour (cell.instrument));
             g.drawText (cell.instrument < 0 ? juce::String ("00")
                                             : juce::String::formatted ("%02d", cell.instrument + 1),
                         instX, y, instW, kRowH, juce::Justification::centredLeft);

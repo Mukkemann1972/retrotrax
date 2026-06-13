@@ -17,6 +17,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (instLabel);
     addAndMakeVisible (octLabel);
     addAndMakeVisible (hintLabel);
+    addAndMakeVisible (instDot);
+    instDot.colour = rt::instColour (proc.currentInstrument.load());
 
     playButton.onClick = [this] { proc.engine.play(); updateTransportButtons(); };
     stopButton.onClick = [this] { proc.engine.stop(); updateTransportButtons(); };
@@ -36,6 +38,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     diskBrowser.onSampleLoaded = [this] (const juce::String& name, int slot)
     {
         refreshInstrumentBox();
+        instDot.colour = rt::instColour (proc.currentInstrument.load());
+        instDot.repaint();
         hintLabel.setText ("ST-Sample \"" + name + "\" in Slot "
                                + juce::String::formatted ("%02d", slot + 1)
                                + " geladen und angespielt.",
@@ -55,6 +59,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         proc.currentInstrument = juce::jlimit (0, TrackerEngine::kInstruments - 1,
                                                instrumentBox.getSelectedId() - 1);
+        instDot.colour = rt::instColour (proc.currentInstrument.load());
+        instDot.repaint();
     };
     refreshInstrumentBox();
 
@@ -181,6 +187,8 @@ void RetroTraxEditor::resized()
     octaveBox.setBounds (controls.removeFromLeft (58));
     controls.removeFromLeft (14);
     instLabel.setBounds (controls.removeFromLeft (46));
+    instDot.setBounds (controls.removeFromLeft (22).reduced (0, 4));
+    controls.removeFromLeft (4);
     instrumentBox.setBounds (controls.removeFromLeft (190));
     controls.removeFromLeft (10);
     loadButton.setBounds (controls.removeFromLeft (130));

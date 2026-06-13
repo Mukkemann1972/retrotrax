@@ -34,6 +34,21 @@ private:
     juce::Label octLabel { {}, "OKTAVE" };
     juce::Label hintLabel;
 
+    // Kleines Farbquadrat: zeigt die Farbe des gerade gewaehlten Instruments
+    struct ColourDot : juce::Component
+    {
+        juce::Colour colour;
+        void paint (juce::Graphics& g) override
+        {
+            const auto r = getLocalBounds().toFloat().reduced (2.0f);
+            g.setColour (colour);
+            g.fillRoundedRectangle (r, 4.0f);
+            g.setColour (juce::Colour (0xff0e1118));
+            g.drawRoundedRectangle (r, 4.0f, 1.2f);
+        }
+    };
+    ColourDot instDot;
+
     PatternGrid grid;
     SampleDiskBrowser diskBrowser;
     std::unique_ptr<juce::FileChooser> chooser;
