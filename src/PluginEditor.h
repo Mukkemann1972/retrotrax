@@ -26,7 +26,7 @@ private:
     juce::TextButton playButton { "PLAY" };
     juce::TextButton stopButton { "STOP" };
     juce::TextButton loadButton { "SAMPLE LADEN" };
-    juce::TextButton stDisksButton { "ST-DISKS" };
+    juce::TextButton stDisksButton { "SAMPLES" };
     juce::Slider bpmSlider;
     juce::ComboBox instrumentBox;
     juce::ComboBox octaveBox;

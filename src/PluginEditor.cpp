@@ -6,7 +6,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     setLookAndFeel (&lnf);
 
     addAndMakeVisible (grid);
-    addChildComponent (diskBrowser); // unsichtbar, bis ST-DISKS gedrueckt wird
+    addChildComponent (diskBrowser); // unsichtbar, bis SAMPLES gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadButton);
