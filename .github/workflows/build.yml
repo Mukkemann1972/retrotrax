@@ -42,10 +42,49 @@ jobs:
       - name: Bauen
         run: cmake --build build --config Release -j 4
 
+      # Standalone + VST3 in EIN Zip packen — auf dem nativen Runner, damit
+      # unter macOS/Linux das Ausfuehrungs-Bit und Symlinks erhalten bleiben.
+      - name: Paket schnueren (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}" -replace '^v',''
+          $dest = "RetroTrax-Windows-$ver.zip"
+          Compress-Archive -Path "build/RetroTrax_artefacts/Release/Standalone/*","build/RetroTrax_artefacts/Release/VST3/*" -DestinationPath $dest
+          echo "ASSET=$dest" >> $env:GITHUB_ENV
+
+      - name: Paket schnueren (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          dest="RetroTrax-${{ matrix.name }}-${ver}.zip"
+          ( cd build/RetroTrax_artefacts/Release && zip -ry "$OLDPWD/$dest" Standalone VST3 )
+          echo "ASSET=$dest" >> "$GITHUB_ENV"
+
       - name: Ergebnis hochladen
         uses: actions/upload-artifact@v7
         with:
           name: RetroTrax-${{ matrix.name }}
-          path: |
-            build/RetroTrax_artefacts/**/Standalone/**
-            build/RetroTrax_artefacts/**/VST3/**
+          path: ${{ env.ASSET }}
+
+  release:
+    name: Release veroeffentlichen
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Pakete holen
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+
+      - name: Veroeffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Mukkemann RetroTrax ${{ github.ref_name }}
+          files: dist/**/*.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
