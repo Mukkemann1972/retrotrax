@@ -67,7 +67,7 @@ void SampleDiskBrowser::Model::paintListBoxItem (int row, juce::Graphics& g,
     }
     else
     {
-        const auto& name = owner.diskSamples[owner.currentDisk].getReference (row);
+        const auto name = owner.diskSamples[owner.currentDisk][row];
         text = name;
         if (owner.cacheFileFor (owner.currentDisk, name).existsAsFile())
             text << "  *"; // schon lokal vorhanden -> laedt sofort
