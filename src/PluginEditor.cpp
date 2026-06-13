@@ -24,17 +24,20 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     stopButton.onClick = [this] { proc.engine.stop(); updateTransportButtons(); };
     loadButton.onClick = [this] { loadSampleClicked(); };
 
+    // Der Knopf OEFFNET nur — ein versehentlicher Doppelklick schliesst nichts.
+    // Zu ist der Browser erst per SCHLIESSEN-Knopf oder ESC.
     stDisksButton.onClick = [this]
     {
-        const bool show = ! diskBrowser.isVisible();
-        diskBrowser.setVisible (show);
-        stDisksButton.setToggleState (show, juce::dontSendNotification);
-        if (show)
-            diskBrowser.toFront (false);
-        else
-            grid.grabKeyboardFocus();
+        diskBrowser.setVisible (true);
+        stDisksButton.setToggleState (true, juce::dontSendNotification);
+        diskBrowser.toFront (false);
     };
-    diskBrowser.onClose = [this] { stDisksButton.onClick(); };
+    diskBrowser.onClose = [this]
+    {
+        diskBrowser.setVisible (false);
+        stDisksButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
     diskBrowser.onSampleLoaded = [this] (const juce::String& name, int slot)
     {
         refreshInstrumentBox();

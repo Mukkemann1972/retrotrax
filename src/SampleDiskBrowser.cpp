@@ -34,8 +34,10 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
     loadButton.onClick  = [this] { loadSelected(); };
     closeButton.onClick = [this] { if (onClose) onClose(); };
 
+    setWantsKeyboardFocus (true);
+
     statusLabel.setFont (rt::mono (13.0f));
-    setStatus ("Diskette und Sample waehlen, dann IN SLOT LADEN (oder Doppelklick).");
+    setStatus ("Diskette und Sample waehlen, dann IN SLOT LADEN (oder Doppelklick). ESC schliesst.");
 
     diskList.updateContent();
     diskList.selectRow (0);
@@ -205,6 +207,16 @@ void SampleDiskBrowser::setStatus (const juce::String& text, bool warn)
 {
     statusLabel.setColour (juce::Label::textColourId, warn ? rt::cursor : rt::textDim);
     statusLabel.setText (text, juce::dontSendNotification);
+}
+
+bool SampleDiskBrowser::keyPressed (const juce::KeyPress& key)
+{
+    if (key.getKeyCode() == juce::KeyPress::escapeKey && onClose != nullptr)
+    {
+        onClose();
+        return true;
+    }
+    return false;
 }
 
 // ---- Optik ----------------------------------------------------------------
