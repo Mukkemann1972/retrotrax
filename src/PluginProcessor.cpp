@@ -74,21 +74,22 @@ bool RetroTraxProcessor::previewFile (const juce::File& file)
     return true;
 }
 
-void RetroTraxProcessor::getStateInformation (juce::MemoryBlock& destData)
+std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
 {
-    juce::XmlElement xml ("RETROTRAX");
-    xml.setAttribute ("version", 1);
-    xml.setAttribute ("bpm", (double) engine.bpm.load());
-    xml.setAttribute ("instrument", currentInstrument.load());
-    xml.setAttribute ("octave", currentOctave.load());
+    auto xml = std::make_unique<juce::XmlElement> ("RETROTRAX");
+    xml->setAttribute ("version", 1);
+    xml->setAttribute ("bpm", (double) engine.bpm.load());
+    xml->setAttribute ("instrument", currentInstrument.load());
+    xml->setAttribute ("octave", currentOctave.load());
 
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
     {
         const juce::ScopedLock sl (engine.lock);
         if (engine.instruments[i] != nullptr && engine.instruments[i]->filePath.isNotEmpty())
         {
-            auto* e = xml.createNewChildElement ("INSTRUMENT");
+            auto* e = xml->createNewChildElement ("INSTRUMENT");
             e->setAttribute ("slot", i);
+            e->setAttribute ("name", engine.instruments[i]->name);
             e->setAttribute ("path", engine.instruments[i]->filePath);
         }
     }
@@ -100,7 +101,7 @@ void RetroTraxProcessor::getStateInformation (juce::MemoryBlock& destData)
             const auto& c = engine.cells[r][t];
             if (c.note >= 0 || c.instrument >= 0 || c.volume >= 0)
             {
-                auto* e = xml.createNewChildElement ("C");
+                auto* e = xml->createNewChildElement ("C");
                 e->setAttribute ("r", r);
                 e->setAttribute ("t", t);
                 e->setAttribute ("n", c.note);
@@ -110,29 +111,39 @@ void RetroTraxProcessor::getStateInformation (juce::MemoryBlock& destData)
         }
     }
 
-    copyXmlToBinary (xml, destData);
+    return xml;
 }
 
-void RetroTraxProcessor::setStateInformation (const void* data, int sizeInBytes)
+void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::StringArray* missingSamples)
 {
-    auto xml = getXmlFromBinary (data, sizeInBytes);
-    if (xml == nullptr || ! xml->hasTagName ("RETROTRAX"))
-        return;
-
-    engine.bpm = (float) xml->getDoubleAttribute ("bpm", 125.0);
+    engine.bpm = (float) xml.getDoubleAttribute ("bpm", 125.0);
     currentInstrument = juce::jlimit (0, TrackerEngine::kInstruments - 1,
-                                      xml->getIntAttribute ("instrument", 0));
-    currentOctave = juce::jlimit (1, 8, xml->getIntAttribute ("octave", 5));
+                                      xml.getIntAttribute ("instrument", 0));
+    currentOctave = juce::jlimit (1, 8, xml.getIntAttribute ("octave", 5));
+
+    // Alte Instrumente leeren, damit Slots eines frueheren Songs nicht zurueckbleiben.
+    for (int i = 0; i < TrackerEngine::kInstruments; ++i)
+        engine.setInstrument (i, nullptr);
 
     engine.clearAllCells();
 
-    for (auto* e : xml->getChildIterator())
+    for (auto* e : xml.getChildIterator())
     {
         if (e->hasTagName ("INSTRUMENT"))
         {
+            const int slot = e->getIntAttribute ("slot", -1);
             const juce::File f (e->getStringAttribute ("path"));
             if (f.existsAsFile())
-                loadInstrument (e->getIntAttribute ("slot", -1), f);
+            {
+                loadInstrument (slot, f);
+            }
+            else if (missingSamples != nullptr)
+            {
+                auto name = e->getStringAttribute ("name");
+                if (name.isEmpty())
+                    name = f.getFileNameWithoutExtension();
+                missingSamples->add (name);
+            }
         }
         else if (e->hasTagName ("C"))
         {
@@ -147,6 +158,36 @@ void RetroTraxProcessor::setStateInformation (const void* data, int sizeInBytes)
             }
         }
     }
+}
+
+bool RetroTraxProcessor::saveSong (const juce::File& file)
+{
+    auto xml = stateToXml();
+    file.getParentDirectory().createDirectory();
+    return xml->writeTo (file);
+}
+
+bool RetroTraxProcessor::loadSong (const juce::File& file, juce::StringArray& missingSamples)
+{
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("RETROTRAX"))
+        return false;
+
+    engine.stop(); // beim Oeffnen nie mitten im Abspielen bleiben
+    applyStateXml (*xml, &missingSamples);
+    return true;
+}
+
+void RetroTraxProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    copyXmlToBinary (*stateToXml(), destData);
+}
+
+void RetroTraxProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    auto xml = getXmlFromBinary (data, sizeInBytes);
+    if (xml != nullptr && xml->hasTagName ("RETROTRAX"))
+        applyStateXml (*xml);
 }
 
 juce::AudioProcessorEditor* RetroTraxProcessor::createEditor()

@@ -39,12 +39,21 @@ public:
     // Spielt eine Audiodatei sofort an, ohne einen Slot zu belegen (Vorschau).
     bool previewFile (const juce::File& file);
 
+    // Song als .retrotrax-Datei speichern bzw. oeffnen. loadSong sammelt in
+    // 'missingSamples' die Namen der Samples, deren Datei nicht (mehr) da ist.
+    bool saveSong (const juce::File& file);
+    bool loadSong (const juce::File& file, juce::StringArray& missingSamples);
+
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
 
 private:
     std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
+
+    // Gemeinsames Song-Format fuer Host-State und .retrotrax-Dateien.
+    std::unique_ptr<juce::XmlElement> stateToXml();
+    void applyStateXml (const juce::XmlElement&, juce::StringArray* missingSamples = nullptr);
 
     juce::AudioFormatManager formatManager;
 

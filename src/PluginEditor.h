@@ -19,6 +19,10 @@ private:
     void refreshInstrumentBox();
     void updateTransportButtons();
     void loadSampleClicked();
+    void saveSongClicked();
+    void loadSongClicked();
+    void syncUiFromState();
+    juce::File songsFolder() const;
 
     RetroTraxProcessor& proc;
     RetroLookAndFeel lnf;
@@ -27,6 +31,8 @@ private:
     juce::TextButton stopButton { "STOP" };
     juce::TextButton loadButton { "SAMPLE LADEN" };
     juce::TextButton stDisksButton { "SAMPLES" };
+    juce::TextButton saveSongButton { "SONG SPEICHERN" };
+    juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::Slider bpmSlider;
     juce::ComboBox instrumentBox;
     juce::ComboBox octaveBox;
@@ -52,6 +58,8 @@ private:
     PatternGrid grid;
     SampleDiskBrowser diskBrowser;
     std::unique_ptr<juce::FileChooser> chooser;
+    std::unique_ptr<juce::FileChooser> songChooser;
+    juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroTraxEditor)
 };
