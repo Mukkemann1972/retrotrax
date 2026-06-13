@@ -25,6 +25,9 @@ jobs:
       - name: Linux-Pakete installieren
         if: runner.os == 'Linux'
         run: |
+          # Fremde Paketquellen (Microsoft/Azure) entfernen — deren Server werfen
+          # gelegentlich 403 und brechen sonst den ganzen Build ab
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/azure-cli.sources /etc/apt/sources.list.d/azure-cli.list
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libfreetype-dev libfontconfig1-dev \
             libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
