@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: Etappe 1 (v0.1) — Sampler
+## Stand: Etappe 1 (v0.2) — Sampler
 
 - 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
 - 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3
@@ -19,6 +19,9 @@ Ein Projekt aus dem Mukkemann-Universum.
   und per Klick laden — die Sounds kommen einzeln vom
   [Internet Archive](https://archive.org/details/AmigaSTXX_originals_plus_conversions)
   und werden lokal gecacht, das Plugin selbst bleibt klein
+- **Instrument-Farben:** jedes Instrument hat eine feste Farbe aus einer
+  16er-Retro-Palette — die Noten leuchten im Pattern-Grid in der Farbe ihres
+  Instruments, ein Farbpunkt neben der Instrument-Auswahl zeigt die aktuelle "Malfarbe"
 - Pattern-Grid im ProTracker-Look: Cursor-Zeile bleibt in der Mitte, das Pattern scrollt
 - Tastatur als Klavier (deutsches QWERTZ-Layout)
 - MIDI-Eingang zum Vorhören

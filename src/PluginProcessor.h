@@ -36,11 +36,16 @@ public:
     // Laedt eine Audiodatei in einen Instrument-Slot. Liefert false bei Fehler.
     bool loadInstrument (int slot, const juce::File& file);
 
+    // Spielt eine Audiodatei sofort an, ohne einen Slot zu belegen (Vorschau).
+    bool previewFile (const juce::File& file);
+
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
 
 private:
+    std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
+
     juce::AudioFormatManager formatManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroTraxProcessor)

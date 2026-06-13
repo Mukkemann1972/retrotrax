@@ -82,6 +82,19 @@ public:
         triggerVoice (kTracks, note, instrumentIdx, -1);
     }
 
+    // Vorschau ohne Instrument-Slot (ST-Disks-Browser): das Sample gehoert
+    // nur der Vorschau und ueberschreibt keinen der 16 Slots.
+    void previewInstrument (std::unique_ptr<Instrument> inst)
+    {
+        const juce::ScopedLock sl (lock);
+        for (auto& v : voices)
+            if (v.inst == preview.get())
+                v.active = false;
+        preview = std::move (inst);
+        if (preview != nullptr)
+            startVoice (kTracks, 60, preview.get(), -1); // C-5 = Originaltonhoehe
+    }
+
     void clearAllCells()
     {
         for (auto& row : cells)
@@ -156,10 +169,15 @@ private:
 
     void triggerVoice (int voiceIdx, int note, int instrumentIdx, int volume)
     {
-        if (voiceIdx < 0 || voiceIdx > kTracks)
-            return;
         const Instrument* inst = (instrumentIdx >= 0 && instrumentIdx < kInstruments)
                                      ? instruments[instrumentIdx].get() : nullptr;
+        startVoice (voiceIdx, note, inst, volume);
+    }
+
+    void startVoice (int voiceIdx, int note, const Instrument* inst, int volume)
+    {
+        if (voiceIdx < 0 || voiceIdx > kTracks)
+            return;
         auto& v = voices[voiceIdx];
         if (inst == nullptr || inst->data.getNumSamples() < 2)
         {
@@ -209,6 +227,7 @@ private:
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme
+    std::unique_ptr<Instrument> preview; // Sample der ST-Disks-Vorschau
     double sampleRate = 44100.0;
     double samplesUntilRow = 0.0;
 };

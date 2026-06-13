@@ -37,6 +37,7 @@ private:
     };
 
     void diskSelected (int index);
+    void previewSelected (int row);
     void loadSelected();
     void finished (juce::URL::DownloadTask*, bool success) override;
     void finishLoad (const juce::File& file, bool success);
@@ -63,6 +64,8 @@ private:
     std::unique_ptr<juce::URL::DownloadTask> task;
     juce::String pendingSample;
     int pendingDisk = 0;
+
+    std::unique_ptr<juce::URL::DownloadTask> previewTask; // Download nur fuers Vorhoeren
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleDiskBrowser)
 };

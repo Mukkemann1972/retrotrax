@@ -32,14 +32,11 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     engine.process (buffer);
 }
 
-bool RetroTraxProcessor::loadInstrument (int slot, const juce::File& file)
+std::unique_ptr<TrackerEngine::Instrument> RetroTraxProcessor::createInstrument (const juce::File& file)
 {
-    if (slot < 0 || slot >= TrackerEngine::kInstruments)
-        return false;
-
     std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
     if (reader == nullptr || reader->lengthInSamples < 2)
-        return false;
+        return nullptr;
 
     // Sicherheitsgrenze: max. 60 Sekunden pro Sample, damit der Speicher nicht explodiert
     const auto maxLen = (juce::int64) (reader->sampleRate * 60.0);
@@ -51,8 +48,29 @@ bool RetroTraxProcessor::loadInstrument (int slot, const juce::File& file)
     inst->sourceRate = reader->sampleRate;
     inst->name = file.getFileNameWithoutExtension();
     inst->filePath = file.getFullPathName();
+    return inst;
+}
+
+bool RetroTraxProcessor::loadInstrument (int slot, const juce::File& file)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+
+    auto inst = createInstrument (file);
+    if (inst == nullptr)
+        return false;
 
     engine.setInstrument (slot, std::move (inst));
+    return true;
+}
+
+bool RetroTraxProcessor::previewFile (const juce::File& file)
+{
+    auto inst = createInstrument (file);
+    if (inst == nullptr)
+        return false;
+
+    engine.previewInstrument (std::move (inst));
     return true;
 }
 

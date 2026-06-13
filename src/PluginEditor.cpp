@@ -118,6 +118,12 @@ void RetroTraxEditor::refreshInstrumentBox()
         instrumentBox.changeItemText (i + 1,
             juce::String::formatted ("%02d ", i + 1) + (name.isEmpty() ? "(leer)" : name));
     }
+
+    // changeItemText aktualisiert die zugeklappte Box nicht — Text von Hand nachziehen,
+    // sonst steht dort "(leer)", obwohl laengst ein Sample im Slot ist
+    const int sel = instrumentBox.getSelectedId();
+    if (sel > 0)
+        instrumentBox.setText (instrumentBox.getItemText (sel - 1), juce::dontSendNotification);
 }
 
 void RetroTraxEditor::loadSampleClicked()
@@ -170,7 +176,7 @@ void RetroTraxEditor::paint (juce::Graphics& g)
 
     g.setFont (rt::mono (13.0f));
     g.setColour (rt::text);
-    g.drawText ("v0.1 | Etappe 1: Sampler | SID kommt!", getWidth() - 320, 0, 304, header.getHeight(),
+    g.drawText ("v0.2 | Etappe 1: Sampler | SID kommt!", getWidth() - 320, 0, 304, header.getHeight(),
                 juce::Justification::centredRight);
 }
 

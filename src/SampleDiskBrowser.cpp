@@ -84,6 +84,8 @@ void SampleDiskBrowser::Model::selectedRowsChanged (int row)
 {
     if (isDiskList && row >= 0)
         owner.diskSelected (row);
+    else if (! isDiskList)
+        owner.previewSelected (row); // angewaehltes Sample sofort anspielen
 }
 
 void SampleDiskBrowser::Model::listBoxItemDoubleClicked (int row, const juce::MouseEvent&)
@@ -124,10 +126,37 @@ juce::URL SampleDiskBrowser::urlFor (int diskIdx, const juce::String& sampleName
                       + "%2F" + esc (sampleName) + ".aiff");
 }
 
+void SampleDiskBrowser::previewSelected (int row)
+{
+    if (row < 0 || row >= diskSamples[currentDisk].size())
+        return;
+
+    previewTask.reset(); // alten Vorschau-Download abbrechen (schnelles Durchblaettern)
+
+    const auto name = diskSamples[currentDisk][row];
+    const auto file = cacheFileFor (currentDisk, name);
+
+    if (file.existsAsFile())
+    {
+        proc.previewFile (file);
+        return;
+    }
+
+    // Noch nicht im Cache: im Hintergrund holen, dann anspielen.
+    // Erst in eine .part-Datei — abgebrochene Downloads landen nie im Cache.
+    file.getParentDirectory().createDirectory();
+    setStatus ("Hole " + name + " zum Vorhoeren ...");
+    previewTask = urlFor (currentDisk, name)
+                      .downloadToFile (juce::File (file.getFullPathName() + ".part"),
+                                       juce::URL::DownloadTaskOptions().withListener (this));
+}
+
 void SampleDiskBrowser::loadSelected()
 {
     if (task != nullptr)
         return; // es laeuft schon ein Download
+
+    previewTask.reset(); // Vorschau-Download nicht mit dem Slot-Download kreuzen
 
     const int row = sampleList.getSelectedRow();
     if (row < 0)
@@ -151,7 +180,8 @@ void SampleDiskBrowser::loadSelected()
     loadButton.setEnabled (false);
 
     task = urlFor (pendingDisk, pendingSample)
-               .downloadToFile (target, juce::URL::DownloadTaskOptions().withListener (this));
+               .downloadToFile (juce::File (target.getFullPathName() + ".part"),
+                                juce::URL::DownloadTaskOptions().withListener (this));
 
     if (task == nullptr)
     {
@@ -163,18 +193,42 @@ void SampleDiskBrowser::loadSelected()
 void SampleDiskBrowser::finished (juce::URL::DownloadTask* t, bool success)
 {
     // Kommt vom Download-Thread -> auf den Message-Thread wechseln.
-    const auto file = t->getTargetLocation();
+    // (Der Pointer-Vergleich ist hier sicher: solange dieser Callback laeuft,
+    // blockiert ein reset() des Tasks auf dem Message-Thread.)
+    const auto part = t->getTargetLocation(); // die .part-Datei
     const bool ok   = success && ! t->hadError();
+    const bool isPreview = (t == previewTask.get());
 
     juce::MessageManager::callAsync (
-        [sp = juce::Component::SafePointer<SampleDiskBrowser> (this), file, ok]
+        [sp = juce::Component::SafePointer<SampleDiskBrowser> (this), part, ok, isPreview]
         {
-            if (sp != nullptr)
+            if (sp == nullptr)
+                return;
+
+            const juce::File file (part.getFullPathName().upToLastOccurrenceOf (".part", false, false));
+            const bool complete = ok && part.getSize() >= 64 && part.moveFileTo (file);
+            if (! complete)
+                part.deleteFile();
+
+            if (isPreview)
             {
-                sp->task.reset();
-                sp->loadButton.setEnabled (true);
-                sp->finishLoad (file, ok);
+                sp->previewTask.reset();
+                if (complete)
+                {
+                    sp->proc.previewFile (file);
+                    sp->sampleList.repaint(); // Cache-Sternchen aktualisieren
+                    sp->setStatus ("Diskette und Sample waehlen, dann IN SLOT LADEN (oder Doppelklick). ESC schliesst.");
+                }
+                else
+                {
+                    sp->setStatus ("Vorhoeren fehlgeschlagen — Internetverbindung pruefen.", true);
+                }
+                return;
             }
+
+            sp->task.reset();
+            sp->loadButton.setEnabled (true);
+            sp->finishLoad (file, complete);
         });
 }
 
