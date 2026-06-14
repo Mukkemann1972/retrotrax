@@ -84,6 +84,16 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
     xml->setAttribute ("instrument", currentInstrument.load());
     xml->setAttribute ("octave", currentOctave.load());
 
+    // Song-Reihenfolge + Modus (Reihenfolge als Liste von Pattern-Nummern).
+    {
+        juce::StringArray ord;
+        for (int i = 0; i < engine.orderLen; ++i)
+            ord.add (juce::String (engine.order[i]));
+        xml->setAttribute ("order", ord.joinIntoString (" "));
+        xml->setAttribute ("songMode", engine.songMode.load() ? 1 : 0);
+        xml->setAttribute ("editPattern", engine.editPattern.load());
+    }
+
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
     {
         const juce::ScopedLock sl (engine.lock);
@@ -96,23 +106,27 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         }
     }
 
-    for (int r = 0; r < TrackerEngine::kRows; ++r)
+    for (int p = 0; p < TrackerEngine::kMaxPatterns; ++p)
     {
-        for (int t = 0; t < TrackerEngine::kTracks; ++t)
+        for (int r = 0; r < TrackerEngine::kRows; ++r)
         {
-            const auto& c = engine.cells[r][t];
-            if (c.note >= 0 || c.instrument >= 0 || c.volume >= 0 || c.effect >= 0)
+            for (int t = 0; t < TrackerEngine::kTracks; ++t)
             {
-                auto* e = xml->createNewChildElement ("C");
-                e->setAttribute ("r", r);
-                e->setAttribute ("t", t);
-                e->setAttribute ("n", c.note);
-                e->setAttribute ("i", c.instrument);
-                e->setAttribute ("v", c.volume);
-                if (c.effect >= 0)
+                const auto& c = engine.patterns[p][r][t];
+                if (c.note >= 0 || c.instrument >= 0 || c.volume >= 0 || c.effect >= 0)
                 {
-                    e->setAttribute ("fx", c.effect);
-                    e->setAttribute ("fp", c.effectParam);
+                    auto* e = xml->createNewChildElement ("C");
+                    if (p > 0) e->setAttribute ("p", p); // p=0 weglassen -> alte Songs laden weiter
+                    e->setAttribute ("r", r);
+                    e->setAttribute ("t", t);
+                    e->setAttribute ("n", c.note);
+                    e->setAttribute ("i", c.instrument);
+                    e->setAttribute ("v", c.volume);
+                    if (c.effect >= 0)
+                    {
+                        e->setAttribute ("fx", c.effect);
+                        e->setAttribute ("fp", c.effectParam);
+                    }
                 }
             }
         }
@@ -154,11 +168,14 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
         }
         else if (e->hasTagName ("C"))
         {
+            const int p = e->getIntAttribute ("p", 0); // alte Songs: kein p -> Pattern 0
             const int r = e->getIntAttribute ("r", -1);
             const int t = e->getIntAttribute ("t", -1);
-            if (r >= 0 && r < TrackerEngine::kRows && t >= 0 && t < TrackerEngine::kTracks)
+            if (p >= 0 && p < TrackerEngine::kMaxPatterns
+                && r >= 0 && r < TrackerEngine::kRows
+                && t >= 0 && t < TrackerEngine::kTracks)
             {
-                auto& c = engine.cells[r][t];
+                auto& c = engine.patterns[p][r][t];
                 c.note        = e->getIntAttribute ("n", -1);
                 c.instrument  = e->getIntAttribute ("i", -1);
                 c.volume      = e->getIntAttribute ("v", -1);
@@ -167,6 +184,20 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
             }
         }
     }
+
+    // Song-Reihenfolge wiederherstellen (Standard: nur Pattern 0).
+    juce::StringArray ord;
+    ord.addTokens (xml.getStringAttribute ("order", "0"), " ", "");
+    ord.removeEmptyStrings();
+    int n = 0;
+    for (const auto& s : ord)
+    {
+        if (n >= TrackerEngine::kMaxOrder) break;
+        engine.order[n++] = juce::jlimit (0, TrackerEngine::kMaxPatterns - 1, s.getIntValue());
+    }
+    engine.orderLen = juce::jmax (1, n);
+    engine.songMode = xml.getIntAttribute ("songMode", 0) != 0;
+    engine.setEditPattern (xml.getIntAttribute ("editPattern", 0));
 }
 
 bool RetroTraxProcessor::saveSong (const juce::File& file)

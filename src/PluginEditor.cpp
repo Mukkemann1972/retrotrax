@@ -19,6 +19,13 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (helpButton);
     addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (langButton);
+    addAndMakeVisible (patPrevButton);
+    addAndMakeVisible (patNextButton);
+    addAndMakeVisible (songModeButton);
+    addAndMakeVisible (orderAddButton);
+    addAndMakeVisible (orderDelButton);
+    addAndMakeVisible (patLabel);
+    addAndMakeVisible (orderLabel);
     addAndMakeVisible (bpmSlider);
     addAndMakeVisible (instrumentBox);
     addAndMakeVisible (octaveBox);
@@ -66,6 +73,35 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         if (! on)
             setDefaultHint();
         grid.grabKeyboardFocus();
+    };
+
+    // --- Song-Modus-Leiste -------------------------------------------------
+    patPrevButton.onClick = [this]
+    {
+        proc.engine.setEditPattern (proc.engine.editPattern.load() - 1);
+        updateSongUi(); grid.repaint(); grid.grabKeyboardFocus();
+    };
+    patNextButton.onClick = [this]
+    {
+        proc.engine.setEditPattern (proc.engine.editPattern.load() + 1);
+        updateSongUi(); grid.repaint(); grid.grabKeyboardFocus();
+    };
+    songModeButton.onClick = [this]
+    {
+        proc.engine.songMode = ! proc.engine.songMode.load();
+        updateSongUi(); grid.grabKeyboardFocus();
+    };
+    orderAddButton.onClick = [this]
+    {
+        if (proc.engine.orderLen < TrackerEngine::kMaxOrder)
+            proc.engine.order[proc.engine.orderLen++] = proc.engine.editPattern.load();
+        updateSongUi(); grid.grabKeyboardFocus();
+    };
+    orderDelButton.onClick = [this]
+    {
+        if (proc.engine.orderLen > 1)
+            --proc.engine.orderLen;
+        updateSongUi(); grid.grabKeyboardFocus();
     };
 
     // Der Knopf OEFFNET nur - ein versehentlicher Doppelklick schliesst nichts.
@@ -125,6 +161,13 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centred);
 
+    patLabel.setFont (rt::mono (14.0f, true));
+    patLabel.setColour (juce::Label::textColourId, rt::cursor);
+    patLabel.setJustificationType (juce::Justification::centred);
+    orderLabel.setFont (rt::mono (13.0f));
+    orderLabel.setColour (juce::Label::textColourId, rt::fxCol);
+    orderLabel.setJustificationType (juce::Justification::centredLeft);
+
     applyLanguage(); // alle Beschriftungen in der aktuellen Sprache setzen
 
     grid.onTransportChange = [this] { updateTransportButtons(); };
@@ -133,6 +176,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     // Live-Hilfe zu Beginn an - Einsteiger sehen sofort, was die Stelle bedeutet.
     grid.setLiveHelp (true);
     liveHelpButton.setToggleState (true, juce::dontSendNotification);
+
+    updateSongUi();
 
     setResizable (true, true);
     setResizeLimits (960, 520, 1920, 1200);
@@ -305,7 +350,26 @@ void RetroTraxEditor::syncUiFromState()
     instDot.colour = rt::instColour (proc.currentInstrument.load());
     instDot.repaint();
     updateTransportButtons();
+    updateSongUi();
     grid.repaint();
+}
+
+void RetroTraxEditor::updateSongUi()
+{
+    auto& e = proc.engine;
+    patLabel.setText (loc::t ("PATTERN ", "PATTERN ")
+                      + juce::String::formatted ("%02d", e.editPattern.load() + 1),
+                      juce::dontSendNotification);
+
+    const bool song = e.songMode.load();
+    songModeButton.setButtonText (song ? juce::String ("SONG") : juce::String ("LOOP"));
+    songModeButton.setToggleState (song, juce::dontSendNotification);
+
+    juce::StringArray ord;
+    for (int i = 0; i < e.orderLen; ++i)
+        ord.add (juce::String::formatted ("%02d", e.order[i] + 1));
+    orderLabel.setText (loc::t ("Reihe: ", "Order: ") + ord.joinIntoString (" "),
+                        juce::dontSendNotification);
 }
 
 void RetroTraxEditor::setDefaultHint()
@@ -331,6 +395,14 @@ void RetroTraxEditor::applyLanguage()
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
     liveHelpButton.setTooltip (loc::t ("Hilfe-Zeile an/aus - erklaert die Stelle unterm Cursor",
                                        "Help line on/off - explains the spot under the cursor"));
+
+    songModeButton.setTooltip (loc::t ("LOOP = aktuelles Pattern wiederholen | SONG = die ganze Reihe abspielen",
+                                       "LOOP = repeat current pattern | SONG = play the whole order"));
+    orderAddButton.setTooltip (loc::t ("Aktuelles Pattern hinten an die Reihenfolge anhaengen",
+                                       "Append the current pattern to the order"));
+    orderDelButton.setTooltip (loc::t ("Letzten Eintrag aus der Reihenfolge nehmen",
+                                       "Remove the last entry from the order"));
+    updateSongUi();
 
     // Bei aktiver Live-Hilfe die Cursor-Erklaerung in neuer Sprache neu setzen,
     // sonst die feste Tastenkuerzel-Zeile.
@@ -365,8 +437,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.9 | Sampler - SoundFonts - Effekt-Spalte - SID kommt!",
-                        "v0.9 | sampler - SoundFonts - effect column - SID coming!"),
+    g.drawText (loc::t ("v0.10 | Effekt-Spalte - Song-Modus - SID kommt!",
+                        "v0.10 | effect column - song mode - SID coming!"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -408,6 +480,22 @@ void RetroTraxEditor::resized()
     loadButton.setBounds (controls.removeFromLeft (130));
     controls.removeFromLeft (6);
     stDisksButton.setBounds (controls.removeFromLeft (96));
+
+    // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
+    auto song = area.removeFromTop (32).reduced (8, 3);
+    patPrevButton.setBounds (song.removeFromLeft (58));
+    song.removeFromLeft (4);
+    patLabel.setBounds (song.removeFromLeft (104));
+    song.removeFromLeft (4);
+    patNextButton.setBounds (song.removeFromLeft (58));
+    song.removeFromLeft (16);
+    songModeButton.setBounds (song.removeFromLeft (72));
+    song.removeFromLeft (16);
+    orderAddButton.setBounds (song.removeFromLeft (66));
+    song.removeFromLeft (4);
+    orderDelButton.setBounds (song.removeFromLeft (66));
+    song.removeFromLeft (12);
+    orderLabel.setBounds (song);
 
     hintLabel.setBounds (area.removeFromBottom (26));
     const auto gridArea = area.reduced (8, 4);

@@ -26,6 +26,7 @@ private:
     void syncUiFromState();
     void applyLanguage();
     void setDefaultHint(); // Standard-Tastenkuerzel-Zeile unten
+    void updateSongUi();   // Pattern-Nummer, SONG/LOOP, Reihenfolge anzeigen
     juce::File songsFolder() const;
 
     RetroTraxProcessor& proc;
@@ -40,6 +41,15 @@ private:
     juce::TextButton helpButton { "?" };
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton langButton { "DE" };
+
+    // Song-Modus-Leiste
+    juce::TextButton patPrevButton  { "< PAT" };
+    juce::TextButton patNextButton  { "PAT >" };
+    juce::TextButton songModeButton { "LOOP" };  // LOOP <-> SONG
+    juce::TextButton orderAddButton { "+ PAT" }; // aktuelles Pattern hinten anhaengen
+    juce::TextButton orderDelButton { "- PAT" }; // letzten Eintrag entfernen
+    juce::Label patLabel;
+    juce::Label orderLabel;
     juce::Slider bpmSlider;
     juce::ComboBox instrumentBox;
     juce::ComboBox octaveBox;

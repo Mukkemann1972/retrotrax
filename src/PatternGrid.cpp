@@ -587,6 +587,7 @@ void PatternGrid::paint (juce::Graphics& g)
     const int visRows  = juce::jmax (1, (h - kHeaderH) / kRowH);
     const int centerLine = visRows / 2;
     const int centerY = kHeaderH + centerLine * kRowH;
+    const int dispPat = engine.displayPattern(); // im Song-Lauf das klingende Pattern
 
     // Auswahl-Rechteck (Anker .. Cursor), nur im Stopp sinnvoll sichtbar.
     const int selR0 = juce::jmin (selAnchorRow,   cursorRow);
@@ -620,7 +621,7 @@ void PatternGrid::paint (juce::Graphics& g)
 
         for (int t = 0; t < TrackerEngine::kTracks; ++t)
         {
-            const auto& cell = engine.cells[row][t];
+            const auto& cell = engine.patterns[dispPat][row][t];
             const int tx = kLeftW + t * trackW;
 
             // Markierter Block: zarte Fuellung hinter den Zellen.

@@ -113,13 +113,13 @@ void HelpPanel::rebuild()
             "ProTracker.\n\n"
             "Jede Spur spielt zur gleichen Zeit eine Note ab. So baust du\n"
             "Schlagzeug, Bass und Melodie uebereinander.\n\n"
-            "(Bald: mehrere Patterns hintereinander zu einem ganzen Song.)",
+            "(Mehrere Patterns ergeben einen ganzen Song - siehe \"Song-Modus\".)",
             "The grid has 8 tracks and 64 rows. The cursor row stays in the\n"
             "centre and the pattern scrolls past it - just like the old\n"
             "ProTracker.\n\n"
             "Each track plays one note at the same moment. That's how you stack\n"
             "drums, bass and melody.\n\n"
-            "(Soon: chaining several patterns into a whole song.)") });
+            "(Several patterns become a whole song - see \"Song mode\".)") });
 
     topics.add ({ loc::t ("Block-Bearbeitung", "Block editing"),
         loc::t (
@@ -194,6 +194,41 @@ void HelpPanel::rebuild()
             "Tip: 0 and 4 with no parameter do nothing - the values make the\n"
             "music. Try 047 (major arpeggio) or 432 (gentle vibrato).\n"
             "(More effects will grow here as the program grows.)") });
+
+    topics.add ({ loc::t ("Song-Modus", "Song mode"),
+        loc::t (
+            "Ein Pattern hat 64 Zeilen - meist ein kurzer Teil (Strophe,\n"
+            "Refrain, Beat). Aus mehreren Patterns baust du einen ganzen Song.\n\n"
+            "Die Leiste ueber dem Raster:\n"
+            "- < PAT / PAT > : zwischen den Patterns blaettern. PATTERN 01,\n"
+            "  02 ... sind voneinander getrennte, leere Blaetter zum Fuellen.\n"
+            "- LOOP / SONG : umschalten. LOOP wiederholt beim Abspielen nur das\n"
+            "  Pattern, das du gerade bearbeitest (gut zum Basteln). SONG spielt\n"
+            "  die ganze Reihenfolge ab - dein fertiges Lied.\n"
+            "- + PAT : haengt das aktuelle Pattern hinten an die Reihenfolge.\n"
+            "- - PAT : nimmt den letzten Eintrag wieder weg.\n"
+            "- Rechts steht die Reihenfolge, z.B. \"Reihe: 01 02 02 03\".\n\n"
+            "So baust du einen Song: Patterns einzeln fuellen (mit < PAT/PAT >\n"
+            "wechseln), dann mit + PAT die Reihenfolge zusammenstecken (ein\n"
+            "Pattern darf mehrfach vorkommen!), auf SONG schalten und PLAY.\n"
+            "Im Song-Lauf zeigt das Raster automatisch das Pattern, das gerade\n"
+            "klingt. Alles wird mit dem Song gespeichert.",
+            "A pattern has 64 rows - usually a short part (verse, chorus, beat).\n"
+            "Several patterns make up a whole song.\n\n"
+            "The bar above the grid:\n"
+            "- < PAT / PAT > : page through the patterns. PATTERN 01, 02 ... are\n"
+            "  separate, empty sheets to fill.\n"
+            "- LOOP / SONG : switch. LOOP repeats only the pattern you're editing\n"
+            "  (great for tinkering). SONG plays the whole order - your finished\n"
+            "  song.\n"
+            "- + PAT : appends the current pattern to the order.\n"
+            "- - PAT : removes the last entry.\n"
+            "- On the right is the order, e.g. \"Order: 01 02 02 03\".\n\n"
+            "To build a song: fill patterns one by one (switch with < PAT/PAT >),\n"
+            "then assemble the order with + PAT (a pattern may appear several\n"
+            "times!), switch to SONG and press PLAY. During playback the grid\n"
+            "automatically shows the pattern that's currently sounding.\n"
+            "Everything is saved with the song.") });
 
     topics.add ({ loc::t ("Instrumente & Farben", "Instruments & colours"),
         loc::t (

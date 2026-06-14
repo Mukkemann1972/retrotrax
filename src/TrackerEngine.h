@@ -14,6 +14,8 @@ public:
     static constexpr int kRows        = 64;
     static constexpr int kInstruments = 16;
     static constexpr int kMaxNote     = 119; // bis Oktave 9
+    static constexpr int kMaxPatterns = 64;  // so viele eigene Patterns kann ein Song haben
+    static constexpr int kMaxOrder    = 128; // so lang darf die Abspiel-Reihenfolge sein
 
     struct Cell
     {
@@ -48,6 +50,16 @@ public:
         speed = 6;                  // klassische Vorgabe; Fxx im Pattern kann das aendern
         currentTick = speed.load() - 1; // ++ -> wickelt auf 0 und loest Zeile 0 aus
         samplesUntilTick = 0.0;
+        // Song-Modus: vorn in der Reihenfolge starten. Loop-Modus: aktuelles Pattern.
+        if (songMode.load())
+        {
+            songPos = 0;
+            playPattern = juce::jlimit (0, kMaxPatterns - 1, order[0]);
+        }
+        else
+        {
+            playPattern = editPattern.load();
+        }
         playing = true;
     }
 
@@ -101,9 +113,30 @@ public:
 
     void clearAllCells()
     {
-        for (auto& row : cells)
-            for (auto& c : row)
-                c = Cell();
+        for (auto& pat : patterns)
+            for (auto& row : pat)
+                for (auto& c : row)
+                    c = Cell();
+        orderLen = 1;
+        order[0] = 0;
+        songPos = 0;
+        playPattern = 0;
+        setEditPattern (0);
+    }
+
+    // Welches Pattern der Editor zeigt/bearbeitet; "cells" zeigt darauf.
+    void setEditPattern (int p)
+    {
+        p = juce::jlimit (0, kMaxPatterns - 1, p);
+        editPattern = p;
+        cells = patterns[p];
+    }
+
+    // Welches Pattern gerade im Grid gezeigt werden soll: im Song-Lauf das
+    // klingende, sonst das bearbeitete.
+    int displayPattern() const
+    {
+        return (playing.load() && songMode.load()) ? playPattern.load() : editPattern.load();
     }
 
     void process (juce::AudioBuffer<float>& buffer)
@@ -133,14 +166,25 @@ public:
         }
     }
 
-    // Zellen sind einfache ints; UI und Audio-Thread duerfen sie direkt lesen/schreiben.
-    Cell cells[kRows][kTracks];
+    // Alle Patterns; Zellen sind einfache ints, UI und Audio-Thread lesen/schreiben direkt.
+    Cell patterns[kMaxPatterns][kRows][kTracks] = {};
+    // "cells" zeigt immer auf das gerade bearbeitete Pattern - so bleibt der
+    // gesamte bestehende Editor-Code (engine.cells[r][t]) unveraendert.
+    Cell (*cells)[kTracks] = patterns[0];
     std::unique_ptr<Instrument> instruments[kInstruments];
 
     std::atomic<float> bpm { 125.0f };
     std::atomic<int>   speed { 6 }; // Ticks pro Zeile (Fxx mit Param < 0x20)
     std::atomic<bool>  playing { false };
     std::atomic<int>   currentRow { 0 };
+
+    // --- Song-Modus: mehrere Patterns in einer Reihenfolge abspielen ---
+    std::atomic<int>  editPattern { 0 }; // welches Pattern der Editor zeigt
+    std::atomic<int>  playPattern { 0 }; // welches Pattern gerade klingt
+    std::atomic<int>  songPos { 0 };     // Position in der Reihenfolge
+    std::atomic<bool> songMode { false };// true = Reihenfolge abspielen, false = aktuelles Pattern loopen
+    int order[kMaxOrder] = { 0 };        // Abspiel-Reihenfolge (Pattern-Indizes)
+    int orderLen = 1;
 
     mutable juce::CriticalSection lock;
 
@@ -216,11 +260,25 @@ private:
 
     void advanceRow()
     {
-        const int row = (currentRow.load() + 1) % kRows;
+        int row = currentRow.load() + 1;
+        if (row >= kRows)
+        {
+            row = 0;
+            // Pattern zu Ende: im Song-Modus zum naechsten Eintrag der Reihenfolge.
+            if (songMode.load())
+            {
+                int sp = songPos.load() + 1;
+                if (sp >= orderLen) sp = 0; // Song laeuft in Schleife
+                songPos = sp;
+                playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
+            }
+        }
         currentRow = row;
+
+        const int pat = playPattern.load();
         for (int t = 0; t < kTracks; ++t)
         {
-            const auto& c = cells[row][t];
+            const auto& c = patterns[pat][row][t];
             auto& v = voices[t];
 
             // Effekt dieser Zeile in die Stimme uebernehmen.
