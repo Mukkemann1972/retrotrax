@@ -124,14 +124,14 @@ void HelpPanel::rebuild()
     topics.add ({ loc::t ("Instrumente & Farben", "Instruments & colours"),
         loc::t (
             "Es gibt 16 Instrument-Slots. In jeden laedst du einen Sound (WAV,\n"
-            "AIFF, FLAC, OGG, MP3) - entweder ueber SAMPLE LADEN von der Platte\n"
-            "oder bequem ueber den SAMPLES-Browser.\n\n"
+            "AIFF, FLAC, OGG, MP3 und das native Amiga-Format 8SVX/IFF) - entweder\n"
+            "ueber SAMPLE LADEN von der Platte oder bequem ueber den SAMPLES-Browser.\n\n"
             "Jedes Instrument hat eine feste Farbe. Die Noten im Raster leuchten\n"
             "in der Farbe ihres Instruments, und der Farbpunkt neben der\n"
             "Instrument-Auswahl zeigt deine aktuelle \"Malfarbe\".",
             "There are 16 instrument slots. Load a sound into each (WAV, AIFF,\n"
-            "FLAC, OGG, MP3) - either via LOAD SAMPLE from disk, or comfortably\n"
-            "through the SAMPLES browser.\n\n"
+            "FLAC, OGG, MP3 and the native Amiga format 8SVX/IFF) - either via\n"
+            "LOAD SAMPLE from disk, or comfortably through the SAMPLES browser.\n\n"
             "Each instrument has a fixed colour. Notes in the grid glow in their\n"
             "instrument's colour, and the colour dot next to the instrument\n"
             "selector shows your current \"paint colour\".") });

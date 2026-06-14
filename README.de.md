@@ -18,7 +18,8 @@ Ein Projekt aus dem Mukkemann-Universum.
   jede Note wird kurz ein-/ausgeblendet, damit nichts knackt
 - **Rückgängig/Wiederholen** (Strg+Z / Strg+Y, bis zu 64 Schritte) und
   **Spur kopieren/einfügen/ausschneiden** (Strg+C / V / X)
-- 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3
+- 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3 sowie das native
+  Amiga-Format **8SVX / IFF** (offen dokumentiert)
 - **ST-XX Sample-Disks eingebaut:** die legendären Amiga-Sample-Disketten
   (ST-01 bis ST-XX, 96 Disketten / ~5.900 Sounds, Public Domain) durchstöbern
   und per Klick laden — die Sounds kommen einzeln vom

@@ -11,7 +11,7 @@ static const char* const kArchiveBase =
 static const char* const kCollectionName = "Meine Sounds";
 
 // Dateiendungen, die als Audio in eigenen Ordnern erkannt werden.
-static const char* const kAudioWildcard = "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3";
+static const char* const kAudioWildcard = "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3;*.iff;*.8svx;*.svx";
 
 SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
 {
@@ -293,8 +293,8 @@ void SampleDiskBrowser::rebuildEntries()
             setStatus (L.folder == collectionFolder()
                        ? loc::t ("Noch nichts gemerkt - Sample waehlen und MERKEN druecken.",
                                  "Nothing remembered yet - select a sample and press REMEMBER.")
-                       : loc::t ("Ordner enthaelt keine Audiodateien (WAV/AIFF/FLAC/OGG/MP3).",
-                                 "Folder has no audio files (WAV/AIFF/FLAC/OGG/MP3)."), true);
+                       : loc::t ("Ordner enthaelt keine Audiodateien (WAV/AIFF/FLAC/OGG/MP3/8SVX).",
+                                 "Folder has no audio files (WAV/AIFF/FLAC/OGG/MP3/8SVX)."), true);
         else
             setDefaultStatus();
     }

@@ -138,27 +138,31 @@ void RetroTraxEditor::updateTransportButtons()
 
 void RetroTraxEditor::refreshInstrumentBox()
 {
+    // Auswahl merken und die Liste komplett neu aufbauen. So zeigt die
+    // zugeklappte Box sofort den aktuellen Namen - nicht erst nach dem
+    // Aufklappen (changeItemText aktualisiert die Anzeige naemlich nicht).
+    int sel = instrumentBox.getSelectedId();
+    if (sel <= 0)
+        sel = proc.currentInstrument.load() + 1;
+
+    instrumentBox.clear (juce::dontSendNotification);
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
     {
         auto name = proc.engine.getInstrumentName (i);
-        instrumentBox.changeItemText (i + 1,
-            juce::String::formatted ("%02d ", i + 1) + (name.isEmpty() ? loc::t ("(leer)", "(empty)") : name));
+        instrumentBox.addItem (juce::String::formatted ("%02d ", i + 1)
+                                   + (name.isEmpty() ? loc::t ("(leer)", "(empty)") : name),
+                               i + 1);
     }
-
-    // changeItemText aktualisiert die zugeklappte Box nicht - Text von Hand nachziehen,
-    // sonst steht dort "(leer)", obwohl laengst ein Sample im Slot ist
-    const int sel = instrumentBox.getSelectedId();
-    if (sel > 0)
-        instrumentBox.setText (instrumentBox.getItemText (sel - 1), juce::dontSendNotification);
+    instrumentBox.setSelectedId (sel, juce::dontSendNotification);
 }
 
 void RetroTraxEditor::loadSampleClicked()
 {
     chooser = std::make_unique<juce::FileChooser> (
-        loc::t ("Sample auswaehlen (WAV, AIFF, FLAC, OGG, MP3)",
-                "Choose a sample (WAV, AIFF, FLAC, OGG, MP3)"),
+        loc::t ("Sample auswaehlen (WAV, AIFF, FLAC, OGG, MP3, Amiga 8SVX/IFF)",
+                "Choose a sample (WAV, AIFF, FLAC, OGG, MP3, Amiga 8SVX/IFF)"),
         juce::File::getSpecialLocation (juce::File::userMusicDirectory),
-        "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3");
+        "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3;*.iff;*.8svx;*.svx");
 
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this] (const juce::FileChooser& fc)

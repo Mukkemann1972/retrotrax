@@ -18,7 +18,8 @@ A project from the Mukkemann universe.
   note gets a tiny fade in/out so nothing clicks
 - **Undo/redo** (Ctrl+Z / Ctrl+Y, up to 64 steps) and
   **copy/paste/cut track** (Ctrl+C / V / X)
-- 16 instrument slots, loads WAV / AIFF / FLAC / OGG / MP3
+- 16 instrument slots, loads WAV / AIFF / FLAC / OGG / MP3 plus the native
+  Amiga format **8SVX / IFF** (openly documented)
 - **Built-in ST-XX sample disks:** browse the legendary Amiga sample disks
   (ST-01 through ST-XX, 96 disks / ~5,900 sounds, public domain) and load any
   sound with one click — samples are fetched individually from the

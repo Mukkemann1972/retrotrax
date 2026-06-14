@@ -1,10 +1,12 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "IFF8SVXFormat.h"
 
 RetroTraxProcessor::RetroTraxProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
-    formatManager.registerBasicFormats();
+    formatManager.registerBasicFormats();             // WAV, AIFF, FLAC, OGG, MP3
+    formatManager.registerFormat (new IFF8SVXAudioFormat(), false); // Amiga 8SVX/IFF
 }
 
 void RetroTraxProcessor::prepareToPlay (double sampleRate, int)
