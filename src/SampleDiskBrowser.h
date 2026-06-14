@@ -72,6 +72,8 @@ private:
     void previewSelected (int row);
     void loadSelected();
     void addFolderClicked();
+    void soundFontsClicked();        // SOUNDFONTS: Online-Katalog freier SF2-Banks oeffnen
+    void startSf2Download (const juce::String& displayName, const juce::String& fileName);
     void removeFolderClicked();      // ENTF: nur eigene Ordner aus der Liste nehmen
     void updateButtons();            // MERKEN/VERGESSEN und ENTF je nach Lage setzen
     bool inCollectionView() const;   // true, wenn gerade "Meine Sounds" offen ist
@@ -121,6 +123,7 @@ private:
 
     juce::TextEditor searchBox;
     juce::TextButton addFolderButton    { "+ ORDNER" };
+    juce::TextButton soundFontButton    { "SOUNDFONTS" };
     juce::TextButton removeFolderButton { "ENTF" };
     juce::TextButton saveButton         { "MERKEN" };
     juce::TextButton loadButton         { "IN SLOT LADEN" };
@@ -133,6 +136,10 @@ private:
     juce::String pendingSample;       // Sample-Name (fuer Status/Callback)
     juce::String pendingLocationName; // Quelle des geladenen Samples
     int pendingDisk = 0;              // nur bei ST-Download relevant
+
+    std::unique_ptr<juce::URL::DownloadTask> sf2Task; // Download einer ganzen SF2-Bank
+    juce::File   pendingSf2File;      // Zielpfad der gerade geladenen SF2-Bank
+    juce::String pendingSf2Name;      // Anzeigename fuer die Statuszeile
 
     std::unique_ptr<juce::URL::DownloadTask> previewTask; // Download nur fuers Vorhoeren
 

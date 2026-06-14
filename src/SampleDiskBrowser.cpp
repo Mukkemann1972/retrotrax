@@ -1,5 +1,6 @@
 #include "SampleDiskBrowser.h"
 #include "STDiskIndex.h"
+#include "Sf2Catalog.h"
 #include <algorithm>
 
 // Archive.org liefert einzelne Dateien direkt aus dem ZIP aus; der Pfad
@@ -59,6 +60,7 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
     addAndMakeVisible (searchBox);
 
     addAndMakeVisible (addFolderButton);
+    addAndMakeVisible (soundFontButton);
     addAndMakeVisible (removeFolderButton);
     addAndMakeVisible (saveButton);
     addAndMakeVisible (loadButton);
@@ -66,6 +68,7 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
     addAndMakeVisible (statusLabel);
 
     addFolderButton.onClick    = [this] { addFolderClicked(); };
+    soundFontButton.onClick    = [this] { soundFontsClicked(); };
     removeFolderButton.onClick = [this] { removeFolderClicked(); };
     saveButton.onClick         = [this] { collectionButtonClicked(); };
     loadButton.onClick         = [this] { loadSelected(); };
@@ -88,6 +91,9 @@ void SampleDiskBrowser::applyLanguage()
         loc::t ("Suche in allen Disks & Ordnern ...", "Search all disks & folders ..."),
         rt::textDim);
     addFolderButton.setButtonText    (loc::t ("+ ORDNER", "+ FOLDER"));
+    soundFontButton.setButtonText    (loc::t ("SOUNDFONTS", "SOUNDFONTS"));
+    soundFontButton.setTooltip       (loc::t ("Freie SoundFont-Banks aus dem Netz holen",
+                                              "Fetch free SoundFont banks from the web"));
     loadButton.setButtonText         (loc::t ("IN SLOT LADEN", "LOAD INTO SLOT"));
     closeButton.setButtonText        (loc::t ("SCHLIESSEN", "CLOSE"));
     repaint();
@@ -401,6 +407,88 @@ void SampleDiskBrowser::addFolderClicked()
             rebuildLocations();
             selectLocationForFolder (result);
         });
+}
+
+// Wohin heruntergeladene SoundFont-Banks gecacht werden.
+static juce::File sf2DownloadDir()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("MukkemannRetroTrax").getChildFile ("SoundFonts");
+}
+
+void SampleDiskBrowser::soundFontsClicked()
+{
+    const auto banks = sf2cat::banks();
+
+    juce::PopupMenu menu;
+    menu.addSectionHeader (loc::t ("Freie SoundFont-Banks - werden bei Bedarf geladen",
+                                   "Free SoundFont banks - downloaded on demand"));
+
+    for (int i = 0; i < (int) banks.size(); ++i)
+    {
+        const auto& b = banks[(size_t) i];
+        const juce::String mb (b.sizeKb / 1024.0, b.sizeKb >= 1024 ? 1 : 2);
+        const auto label = juce::String (b.name) + "   (" + mb + " MB)";
+        const bool cached = sf2DownloadDir().getChildFile (b.file).existsAsFile();
+        menu.addItem (i + 1, label, true, cached); // Haken = schon im Cache
+    }
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (soundFontButton),
+        [this, banks] (int result)
+        {
+            if (result <= 0 || result > (int) banks.size())
+                return;
+            const auto& b = banks[(size_t) (result - 1)];
+            startSf2Download (b.name, b.file);
+        });
+}
+
+void SampleDiskBrowser::startSf2Download (const juce::String& displayName,
+                                          const juce::String& fileName)
+{
+    if (sf2Task != nullptr)
+    {
+        setStatus (loc::t ("Es laeuft schon ein SoundFont-Download ...",
+                           "A SoundFont download is already running ..."), true);
+        return;
+    }
+
+    auto dir = sf2DownloadDir();
+    dir.createDirectory();
+    const auto target = dir.getChildFile (fileName);
+
+    // Schon im Cache: einfach als Quelle eintragen und links anwaehlen.
+    if (target.existsAsFile() && target.getSize() >= 64)
+    {
+        localFolders.addIfNotAlreadyThere (target.getFullPathName());
+        saveFolders();
+        rebuildLocations();
+        selectLocationForFolder (target);
+        setStatus (displayName + loc::t (" ist bereit.", " is ready."));
+        return;
+    }
+
+    pendingSf2File = target;
+    pendingSf2Name = displayName;
+
+    setStatus (loc::t ("Lade SoundFont ", "Downloading SoundFont ") + displayName
+               + loc::t (" von archive.org ... (kann dauern)",
+                         " from archive.org ... (may take a while)"));
+    soundFontButton.setEnabled (false);
+
+    // Erst in eine .part-Datei - abgebrochene Downloads landen nie im Cache.
+    juce::URL url (juce::String (sf2cat::baseUrl())
+                   + juce::URL::addEscapeChars (fileName, false));
+
+    sf2Task = url.downloadToFile (juce::File (target.getFullPathName() + ".part"),
+                                  juce::URL::DownloadTaskOptions().withListener (this));
+
+    if (sf2Task == nullptr)
+    {
+        soundFontButton.setEnabled (true);
+        setStatus (loc::t ("Download konnte nicht gestartet werden (Internet?).",
+                           "Could not start the download (internet?)."), true);
+    }
 }
 
 bool SampleDiskBrowser::inCollectionView() const
@@ -767,9 +855,10 @@ void SampleDiskBrowser::finished (juce::URL::DownloadTask* t, bool success)
     const auto part = t->getTargetLocation(); // die .part-Datei
     const bool ok   = success && ! t->hadError();
     const bool isPreview = (t == previewTask.get());
+    const bool isSf2     = (t == sf2Task.get());
 
     juce::MessageManager::callAsync (
-        [sp = juce::Component::SafePointer<SampleDiskBrowser> (this), part, ok, isPreview]
+        [sp = juce::Component::SafePointer<SampleDiskBrowser> (this), part, ok, isPreview, isSf2]
         {
             if (sp == nullptr)
                 return;
@@ -778,6 +867,29 @@ void SampleDiskBrowser::finished (juce::URL::DownloadTask* t, bool success)
             const bool complete = ok && part.getSize() >= 64 && part.moveFileTo (file);
             if (! complete)
                 part.deleteFile();
+
+            if (isSf2)
+            {
+                sp->sf2Task.reset();
+                sp->soundFontButton.setEnabled (true);
+                if (complete)
+                {
+                    // Wie eine selbst hinzugefuegte SF2-Bank behandeln.
+                    sp->localFolders.addIfNotAlreadyThere (file.getFullPathName());
+                    sp->saveFolders();
+                    sp->rebuildLocations();
+                    sp->selectLocationForFolder (file);
+                    sp->setStatus (sp->pendingSf2Name
+                                   + loc::t (" geladen - links angewaehlt.",
+                                             " downloaded - selected on the left."));
+                }
+                else
+                {
+                    sp->setStatus (loc::t ("SoundFont-Download fehlgeschlagen - Internet pruefen.",
+                                           "SoundFont download failed - check your internet."), true);
+                }
+                return;
+            }
 
             if (isPreview)
             {
@@ -897,12 +1009,14 @@ void SampleDiskBrowser::resized()
 
     area.removeFromBottom (6);
 
-    // Linke Spalte: Quellenliste + Ordner-Knoepfe darunter.
+    // Linke Spalte: Quellenliste + Quellen-Knoepfe darunter (zwei Zeilen).
     auto left = area.removeFromLeft (168);
-    auto leftButtons = left.removeFromBottom (24);
-    addFolderButton.setBounds (leftButtons.removeFromLeft (100).reduced (0, 2));
-    leftButtons.removeFromLeft (4);
-    removeFolderButton.setBounds (leftButtons.reduced (0, 2));
+    auto folderRow = left.removeFromBottom (24);
+    addFolderButton.setBounds (folderRow.removeFromLeft (100).reduced (0, 2));
+    folderRow.removeFromLeft (4);
+    removeFolderButton.setBounds (folderRow.reduced (0, 2));
+    left.removeFromBottom (2);
+    soundFontButton.setBounds (left.removeFromBottom (24).reduced (0, 2));
     left.removeFromBottom (4);
     diskList.setBounds (left);
 
