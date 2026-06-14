@@ -140,14 +140,33 @@ public:
     mutable juce::CriticalSection lock;
 
 private:
+    static constexpr int kFade = 96; // ~2 ms Ein-/Ausblende gegen Knacken
+
     struct Voice
     {
         const Instrument* inst = nullptr;
-        double pos  = 0.0;
-        double step = 1.0;
-        float  gain = 1.0f;
+        double pos   = 0.0;
+        double step  = 1.0;
+        float  gainL = 0.5f; // linker/rechter Pegel (enthaelt schon Lautstaerke + Panorama)
+        float  gainR = 0.5f;
+        int    fadeIn = 0;   // verbleibende Samples der Anstiegsblende
         bool   active = false;
     };
+
+    // Amiga-Stereo: Spuren abwechselnd leicht nach links/rechts (LRRL wie ProTracker);
+    // die Vorhoer-/MIDI-Stimme (voiceIdx == kTracks) bleibt mittig. vol = 0..1.
+    static void panGains (int voiceIdx, float vol, float& gL, float& gR)
+    {
+        float pan = 0.0f; // -1 = links, +1 = rechts
+        if (voiceIdx >= 0 && voiceIdx < kTracks)
+        {
+            static const float pattern[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+            pan = pattern[voiceIdx % 4] * 0.40f; // 40 % Breite, angenehm auch im Kopfhoerer
+        }
+        const float angle = (pan + 1.0f) * 0.25f * juce::MathConstants<float>::pi;
+        gL = std::cos (angle) * vol; // gleiche Leistung links/rechts (Mitte = 0.707)
+        gR = std::sin (angle) * vol;
+    }
 
     double samplesPerRow() const
     {
@@ -188,7 +207,9 @@ private:
         v.inst = inst;
         v.pos  = 0.0;
         v.step = (inst->sourceRate / sampleRate) * std::pow (2.0, (note - 60) / 12.0); // Note C-5 = Originaltonhoehe
-        v.gain = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
+        const float vol = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
+        panGains (voiceIdx, vol, v.gainL, v.gainR);
+        v.fadeIn = kFade;
         v.active = true;
     }
 
@@ -214,11 +235,27 @@ private:
                 }
                 const int   i0   = (int) pos;
                 const float frac = (float) (pos - i0);
+
+                // Huellkurve: am Notenanfang kurz einblenden, kurz vor Sample-Ende
+                // wieder ausblenden - so knackt es weder beim Start noch beim Stopp.
+                float env = 1.0f;
+                if (v.fadeIn > 0)
+                {
+                    env = (float) (kFade - v.fadeIn) / (float) kFade;
+                    --v.fadeIn;
+                }
+                const double remain = (double) (len - 1) - pos;
+                if (remain < (double) kFade)
+                    env *= (float) (remain / (double) kFade);
+
                 for (int ch = 0; ch < outCh; ++ch)
                 {
                     const float* src = d.getReadPointer (juce::jmin (ch, srcCh - 1));
                     const float  s   = src[i0] + (src[i0 + 1] - src[i0]) * frac;
-                    buffer.addSample (ch, offset + i, s * v.gain * 0.5f);
+                    const float  g   = (ch == 0 ? v.gainL
+                                      : ch == 1 ? v.gainR
+                                                : 0.5f * (v.gainL + v.gainR));
+                    buffer.addSample (ch, offset + i, s * g * env * 0.5f);
                 }
                 pos += v.step;
             }

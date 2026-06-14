@@ -126,6 +126,26 @@ void HelpPanel::rebuild()
             "instrument's colour, and the colour dot next to the instrument\n"
             "selector shows your current \"paint colour\".") });
 
+    topics.add ({ loc::t ("Klang & Stereo", "Sound & stereo"),
+        loc::t (
+            "RetroTrax verteilt die 8 Spuren automatisch im Stereobild - leicht\n"
+            "nach links und rechts, abwechselnd (das LRRL-Muster der Amiga-Tracker).\n"
+            "So klingt dein Beat von allein breit und lebendig, ohne dass du etwas\n"
+            "einstellen musst. Das Vorhoeren beim Tippen bleibt mittig.\n\n"
+            "Jede Note wird ausserdem winzig kurz ein- und am Ende wieder\n"
+            "ausgeblendet. Dadurch knackt nichts, auch wenn du schnell tippst oder\n"
+            "viele Noten dicht hintereinander setzt.\n\n"
+            "Die Lautstaerke-Spalte (00-64) regelt einzelne Noten leiser: 64 ist\n"
+            "voll, 32 etwa halb so laut, 00 still.",
+            "RetroTrax spreads the 8 tracks across the stereo field automatically -\n"
+            "slightly left and right, alternating (the LRRL pattern of the Amiga\n"
+            "trackers). Your beat sounds wide and lively on its own, with nothing\n"
+            "to set up. Previewing while typing stays centred.\n\n"
+            "Every note also gets a tiny fade in and out. That keeps things from\n"
+            "clicking, even when you type fast or place many notes close together.\n\n"
+            "The volume column (00-64) makes individual notes quieter: 64 is full,\n"
+            "32 about half, 00 silent.") });
+
     topics.add ({ loc::t ("Sample-Browser", "Sample browser"),
         loc::t (
             "Der SAMPLES-Knopf oeffnet den Browser mit den legendaeren ST-XX\n"
