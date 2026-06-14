@@ -2,7 +2,7 @@
 
 // Automatisch erzeugter Katalog der ST-XX Amiga-Sample-Disketten.
 // Quelle: archive.org/details/AmigaSTXX_originals_plus_conversions (Public Domain).
-// Format pro Eintrag: "Diskname|Sample1|Sample2|..." — die Audiodaten selbst
+// Format pro Eintrag: "Diskname|Sample1|Sample2|..." - die Audiodaten selbst
 // werden erst beim Laden einzeln von archive.org geholt (siehe SampleDiskBrowser).
 
 namespace stdisk

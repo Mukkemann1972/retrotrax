@@ -4,7 +4,7 @@
 #include "Localisation.h"
 
 // Eingebaute Hilfe als Overlay (wie der Sample-Browser). Links die Themen,
-// rechts der erklaerte Text — automatisch in der gewaehlten Sprache.
+// rechts der erklaerte Text - automatisch in der gewaehlten Sprache.
 //
 // Die Inhalte stehen gebuendelt in rebuild() (HelpPanel.cpp): ein neues
 // Feature bekommt dort einen neuen Eintrag, dann waechst die Hilfe mit.

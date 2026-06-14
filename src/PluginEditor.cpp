@@ -51,7 +51,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         applyLanguage();
     };
 
-    // Der Knopf OEFFNET nur — ein versehentlicher Doppelklick schliesst nichts.
+    // Der Knopf OEFFNET nur - ein versehentlicher Doppelklick schliesst nichts.
     // Zu ist der Browser erst per SCHLIESSEN-Knopf oder ESC.
     stDisksButton.onClick = [this]
     {
@@ -145,7 +145,7 @@ void RetroTraxEditor::refreshInstrumentBox()
             juce::String::formatted ("%02d ", i + 1) + (name.isEmpty() ? loc::t ("(leer)", "(empty)") : name));
     }
 
-    // changeItemText aktualisiert die zugeklappte Box nicht — Text von Hand nachziehen,
+    // changeItemText aktualisiert die zugeklappte Box nicht - Text von Hand nachziehen,
     // sonst steht dort "(leer)", obwohl laengst ein Sample im Slot ist
     const int sel = instrumentBox.getSelectedId();
     if (sel > 0)
@@ -225,8 +225,8 @@ void RetroTraxEditor::saveSongClicked()
             }
             else
             {
-                hintLabel.setText (loc::t ("Song konnte nicht gespeichert werden — Schreibrechte pruefen.",
-                                           "Could not save the song — check write permissions."),
+                hintLabel.setText (loc::t ("Song konnte nicht gespeichert werden - Schreibrechte pruefen.",
+                                           "Could not save the song - check write permissions."),
                                    juce::dontSendNotification);
             }
         });
@@ -266,7 +266,7 @@ void RetroTraxEditor::loadSongClicked()
                 msg << loc::t ("  Achtung: ", "  Note: ") << missing.size()
                     << loc::t (" Sample(s) nicht gefunden (", " sample(s) not found (")
                     << missing.joinIntoString (", ")
-                    << loc::t (") — Slot bleibt leer.", ") — slot stays empty.");
+                    << loc::t (") - Slot bleibt leer.", ") - slot stays empty.");
             hintLabel.setText (msg, juce::dontSendNotification);
         });
 }

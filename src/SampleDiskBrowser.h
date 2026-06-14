@@ -8,7 +8,7 @@
 //  1. die klassischen Amiga-Sample-Disketten ST-01..ST-XX. Der Katalog
 //     (Disk- und Sample-Namen) ist fest eingebaut (STDiskIndex.h); die Audio-
 //     daten werden erst beim Laden einzeln von archive.org geholt (Public
-//     Domain) und lokal gecacht — beim zweiten Mal geht es offline.
+//     Domain) und lokal gecacht - beim zweiten Mal geht es offline.
 //  2. eigene Ordner auf der Festplatte (WAV/AIFF/FLAC/OGG/MP3). Diese werden
 //     direkt geladen (kein Download) und die Ordnerliste ueberlebt Neustarts.
 // Ein Suchfeld oben filtert ueber ALLE Quellen gleichzeitig.

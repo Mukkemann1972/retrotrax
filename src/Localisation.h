@@ -4,7 +4,7 @@
 
 // Zweisprachigkeit (Deutsch/Englisch) an EINER Stelle.
 //
-// Jeder sichtbare Text wird als loc::t ("deutsch", "english") geschrieben —
+// Jeder sichtbare Text wird als loc::t ("deutsch", "english") geschrieben -
 // so steht jede Uebersetzung direkt am Verwendungsort und kann nicht
 // vergessen werden. Die gewaehlte Sprache wird gespeichert; beim allerersten
 // Start richtet sie sich nach der Systemsprache (Deutsch sonst Englisch).

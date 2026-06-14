@@ -287,16 +287,16 @@ void SampleDiskBrowser::rebuildEntries()
         else
             setStatus (juce::String (currentEntries.size())
                        + loc::t (" Treffer fuer \"", " matches for \"") + q
-                       + loc::t ("\" — anklicken hoert vor, dann IN SLOT LADEN.",
-                                 "\" — click to preview, then LOAD INTO SLOT."));
+                       + loc::t ("\" - anklicken hoert vor, dann IN SLOT LADEN.",
+                                 "\" - click to preview, then LOAD INTO SLOT."));
     }
     else if (currentLocation >= 0 && currentLocation < locations.size())
     {
         const auto& L = locations.getReference (currentLocation);
         if (L.isLocal && currentEntries.isEmpty())
             setStatus (L.folder == collectionFolder()
-                       ? loc::t ("Noch nichts gemerkt — Sample waehlen und MERKEN druecken.",
-                                 "Nothing remembered yet — select a sample and press REMEMBER.")
+                       ? loc::t ("Noch nichts gemerkt - Sample waehlen und MERKEN druecken.",
+                                 "Nothing remembered yet - select a sample and press REMEMBER.")
                        : loc::t ("Ordner enthaelt keine Audiodateien (WAV/AIFF/FLAC/OGG/MP3).",
                                  "Folder has no audio files (WAV/AIFF/FLAC/OGG/MP3)."), true);
         else
@@ -380,7 +380,7 @@ void SampleDiskBrowser::removeFolderClicked()
     if (! loc.isLocal || loc.folder == collectionFolder())
         return; // Sammlung und ST-Disks bleiben
 
-    // Nur aus der Liste nehmen — die Dateien auf der Platte bleiben unberuehrt.
+    // Nur aus der Liste nehmen - die Dateien auf der Platte bleiben unberuehrt.
     localFolders.removeString (loc.folder.getFullPathName());
     saveFolders();
     rebuildLocations();
@@ -492,7 +492,7 @@ void SampleDiskBrowser::previewSelected (int row)
     }
 
     // Noch nicht im Cache: im Hintergrund holen, dann anspielen.
-    // Erst in eine .part-Datei — abgebrochene Downloads landen nie im Cache.
+    // Erst in eine .part-Datei - abgebrochene Downloads landen nie im Cache.
     file.getParentDirectory().createDirectory();
     setStatus (loc::t ("Hole ", "Fetching ") + e.name + loc::t (" zum Vorhoeren ...", " to preview ..."));
     previewTask = urlFor (L.diskIndex, e.name)
@@ -583,8 +583,8 @@ void SampleDiskBrowser::finished (juce::URL::DownloadTask* t, bool success)
                 }
                 else
                 {
-                    sp->setStatus (loc::t ("Vorhoeren fehlgeschlagen — Internetverbindung pruefen.",
-                                           "Preview failed — check your internet connection."), true);
+                    sp->setStatus (loc::t ("Vorhoeren fehlgeschlagen - Internetverbindung pruefen.",
+                                           "Preview failed - check your internet connection."), true);
                 }
                 return;
             }
@@ -601,8 +601,8 @@ void SampleDiskBrowser::finishLoad (const juce::File& file, bool success)
     {
         if (! file.existsAsFile() || file.getSize() < 64)
             file.deleteFile(); // halbe Downloads nicht im Cache lassen
-        setStatus (loc::t ("Laden fehlgeschlagen — Datei / Internetverbindung pruefen.",
-                           "Loading failed — check the file / your internet connection."), true);
+        setStatus (loc::t ("Laden fehlgeschlagen - Datei / Internetverbindung pruefen.",
+                           "Loading failed - check the file / your internet connection."), true);
         return;
     }
 
@@ -634,9 +634,9 @@ void SampleDiskBrowser::setStatus (const juce::String& text, bool warn)
 void SampleDiskBrowser::setDefaultStatus()
 {
     setStatus (loc::t (
-        "Anklicken hoert vor — IN SLOT LADEN (oder Doppelklick) | "
+        "Anklicken hoert vor - IN SLOT LADEN (oder Doppelklick) | "
         "MERKEN sichert in deine Sammlung | ESC schliesst.",
-        "Click to preview — LOAD INTO SLOT (or double-click) | "
+        "Click to preview - LOAD INTO SLOT (or double-click) | "
         "REMEMBER saves to your collection | ESC closes."));
 }
 
@@ -665,8 +665,8 @@ void SampleDiskBrowser::paint (juce::Graphics& g)
 
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::textDim);
-    g.drawText (loc::t ("ST-XX Amiga-Sounds (Public Domain) + eigene Ordner — * = schon geladen",
-                        "ST-XX Amiga sounds (public domain) + your own folders — * = already downloaded"),
+    g.drawText (loc::t ("ST-XX Amiga-Sounds (Public Domain) + eigene Ordner - * = schon geladen",
+                        "ST-XX Amiga sounds (public domain) + your own folders - * = already downloaded"),
                 12, 26, getWidth() - 24, 16, juce::Justification::centredLeft);
 }
 

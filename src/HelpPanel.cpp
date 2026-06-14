@@ -41,20 +41,20 @@ void HelpPanel::rebuild()
 
     topics.add ({ loc::t ("Willkommen", "Welcome"),
         loc::t (
-            "Mukkemann RetroTrax — der Tracker mit Herz: Amiga-Gefuehl + C64-SID,\n"
+            "Mukkemann RetroTrax - der Tracker mit Herz: Amiga-Gefuehl + C64-SID,\n"
             "fuer heute gebaut.\n\n"
             "Ein Tracker ist ein Musikprogramm, in dem du Noten in ein Raster (das\n"
             "\"Pattern\") tippst. Jede Spalte ist eine Spur, jede Zeile ein Schritt.\n"
-            "Von oben nach unten wird abgespielt — wie Noten auf einer Walze.\n\n"
+            "Von oben nach unten wird abgespielt - wie Noten auf einer Walze.\n\n"
             "Du brauchst keine Vorkenntnisse. Lade einen Sound, tippe ein paar\n"
-            "Noten, druecke die Leertaste — fertig ist dein erster Beat.",
-            "Mukkemann RetroTrax — the tracker with heart: Amiga feel + C64 SID,\n"
+            "Noten, druecke die Leertaste - fertig ist dein erster Beat.",
+            "Mukkemann RetroTrax - the tracker with heart: Amiga feel + C64 SID,\n"
             "built for today.\n\n"
             "A tracker is a music program where you type notes into a grid (the\n"
             "\"pattern\"). Each column is a track, each line a step. Playback runs\n"
-            "top to bottom — like notes on a music box cylinder.\n\n"
+            "top to bottom - like notes on a music box cylinder.\n\n"
             "No prior knowledge needed. Load a sound, type a few notes, hit the\n"
-            "space bar — and there's your first beat.") });
+            "space bar - and there's your first beat.") });
 
     topics.add ({ loc::t ("Schnellstart", "Quick start"),
         loc::t (
@@ -99,13 +99,13 @@ void HelpPanel::rebuild()
     topics.add ({ loc::t ("Pattern & Spuren", "Pattern & tracks"),
         loc::t (
             "Das Raster hat 8 Spuren und 64 Zeilen. Die Cursor-Zeile bleibt in\n"
-            "der Mitte, das Pattern scrollt daran vorbei — wie beim alten\n"
+            "der Mitte, das Pattern scrollt daran vorbei - wie beim alten\n"
             "ProTracker.\n\n"
             "Jede Spur spielt zur gleichen Zeit eine Note ab. So baust du\n"
             "Schlagzeug, Bass und Melodie uebereinander.\n\n"
             "(Bald: mehrere Patterns hintereinander zu einem ganzen Song.)",
             "The grid has 8 tracks and 64 rows. The cursor row stays in the\n"
-            "centre and the pattern scrolls past it — just like the old\n"
+            "centre and the pattern scrolls past it - just like the old\n"
             "ProTracker.\n\n"
             "Each track plays one note at the same moment. That's how you stack\n"
             "drums, bass and melody.\n\n"
@@ -114,13 +114,13 @@ void HelpPanel::rebuild()
     topics.add ({ loc::t ("Instrumente & Farben", "Instruments & colours"),
         loc::t (
             "Es gibt 16 Instrument-Slots. In jeden laedst du einen Sound (WAV,\n"
-            "AIFF, FLAC, OGG, MP3) — entweder ueber SAMPLE LADEN von der Platte\n"
+            "AIFF, FLAC, OGG, MP3) - entweder ueber SAMPLE LADEN von der Platte\n"
             "oder bequem ueber den SAMPLES-Browser.\n\n"
             "Jedes Instrument hat eine feste Farbe. Die Noten im Raster leuchten\n"
             "in der Farbe ihres Instruments, und der Farbpunkt neben der\n"
             "Instrument-Auswahl zeigt deine aktuelle \"Malfarbe\".",
             "There are 16 instrument slots. Load a sound into each (WAV, AIFF,\n"
-            "FLAC, OGG, MP3) — either via LOAD SAMPLE from disk, or comfortably\n"
+            "FLAC, OGG, MP3) - either via LOAD SAMPLE from disk, or comfortably\n"
             "through the SAMPLES browser.\n\n"
             "Each instrument has a fixed colour. Notes in the grid glow in their\n"
             "instrument's colour, and the colour dot next to the instrument\n"
@@ -136,7 +136,7 @@ void HelpPanel::rebuild()
             "- Das Suchfeld oben durchsucht ALLE Disks und Ordner auf einmal.\n"
             "- * hinter einem Namen heisst: schon heruntergeladen (laedt sofort).\n\n"
             "Mit + ORDNER bindest du eigene Sample-Ordner von der Festplatte ein\n"
-            "(sie bleiben nach Neustart erhalten). ENTF nimmt einen wieder raus —\n"
+            "(sie bleiben nach Neustart erhalten). ENTF nimmt einen wieder raus -\n"
             "deine Dateien bleiben dabei unangetastet.",
             "The SAMPLES button opens the browser with the legendary ST-XX Amiga\n"
             "sample disks (96 disks, ~5,900 sounds, public domain).\n\n"
@@ -146,22 +146,22 @@ void HelpPanel::rebuild()
             "- The search box at the top searches ALL disks and folders at once.\n"
             "- A * after a name means: already downloaded (loads instantly).\n\n"
             "With + FOLDER you add your own sample folders from disk (they stay\n"
-            "after a restart). REMOVE takes one out again — your files are left\n"
+            "after a restart). REMOVE takes one out again - your files are left\n"
             "untouched.") });
 
     topics.add ({ loc::t ("Meine Sounds (Sammlung)", "My Sounds (collection)"),
         loc::t (
-            "Ganz oben in der Ordnerliste steht immer \"Meine Sounds\" — deine\n"
+            "Ganz oben in der Ordnerliste steht immer \"Meine Sounds\" - deine\n"
             "persoenliche Sammlung.\n\n"
             "Gefaellt dir ein Sound (egal ob von einer ST-Disk oder aus einem\n"
             "eigenen Ordner)? Waehl ihn an und druecke MERKEN. Schon liegt er\n"
-            "dauerhaft in deiner Sammlung — so baust du dir nach und nach deine\n"
+            "dauerhaft in deiner Sammlung - so baust du dir nach und nach deine\n"
             "eigene Lieblings-Bibliothek auf.",
-            "At the very top of the folder list there's always \"My Sounds\" —\n"
+            "At the very top of the folder list there's always \"My Sounds\" -\n"
             "your personal collection.\n\n"
             "Like a sound (whether from an ST disk or one of your own folders)?\n"
             "Select it and press REMEMBER. It's stored in your collection for\n"
-            "good — that's how you gradually build your own favourites library.") });
+            "good - that's how you gradually build your own favourites library.") });
 
     topics.add ({ loc::t ("Song speichern & oeffnen", "Save & open song"),
         loc::t (
@@ -270,8 +270,8 @@ void HelpPanel::paint (juce::Graphics& g)
 
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::textDim);
-    g.drawText (loc::t ("Thema links waehlen — ESC schliesst.",
-                        "Pick a topic on the left — ESC closes."),
+    g.drawText (loc::t ("Thema links waehlen - ESC schliesst.",
+                        "Pick a topic on the left - ESC closes."),
                 12, 26, getWidth() - 24, 16, juce::Justification::centredLeft);
 }
 
