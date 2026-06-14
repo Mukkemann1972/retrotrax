@@ -190,7 +190,11 @@ void HelpPanel::rebuild()
             "Brauchst du einen Sound nicht mehr? Oeffne links \"Meine Sounds\",\n"
             "waehl den Sound an - der MERKEN-Knopf heisst dort jetzt VERGESSEN.\n"
             "Druecken, und der Sound wandert in den Papierkorb (ein Fehlklick ist\n"
-            "also nicht endgueltig). ENTF ist nur fuer eigene Ordner da.",
+            "also nicht endgueltig). ENTF ist nur fuer eigene Ordner da.\n\n"
+            "Aufraeumen im Schnelldurchlauf: Mit Strg- oder Shift-Klick markierst\n"
+            "du mehrere Sounds und VERGESSEN raeumt sie alle auf einmal weg. Nach\n"
+            "dem Loeschen springt die Auswahl von selbst zum naechsten Sound -\n"
+            "so klickst du dich zuegig durch.",
             "At the very top of the folder list there's always \"My Sounds\" -\n"
             "your personal collection.\n\n"
             "Like a sound (whether from an ST disk or one of your own folders)?\n"
@@ -199,7 +203,10 @@ void HelpPanel::rebuild()
             "Don't need a sound anymore? Open \"My Sounds\" on the left, select the\n"
             "sound - the REMEMBER button is labelled FORGET there. Press it and the\n"
             "sound goes to the trash (so a misclick isn't final). REMOVE is only\n"
-            "for your own folders.") });
+            "for your own folders.\n\n"
+            "Tidying up fast: Ctrl- or Shift-click marks several sounds and FORGET\n"
+            "clears them all at once. After deleting, the selection jumps to the\n"
+            "next sound by itself - so you can click through quickly.") });
 
     topics.add ({ loc::t ("Song speichern & oeffnen", "Save & open song"),
         loc::t (

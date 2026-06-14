@@ -34,6 +34,10 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
         addAndMakeVisible (*lb);
     }
 
+    // In der Sample-Liste duerfen mehrere Eintraege markiert werden (Strg-/Shift-
+    // Klick) - praktisch, um in "Meine Sounds" mehrere auf einmal zu VERGESSEN.
+    sampleList.setMultipleSelectionEnabled (true);
+
     searchBox.setMultiLine (false);
     searchBox.setReturnKeyStartsNewLine (false);
     searchBox.setFont (rt::mono (13.0f));
@@ -421,36 +425,58 @@ void SampleDiskBrowser::removeFolderClicked()
 
 void SampleDiskBrowser::deleteFromCollection()
 {
-    if (searching())
-        return; // in der Suchansicht ist die Quelle gemischt - nur in der Sammlung loeschen
+    if (! inCollectionView())
+        return; // nur in "Meine Sounds" loeschen (nicht in der Suchansicht/auf Disks)
 
-    const int row = sampleList.getSelectedRow();
-    if (row < 0 || row >= currentEntries.size())
+    // Alle markierten Zeilen einsammeln, BEVOR die Liste neu gebaut wird
+    // (danach sind die Zeilennummern hinfaellig).
+    const auto rows = sampleList.getSelectedRows();
+    juce::Array<juce::File> files;
+    juce::StringArray names;
+    for (int i = 0; i < rows.size(); ++i)
+    {
+        const int row = rows[i];
+        if (row < 0 || row >= currentEntries.size())
+            continue;
+        const auto& e = currentEntries.getReference (row);
+        const auto& L = locations.getReference (e.location);
+        if (L.isLocal && L.folder == collectionFolder() && e.localFile.existsAsFile())
+        {
+            files.add (e.localFile);
+            names.add (e.name);
+        }
+    }
+
+    if (files.isEmpty())
     {
         setStatus (loc::t ("Bitte erst einen Sound in der Sammlung auswaehlen.",
                            "Please select a sound in the collection first."), true);
         return;
     }
 
-    const auto  e = currentEntries.getReference (row);
-    const auto& L = locations.getReference (e.location);
-    if (! (L.isLocal && L.folder == collectionFolder()) || ! e.localFile.existsAsFile())
-        return;
+    const int firstRow = rows[0]; // hier wird nach dem Loeschen weitergemacht
 
-    const auto name = e.name;
     // In den Papierkorb statt hart loeschen - ein Fehlklick ist so nicht endgueltig.
-    const bool gone = e.localFile.moveToTrash() || e.localFile.deleteFile();
-    if (gone)
-    {
-        rebuildEntries(); // Sammlung neu anzeigen (deselektiert -> Knopf wieder aus)
-        setStatus ("\"" + name + loc::t ("\" aus deiner Sammlung entfernt (liegt im Papierkorb).",
-                                         "\" removed from your collection (now in the trash)."));
-    }
+    int removed = 0;
+    for (auto& f : files)
+        if (f.moveToTrash() || f.deleteFile())
+            ++removed;
+
+    rebuildEntries(); // Sammlung neu anzeigen
+
+    // Auto-Weiterspringen: an gleicher Stelle den naechsten Sound markieren,
+    // damit man mehrere flott nacheinander wegklicken kann.
+    const int n = currentEntries.size();
+    if (n > 0)
+        sampleList.selectRow (juce::jlimit (0, n - 1, firstRow)); // -> spielt ihn vor, Knopf wieder aktiv
+
+    if (removed == 1)
+        setStatus ("\"" + names[0] + loc::t ("\" aus deiner Sammlung entfernt (liegt im Papierkorb).",
+                                             "\" removed from your collection (now in the trash)."));
     else
-    {
-        setStatus ("\"" + name + loc::t ("\" konnte nicht entfernt werden.",
-                                         "\" could not be removed."), true);
-    }
+        setStatus (juce::String (removed)
+                   + loc::t (" Sounds aus deiner Sammlung entfernt (liegen im Papierkorb).",
+                             " sounds removed from your collection (now in the trash)."));
 }
 
 void SampleDiskBrowser::saveToCollection()
