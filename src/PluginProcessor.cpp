@@ -101,7 +101,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         for (int t = 0; t < TrackerEngine::kTracks; ++t)
         {
             const auto& c = engine.cells[r][t];
-            if (c.note >= 0 || c.instrument >= 0 || c.volume >= 0)
+            if (c.note >= 0 || c.instrument >= 0 || c.volume >= 0 || c.effect >= 0)
             {
                 auto* e = xml->createNewChildElement ("C");
                 e->setAttribute ("r", r);
@@ -109,6 +109,11 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("n", c.note);
                 e->setAttribute ("i", c.instrument);
                 e->setAttribute ("v", c.volume);
+                if (c.effect >= 0)
+                {
+                    e->setAttribute ("fx", c.effect);
+                    e->setAttribute ("fp", c.effectParam);
+                }
             }
         }
     }
@@ -154,9 +159,11 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
             if (r >= 0 && r < TrackerEngine::kRows && t >= 0 && t < TrackerEngine::kTracks)
             {
                 auto& c = engine.cells[r][t];
-                c.note       = e->getIntAttribute ("n", -1);
-                c.instrument = e->getIntAttribute ("i", -1);
-                c.volume     = e->getIntAttribute ("v", -1);
+                c.note        = e->getIntAttribute ("n", -1);
+                c.instrument  = e->getIntAttribute ("i", -1);
+                c.volume      = e->getIntAttribute ("v", -1);
+                c.effect      = e->getIntAttribute ("fx", -1);
+                c.effectParam = e->getIntAttribute ("fp", 0);
             }
         }
     }

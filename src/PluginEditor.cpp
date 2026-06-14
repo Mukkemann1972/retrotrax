@@ -330,8 +330,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.6 | Sampler - 8SVX - SoundFonts - SID kommt!",
-                        "v0.6 | sampler - 8SVX - SoundFonts - SID coming!"),
+    g.drawText (loc::t ("v0.9 | Sampler - SoundFonts - Effekt-Spalte - SID kommt!",
+                        "v0.9 | sampler - SoundFonts - effect column - SID coming!"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }

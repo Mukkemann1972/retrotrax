@@ -25,6 +25,9 @@ private:
     void moveCursor (int rowDelta, int colDelta);
     bool handleNoteKey (juce::juce_wchar c);
     bool handleDigitKey (juce::juce_wchar c);
+    bool handleEffectKey (juce::juce_wchar c); // Hex-Eingabe in der Effekt-Spalte (cursorCol 3)
+
+    static juce::String effectText (int effect, int param); // "C40" bzw. "..."
 
     static int noteOffsetForChar (juce::juce_wchar c);
     static juce::String noteName (int note);

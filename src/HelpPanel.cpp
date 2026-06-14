@@ -151,6 +151,50 @@ void HelpPanel::rebuild()
             "  and listen until it sits right.\n\n"
             "Everything can be undone with CTRL+Z.") });
 
+    topics.add ({ loc::t ("Effekt-Spalte", "Effect column"),
+        loc::t (
+            "Rechts in jeder Spur steht die Effekt-Spalte (gruen). Damit machst\n"
+            "du Klaenge lebendig - Tonhoehe biegen, zittern lassen, Lautstaerke\n"
+            "und Tempo steuern.\n\n"
+            "Eingabe: Cursor in die gruene Spalte (Pfeil rechts oder Klick),\n"
+            "dann drei Hex-Stellen tippen - ein Befehl + zwei Parameter.\n"
+            "Beispiel: C-4-0 ergibt \"C40\" = Lautstaerke auf 40 (hex) setzen.\n"
+            "ENTF leert die Effekt-Zelle wieder.\n\n"
+            "Die wichtigsten Befehle (Hex):\n"
+            "  0xy  Arpeggio - Akkord: Grundton, +x, +y Halbtoene im Wechsel\n"
+            "  1xx  Tonhoehe gleitet hoch (Slide up)\n"
+            "  2xx  Tonhoehe gleitet runter (Slide down)\n"
+            "  3xx  Tone-Portamento - zur neuen Note hingleiten (nicht neu\n"
+            "       anschlagen); xx = Tempo des Gleitens\n"
+            "  4xy  Vibrato - x = Tempo, y = Tiefe\n"
+            "  Axy  Lautstaerke-Slide - x hoch, y runter (pro Tick)\n"
+            "  Cxx  Lautstaerke setzen (00..40 hex = 0..64)\n"
+            "  Fxx  Tempo: xx unter 20 = Ticks pro Zeile (Speed),\n"
+            "       ab 20 = BPM\n\n"
+            "Tipp: 0 und 4 ohne Parameter tun nichts - die Werte machen die\n"
+            "Musik. Probier z.B. 047 (Arpeggio Dur) oder 432 (sanftes Vibrato).\n"
+            "(Weitere Effekte wachsen hier mit, so wie das Programm waechst.)",
+            "On the right of each track sits the effect column (green). It's how\n"
+            "you bring sounds to life - bend pitch, add wobble, control volume\n"
+            "and tempo.\n\n"
+            "To type: move the cursor into the green column (right arrow or\n"
+            "click), then type three hex digits - one command + two parameters.\n"
+            "Example: C-4-0 gives \"C40\" = set volume to 40 (hex). DELETE clears\n"
+            "the effect cell again.\n\n"
+            "The most important commands (hex):\n"
+            "  0xy  arpeggio - chord: root, +x, +y semitones, alternating\n"
+            "  1xx  pitch slides up\n"
+            "  2xx  pitch slides down\n"
+            "  3xx  tone portamento - glide to the new note (no retrigger);\n"
+            "       xx = glide speed\n"
+            "  4xy  vibrato - x = speed, y = depth\n"
+            "  Axy  volume slide - x up, y down (per tick)\n"
+            "  Cxx  set volume (00..40 hex = 0..64)\n"
+            "  Fxx  tempo: xx below 20 = ticks per row (speed), 20+ = BPM\n\n"
+            "Tip: 0 and 4 with no parameter do nothing - the values make the\n"
+            "music. Try 047 (major arpeggio) or 432 (gentle vibrato).\n"
+            "(More effects will grow here as the program grows.)") });
+
     topics.add ({ loc::t ("Instrumente & Farben", "Instruments & colours"),
         loc::t (
             "Es gibt 16 Instrument-Slots. In jeden laedst du einen Sound (WAV,\n"

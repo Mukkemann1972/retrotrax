@@ -33,11 +33,12 @@ void PatternGrid::moveCursor (int rowDelta, int colDelta)
 
     if (colDelta != 0)
     {
-        int flat = cursorTrack * 3 + cursorCol + colDelta;
-        const int total = TrackerEngine::kTracks * 3;
+        constexpr int kCols = 4; // Note, Instrument, Lautstaerke, Effekt
+        int flat = cursorTrack * kCols + cursorCol + colDelta;
+        const int total = TrackerEngine::kTracks * kCols;
         flat = (flat % total + total) % total;
-        cursorTrack = flat / 3;
-        cursorCol   = flat % 3;
+        cursorTrack = flat / kCols;
+        cursorCol   = flat % kCols;
     }
     repaint();
 }
@@ -117,6 +118,34 @@ bool PatternGrid::handleDigitKey (juce::juce_wchar c)
     }
     repaint();
     return true;
+}
+
+// Effekt-Spalte: Hex-Ziffern (0-9, A-F) werden von links eingeschoben.
+// Die drei Stellen sind Befehl + zwei Parameter, z.B. C-4-0 -> Effekt C, Parameter 40.
+bool PatternGrid::handleEffectKey (juce::juce_wchar c)
+{
+    int digit = -1;
+    if (c >= '0' && c <= '9')      digit = (int) (c - '0');
+    else if (c >= 'a' && c <= 'f') digit = 10 + (int) (c - 'a');
+    if (digit < 0)
+        return false;
+
+    pushUndo();
+    auto& cell = engine.cells[cursorRow][cursorTrack];
+    int combined = cell.effect < 0 ? 0 : (((cell.effect & 0xF) << 8) | (cell.effectParam & 0xFF));
+    combined = ((combined << 4) | digit) & 0xFFF; // 12 Bit: 1 Stelle Befehl + 2 Stellen Parameter
+    cell.effect      = (combined >> 8) & 0xF;
+    cell.effectParam =  combined       & 0xFF;
+    repaint();
+    return true;
+}
+
+juce::String PatternGrid::effectText (int effect, int param)
+{
+    if (effect < 0)
+        return "...";
+    return juce::String::toHexString (effect).toUpperCase()
+         + juce::String::formatted ("%02X", param & 0xFF);
 }
 
 // --- Rueckgaengig/Wiederholen + Spalten-Zwischenablage --------------------
@@ -405,7 +434,8 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
         auto& cell = engine.cells[cursorRow][cursorTrack];
         if (cursorCol == 0)      cell = TrackerEngine::Cell();
         else if (cursorCol == 1) cell.instrument = -1;
-        else                     cell.volume = -1;
+        else if (cursorCol == 2) cell.volume = -1;
+        else                     { cell.effect = -1; cell.effectParam = 0; }
         moveCursor (1, 0);
         return true;
     }
@@ -416,6 +446,11 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
     if (cursorCol == 0)
     {
         if (handleNoteKey (c))
+            return true;
+    }
+    else if (cursorCol == 3)
+    {
+        if (handleEffectKey (c))
             return true;
     }
     else if (handleDigitKey (c))
@@ -443,7 +478,9 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
         const int t = juce::jmin (TrackerEngine::kTracks - 1, (e.x - kLeftW) / trackW);
         const int xin = (e.x - kLeftW) % trackW;
         cursorTrack = t;
-        cursorCol = xin < trackW * 45 / 100 ? 0 : (xin < trackW * 72 / 100 ? 1 : 2);
+        cursorCol = xin < trackW * 34 / 100 ? 0
+                  : xin < trackW * 49 / 100 ? 1
+                  : xin < trackW * 65 / 100 ? 2 : 3;
     }
     if (e.y > kHeaderH)
     {
@@ -511,19 +548,23 @@ void PatternGrid::paint (juce::Graphics& g)
                 g.fillRect (tx, y, trackW, kRowH);
             }
 
-            const int noteX = tx + 8;
-            const int noteW = trackW * 38 / 100;
-            const int instX = tx + trackW * 45 / 100;
-            const int instW = trackW * 24 / 100;
-            const int volX  = tx + trackW * 72 / 100;
-            const int volW  = trackW * 24 / 100;
+            const int noteX = tx + 6;
+            const int noteW = trackW * 30 / 100;
+            const int instX = tx + trackW * 34 / 100;
+            const int instW = trackW * 14 / 100;
+            const int volX  = tx + trackW * 49 / 100;
+            const int volW  = trackW * 14 / 100;
+            const int fxX   = tx + trackW * 65 / 100;
+            const int fxW   = trackW * 33 / 100;
 
             // Cursor-Markierung (nur sichtbar, wenn die Cursor-Zeile gerade angezeigt wird)
             if (row == cursorRow && t == cursorTrack && ! playing)
             {
                 g.setColour (rt::cursor);
-                const int cx = cursorCol == 0 ? noteX - 3 : (cursorCol == 1 ? instX - 3 : volX - 3);
-                const int cw = cursorCol == 0 ? noteW + 6 : (cursorCol == 1 ? instW + 6 : volW + 6);
+                const int cx = cursorCol == 0 ? noteX - 3 : (cursorCol == 1 ? instX - 3
+                             : cursorCol == 2 ? volX  - 3 : fxX - 3);
+                const int cw = cursorCol == 0 ? noteW + 6 : (cursorCol == 1 ? instW + 6
+                             : cursorCol == 2 ? volW  + 6 : fxW + 6);
                 g.drawRoundedRectangle ((float) cx, (float) y + 1.0f, (float) cw, (float) kRowH - 2.0f, 3.0f, 1.6f);
             }
 
@@ -543,6 +584,10 @@ void PatternGrid::paint (juce::Graphics& g)
             g.drawText (cell.volume < 0 ? juce::String ("00")
                                         : juce::String::formatted ("%02d", cell.volume),
                         volX, y, volW, kRowH, juce::Justification::centredLeft);
+
+            g.setColour (cell.effect < 0 ? rt::textDim.withAlpha (0.55f) : rt::fxCol);
+            g.drawText (effectText (cell.effect, cell.effectParam),
+                        fxX, y, fxW, kRowH, juce::Justification::centredLeft);
         }
     }
 

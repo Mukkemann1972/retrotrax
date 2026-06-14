@@ -18,6 +18,7 @@ namespace rt
     const juce::Colour noteCol   { 0xffe4e9f5 };
     const juce::Colour instCol   { 0xffe8c573 };
     const juce::Colour volCol    { 0xff8fb6e8 };
+    const juce::Colour fxCol     { 0xff9be0a8 }; // Effekt-Spalte: sanftes Gruen
 
     // 16 kraeftige Instrument-Farben, gut lesbar auf dunklem Grund.
     // Slot 01 = Bernstein, 02 = Himmelblau, 03 = Gruen, ...

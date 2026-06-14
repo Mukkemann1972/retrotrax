@@ -20,6 +20,8 @@ public:
         int note       = -1; // -1 = leer, sonst 0..119 (Oktave * 12 + Halbton)
         int instrument = -1; // -1 = leer, sonst 0..15
         int volume     = -1; // -1 = voll, sonst 0..64
+        int effect     = -1; // -1 = leer, sonst 0..15 (Effekt-Befehl, z.B. 0=Arpeggio, C=Lautstaerke, F=Tempo)
+        int effectParam = 0; // 0..255 (zwei Hex-Stellen)
     };
 
     struct Instrument
@@ -34,7 +36,7 @@ public:
     {
         const juce::ScopedLock sl (lock);
         sampleRate = newSampleRate;
-        samplesUntilRow = 0.0;
+        samplesUntilTick = 0.0;
         for (auto& v : voices)
             v.active = false;
     }
@@ -42,8 +44,10 @@ public:
     void play()
     {
         const juce::ScopedLock sl (lock);
-        currentRow = kRows - 1; // der naechste Schritt landet auf Zeile 0
-        samplesUntilRow = 0.0;
+        currentRow = kRows - 1;     // der naechste Tick landet auf Zeile 0
+        speed = 6;                  // klassische Vorgabe; Fxx im Pattern kann das aendern
+        currentTick = speed.load() - 1; // ++ -> wickelt auf 0 und loest Zeile 0 aus
+        samplesUntilTick = 0.0;
         playing = true;
     }
 
@@ -115,13 +119,13 @@ public:
             int chunk = numSamples;
             if (playing.load())
             {
-                if (samplesUntilRow <= 0.5)
+                if (samplesUntilTick <= 0.5)
                 {
-                    advanceRow();
-                    samplesUntilRow += samplesPerRow();
+                    advanceTick();
+                    samplesUntilTick += samplesPerTick();
                 }
-                chunk = juce::jmin (numSamples, (int) std::ceil (samplesUntilRow));
-                samplesUntilRow -= chunk;
+                chunk = juce::jmin (numSamples, (int) std::ceil (samplesUntilTick));
+                samplesUntilTick -= chunk;
             }
             render (buffer, offset, chunk);
             offset += chunk;
@@ -134,6 +138,7 @@ public:
     std::unique_ptr<Instrument> instruments[kInstruments];
 
     std::atomic<float> bpm { 125.0f };
+    std::atomic<int>   speed { 6 }; // Ticks pro Zeile (Fxx mit Param < 0x20)
     std::atomic<bool>  playing { false };
     std::atomic<int>   currentRow { 0 };
 
@@ -146,11 +151,20 @@ private:
     {
         const Instrument* inst = nullptr;
         double pos   = 0.0;
-        double step  = 1.0;
+        double step  = 1.0;  // aktueller Abspielschritt (jede Tick neu gesetzt)
+        double baseStep = 1.0;   // Grund-Tonhoehe (von Slides/Portamento dauerhaft veraendert)
+        double portaTarget = 1.0; // Ziel-Step fuer Tone-Portamento (3xx)
         float  gainL = 0.5f; // linker/rechter Pegel (enthaelt schon Lautstaerke + Panorama)
         float  gainR = 0.5f;
+        float  vol   = 1.0f; // 0..1 aktuelle Lautstaerke (von Cxx/Axy)
         int    fadeIn = 0;   // verbleibende Samples der Anstiegsblende
         bool   active = false;
+        // --- Effekt-Status der laufenden Zeile ---
+        int    effect = -1;
+        int    effectParam = 0;
+        int    voiceIdx = 0; // fuer Panorama beim Lautstaerke-Update
+        int    note = 60;    // aktuelle Note (Basis fuer Arpeggio)
+        int    vibPhase = 0; // Vibrato-Phasenzaehler (0..63)
     };
 
     // Amiga-Stereo: Spuren abwechselnd leicht nach links/rechts (LRRL wie ProTracker);
@@ -174,6 +188,32 @@ private:
         return sampleRate * 60.0 / (juce::jmax (20.0f, bpm.load()) * 4.0);
     }
 
+    // Tickdauer haengt nur am Tempo (klassisch). Bei Speed 6 ergeben 6 Ticks
+    // genau eine Zeile wie frueher; ein anderer Speed macht Zeilen schneller/langsamer.
+    double samplesPerTick() const
+    {
+        return sampleRate * 2.5 / juce::jmax (20.0f, bpm.load());
+    }
+
+    // Abspielschritt (Rate) fuer eine Note; C-5 (60) = Originaltonhoehe.
+    double stepForNote (const Instrument* inst, int note) const
+    {
+        note = juce::jlimit (0, kMaxNote, note);
+        return (inst->sourceRate / sampleRate) * std::pow (2.0, (note - 60) / 12.0);
+    }
+
+    // Ein Tick weiter: Tick 0 = neue Zeile (Noten ausloesen + Effekte einrichten),
+    // Ticks 1..speed-1 = laufende Effekte nachfuehren (Arpeggio, Slides, Vibrato ...).
+    void advanceTick()
+    {
+        if (++currentTick >= speed.load())
+        {
+            currentTick = 0;
+            advanceRow();
+        }
+        applyTickEffects (currentTick);
+    }
+
     void advanceRow()
     {
         const int row = (currentRow.load() + 1) % kRows;
@@ -181,8 +221,19 @@ private:
         for (int t = 0; t < kTracks; ++t)
         {
             const auto& c = cells[row][t];
-            if (c.note >= 0)
+            auto& v = voices[t];
+
+            // Effekt dieser Zeile in die Stimme uebernehmen.
+            v.effect      = c.effect;
+            v.effectParam = c.effectParam;
+
+            // Tone-Portamento (3xx) schlaegt die Note NICHT neu an, sondern gleitet hin.
+            const bool tonePorta = (c.effect == 0x3);
+
+            if (c.note >= 0 && ! tonePorta)
                 triggerVoice (t, c.note, c.instrument, c.volume);
+
+            applyRowEffect (t, c); // Cxx/Fxx/3xx-Ziel: einmal pro Zeile (Tick 0)
         }
     }
 
@@ -204,13 +255,102 @@ private:
             return;
         }
         note = juce::jlimit (0, kMaxNote, note);
-        v.inst = inst;
-        v.pos  = 0.0;
-        v.step = (inst->sourceRate / sampleRate) * std::pow (2.0, (note - 60) / 12.0); // Note C-5 = Originaltonhoehe
-        const float vol = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
-        panGains (voiceIdx, vol, v.gainL, v.gainR);
+        v.inst        = inst;
+        v.pos         = 0.0;
+        v.note        = note;
+        v.baseStep    = stepForNote (inst, note); // C-5 = Originaltonhoehe
+        v.step        = v.baseStep;
+        v.portaTarget = v.baseStep;
+        v.vibPhase    = 0;
+        v.voiceIdx    = voiceIdx;
+        v.vol         = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
+        panGains (voiceIdx, v.vol, v.gainL, v.gainR);
         v.fadeIn = kFade;
         v.active = true;
+    }
+
+    // Lautstaerke (0..64) einer Stimme setzen und Pegel inkl. Panorama neu berechnen.
+    void setVoiceVolume (Voice& v, int vol0to64)
+    {
+        v.vol = juce::jlimit (0, 64, vol0to64) / 64.0f;
+        panGains (v.voiceIdx, v.vol, v.gainL, v.gainR);
+    }
+
+    // Einmal-pro-Zeile-Effekte (am Tick 0 ausgewertet).
+    void applyRowEffect (int t, const Cell& c)
+    {
+        auto& v = voices[t];
+        switch (c.effect)
+        {
+            case 0xC: // Lautstaerke setzen (00..40 hex = 0..64)
+                if (v.active)
+                    setVoiceVolume (v, c.effectParam);
+                break;
+
+            case 0xF: // Speed / Tempo: < 0x20 -> Ticks pro Zeile, sonst BPM
+                if (c.effectParam > 0 && c.effectParam < 0x20)
+                    speed = c.effectParam;
+                else if (c.effectParam >= 0x20)
+                    bpm = (float) c.effectParam;
+                break;
+
+            case 0x3: // Tone-Portamento: Ziel ist die Note dieser Zeile
+                if (c.note >= 0 && v.inst != nullptr)
+                    v.portaTarget = stepForNote (v.inst, c.note);
+                break;
+
+            default: break;
+        }
+    }
+
+    // Pro-Tick-Effekte (Arpeggio, Slides, Portamento, Vibrato, Lautstaerke-Slide).
+    void applyTickEffects (int tick)
+    {
+        for (int t = 0; t < kTracks; ++t)
+        {
+            auto& v = voices[t];
+            if (! v.active || v.inst == nullptr)
+                continue;
+
+            const int p  = v.effectParam;
+            const int px = (p >> 4) & 0xF; // obere Hex-Stelle
+            const int py =  p       & 0xF; // untere Hex-Stelle
+
+            // Effekte, die die Grund-Tonhoehe / Lautstaerke dauerhaft veraendern
+            // (nur an den Zwischenticks, nicht am Zeilenanfang).
+            if (tick > 0)
+            {
+                if (v.effect == 0x1)        // Slide hoch
+                    v.baseStep *= std::pow (2.0, (p / 64.0) / 12.0);
+                else if (v.effect == 0x2)   // Slide runter
+                    v.baseStep *= std::pow (2.0, -(p / 64.0) / 12.0);
+                else if (v.effect == 0x3)   // Tone-Portamento Richtung Ziel
+                {
+                    const double r = std::pow (2.0, (p / 64.0) / 12.0);
+                    if (v.baseStep < v.portaTarget) v.baseStep = juce::jmin (v.portaTarget, v.baseStep * r);
+                    else                            v.baseStep = juce::jmax (v.portaTarget, v.baseStep / r);
+                }
+                else if (v.effect == 0xA)   // Lautstaerke-Slide: x hoch, y runter
+                    setVoiceVolume (v, (int) std::lround (v.vol * 64.0) + px - py);
+            }
+
+            // Step jede Tick frisch aus baseStep; Arpeggio/Vibrato legen einen
+            // voruebergehenden Tonhoehen-Versatz obendrauf.
+            v.step = v.baseStep;
+
+            if (v.effect == 0x0 && p != 0) // Arpeggio: Grundton, +x, +y im Wechsel
+            {
+                const int sel = tick % 3;
+                const int off = sel == 0 ? 0 : (sel == 1 ? px : py);
+                v.step = stepForNote (v.inst, v.note + off);
+            }
+            else if (v.effect == 0x4) // Vibrato: x = Tempo, y = Tiefe
+            {
+                v.vibPhase = (v.vibPhase + px) & 0x3F;
+                const double s = std::sin (v.vibPhase * juce::MathConstants<double>::twoPi / 64.0);
+                v.step = v.baseStep * std::pow (2.0, (s * (py / 16.0)) / 12.0);
+            }
+        }
     }
 
     void render (juce::AudioBuffer<float>& buffer, int offset, int num)
@@ -266,5 +406,6 @@ private:
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme
     std::unique_ptr<Instrument> preview; // Sample der ST-Disks-Vorschau
     double sampleRate = 44100.0;
-    double samplesUntilRow = 0.0;
+    double samplesUntilTick = 0.0;
+    int    currentTick = 0; // 0 = Zeilenanfang, 1..speed-1 = Zwischenticks
 };
