@@ -10,9 +10,14 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: Stage 1 (v0.3) — Sampler
+## Status: Stage 1 (v0.4) — Sampler
 
 - 8 tracks, 64-row patterns (track count becomes flexible later)
+- **Amiga-style stereo:** tracks are spread across the stereo field automatically
+  (LRRL like ProTracker) — your beat sounds wide and lively on its own; every
+  note gets a tiny fade in/out so nothing clicks
+- **Undo/redo** (Ctrl+Z / Ctrl+Y, up to 64 steps) and
+  **copy/paste/cut track** (Ctrl+C / V / X)
 - 16 instrument slots, loads WAV / AIFF / FLAC / OGG / MP3
 - **Built-in ST-XX sample disks:** browse the legendary Amiga sample disks
   (ST-01 through ST-XX, 96 disks / ~5,900 sounds, public domain) and load any
@@ -60,6 +65,8 @@ A project from the Mukkemann universe.
 | `Del` / `Backspace` | Clear cell |
 | `+` / `-` | Change octave |
 | Digits (on instrument/volume column) | Type a value |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
+| `Ctrl+C` / `Ctrl+V` / `Ctrl+X` | Copy / paste / cut track |
 
 ## Building from source
 
