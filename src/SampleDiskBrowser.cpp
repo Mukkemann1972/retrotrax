@@ -84,7 +84,6 @@ void SampleDiskBrowser::applyLanguage()
         loc::t ("Suche in allen Disks & Ordnern ...", "Search all disks & folders ..."),
         rt::textDim);
     addFolderButton.setButtonText    (loc::t ("+ ORDNER", "+ FOLDER"));
-    removeFolderButton.setButtonText (loc::t ("ENTF", "REMOVE"));
     saveButton.setButtonText         (loc::t ("MERKEN", "REMEMBER"));
     loadButton.setButtonText         (loc::t ("IN SLOT LADEN", "LOAD INTO SLOT"));
     closeButton.setButtonText        (loc::t ("SCHLIESSEN", "CLOSE"));
@@ -208,12 +207,8 @@ void SampleDiskBrowser::locationSelected (int row)
         return;
 
     currentLocation = row;
-    // Die Sammlung selbst laesst sich nicht entfernen, nur eigene Ordner.
-    const auto& loc = locations.getReference (row);
-    removeFolderButton.setEnabled (loc.isLocal && loc.folder != collectionFolder());
-
     searchBox.setText ({}, juce::dontSendNotification); // Disk-Wahl beendet die Suche
-    rebuildEntries();
+    rebuildEntries(); // ruft am Ende updateRemoveButton()
 }
 
 juce::Array<juce::File> SampleDiskBrowser::audioFilesIn (const juce::File& dir) const
@@ -278,6 +273,7 @@ void SampleDiskBrowser::rebuildEntries()
     sampleList.updateContent();
     sampleList.scrollToEnsureRowIsOnscreen (0);
     sampleList.repaint();
+    updateRemoveButton(); // nach Listenwechsel: ENTF/LOESCHEN passend setzen
 
     // Statuszeile passend zur Lage.
     if (q.isNotEmpty())
@@ -371,20 +367,85 @@ void SampleDiskBrowser::addFolderClicked()
         });
 }
 
+void SampleDiskBrowser::updateRemoveButton()
+{
+    bool isCollection = false, isUserFolder = false;
+    if (currentLocation >= 0 && currentLocation < locations.size())
+    {
+        const auto& loc = locations.getReference (currentLocation);
+        if (loc.isLocal)
+            (loc.folder == collectionFolder() ? isCollection : isUserFolder) = true;
+    }
+
+    if (isCollection)
+    {
+        // In der Sammlung loescht der Knopf den ausgewaehlten Sound.
+        removeFolderButton.setButtonText (loc::t ("LOESCHEN", "DELETE"));
+        removeFolderButton.setEnabled (! searching() && sampleList.getSelectedRow() >= 0);
+    }
+    else
+    {
+        // Sonst entfernt er einen eigenen Ordner aus der Liste (nur dann aktiv).
+        removeFolderButton.setButtonText (loc::t ("ENTF", "REMOVE"));
+        removeFolderButton.setEnabled (isUserFolder);
+    }
+}
+
 void SampleDiskBrowser::removeFolderClicked()
 {
     if (currentLocation < 0 || currentLocation >= locations.size())
         return;
 
     const auto& loc = locations.getReference (currentLocation);
-    if (! loc.isLocal || loc.folder == collectionFolder())
-        return; // Sammlung und ST-Disks bleiben
+    if (! loc.isLocal)
+        return; // ST-Disks bleiben
 
-    // Nur aus der Liste nehmen - die Dateien auf der Platte bleiben unberuehrt.
+    // In der Sammlung: den gewaehlten Sound entfernen ...
+    if (loc.folder == collectionFolder())
+    {
+        deleteFromCollection();
+        return;
+    }
+
+    // ... sonst nur den eigenen Ordner aus der Liste nehmen (Dateien bleiben).
     localFolders.removeString (loc.folder.getFullPathName());
     saveFolders();
     rebuildLocations();
     diskList.selectRow (0);
+}
+
+void SampleDiskBrowser::deleteFromCollection()
+{
+    if (searching())
+        return; // in der Suchansicht ist die Quelle gemischt - nur in der Sammlung loeschen
+
+    const int row = sampleList.getSelectedRow();
+    if (row < 0 || row >= currentEntries.size())
+    {
+        setStatus (loc::t ("Bitte erst einen Sound in der Sammlung auswaehlen.",
+                           "Please select a sound in the collection first."), true);
+        return;
+    }
+
+    const auto  e = currentEntries.getReference (row);
+    const auto& L = locations.getReference (e.location);
+    if (! (L.isLocal && L.folder == collectionFolder()) || ! e.localFile.existsAsFile())
+        return;
+
+    const auto name = e.name;
+    // In den Papierkorb statt hart loeschen - ein Fehlklick ist so nicht endgueltig.
+    const bool gone = e.localFile.moveToTrash() || e.localFile.deleteFile();
+    if (gone)
+    {
+        rebuildEntries(); // Sammlung neu anzeigen (deselektiert -> Knopf wieder aus)
+        setStatus ("\"" + name + loc::t ("\" aus deiner Sammlung entfernt (liegt im Papierkorb).",
+                                         "\" removed from your collection (now in the trash)."));
+    }
+    else
+    {
+        setStatus ("\"" + name + loc::t ("\" konnte nicht entfernt werden.",
+                                         "\" could not be removed."), true);
+    }
 }
 
 void SampleDiskBrowser::saveToCollection()
@@ -469,6 +530,7 @@ juce::URL SampleDiskBrowser::urlFor (int diskIdx, const juce::String& sampleName
 
 void SampleDiskBrowser::previewSelected (int row)
 {
+    updateRemoveButton(); // LOESCHEN nur, wenn in der Sammlung wirklich etwas gewaehlt ist
     if (row < 0 || row >= currentEntries.size())
         return;
 

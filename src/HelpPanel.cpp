@@ -186,12 +186,17 @@ void HelpPanel::rebuild()
             "Gefaellt dir ein Sound (egal ob von einer ST-Disk oder aus einem\n"
             "eigenen Ordner)? Waehl ihn an und druecke MERKEN. Schon liegt er\n"
             "dauerhaft in deiner Sammlung - so baust du dir nach und nach deine\n"
-            "eigene Lieblings-Bibliothek auf.",
+            "eigene Lieblings-Bibliothek auf.\n\n"
+            "Brauchst du einen Sound nicht mehr? Waehl ihn in der Sammlung an und\n"
+            "druecke LOESCHEN. Er wandert in den Papierkorb - ein Fehlklick ist\n"
+            "also nicht endgueltig.",
             "At the very top of the folder list there's always \"My Sounds\" -\n"
             "your personal collection.\n\n"
             "Like a sound (whether from an ST disk or one of your own folders)?\n"
             "Select it and press REMEMBER. It's stored in your collection for\n"
-            "good - that's how you gradually build your own favourites library.") });
+            "good - that's how you gradually build your own favourites library.\n\n"
+            "Don't need a sound anymore? Select it in the collection and press\n"
+            "DELETE. It goes to the trash, so a misclick isn't final.") });
 
     topics.add ({ loc::t ("Song speichern & oeffnen", "Save & open song"),
         loc::t (

@@ -70,6 +70,8 @@ private:
     void loadSelected();
     void addFolderClicked();
     void removeFolderClicked();
+    void updateRemoveButton();   // ENTF/LOESCHEN je nach Auswahl an-/ausschalten
+    void deleteFromCollection(); // ausgewaehlten Sound aus "Meine Sounds" entfernen
     void saveToCollection();
     void selectLocationForFolder (const juce::File& dir);
 
