@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: Etappe 1 (v0.4) — Sampler
+## Stand: Etappe 1 (v0.5) — Sampler
 
 - 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
 - **Stereo-Klang im Amiga-Stil:** die Spuren werden automatisch im Stereobild
@@ -29,7 +29,8 @@ Ein Projekt aus dem Mukkemann-Universum.
   Disks und deine eigenen Ordner zugleich; ein Klick spielt ihn sofort vor
 - **Eigene Ordner & Sammlung „Meine Sounds":** eigene Sample-Ordner von der
   Festplatte einbinden (bleiben nach Neustart erhalten) und Lieblings-Sounds
-  per Knopf in einer persönlichen Sammlung merken
+  per **MERKEN** in einer persönlichen Sammlung sammeln — in der Sammlung wird
+  der Knopf zu **VERGESSEN** und wirft einen Sound wieder in den Papierkorb
 - **Songs speichern & öffnen:** deine Arbeit als `.retrotrax`-Datei sichern und
   jederzeit wieder öffnen — fehlende Samples werden gemeldet statt still zu fehlen
 - **Eingebaute Hilfe (`?`-Knopf):** Themen zu jeder Funktion, in deiner Sprache,

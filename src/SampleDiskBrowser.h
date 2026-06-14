@@ -69,9 +69,11 @@ private:
     void previewSelected (int row);
     void loadSelected();
     void addFolderClicked();
-    void removeFolderClicked();
-    void updateRemoveButton();   // ENTF/LOESCHEN je nach Auswahl an-/ausschalten
-    void deleteFromCollection(); // ausgewaehlten Sound aus "Meine Sounds" entfernen
+    void removeFolderClicked();      // ENTF: nur eigene Ordner aus der Liste nehmen
+    void updateButtons();            // MERKEN/VERGESSEN und ENTF je nach Lage setzen
+    bool inCollectionView() const;   // true, wenn gerade "Meine Sounds" offen ist
+    void collectionButtonClicked();  // MERKEN bzw. (in der Sammlung) VERGESSEN
+    void deleteFromCollection();     // ausgewaehlten Sound aus "Meine Sounds" entfernen
     void saveToCollection();
     void selectLocationForFolder (const juce::File& dir);
 

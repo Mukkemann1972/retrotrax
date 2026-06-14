@@ -63,7 +63,7 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
 
     addFolderButton.onClick    = [this] { addFolderClicked(); };
     removeFolderButton.onClick = [this] { removeFolderClicked(); };
-    saveButton.onClick         = [this] { saveToCollection(); };
+    saveButton.onClick         = [this] { collectionButtonClicked(); };
     loadButton.onClick         = [this] { loadSelected(); };
     closeButton.onClick        = [this] { if (onClose) onClose(); };
 
@@ -84,7 +84,6 @@ void SampleDiskBrowser::applyLanguage()
         loc::t ("Suche in allen Disks & Ordnern ...", "Search all disks & folders ..."),
         rt::textDim);
     addFolderButton.setButtonText    (loc::t ("+ ORDNER", "+ FOLDER"));
-    saveButton.setButtonText         (loc::t ("MERKEN", "REMEMBER"));
     loadButton.setButtonText         (loc::t ("IN SLOT LADEN", "LOAD INTO SLOT"));
     closeButton.setButtonText        (loc::t ("SCHLIESSEN", "CLOSE"));
     repaint();
@@ -208,7 +207,7 @@ void SampleDiskBrowser::locationSelected (int row)
 
     currentLocation = row;
     searchBox.setText ({}, juce::dontSendNotification); // Disk-Wahl beendet die Suche
-    rebuildEntries(); // ruft am Ende updateRemoveButton()
+    rebuildEntries(); // ruft am Ende updateButtons()
 }
 
 juce::Array<juce::File> SampleDiskBrowser::audioFilesIn (const juce::File& dir) const
@@ -273,7 +272,7 @@ void SampleDiskBrowser::rebuildEntries()
     sampleList.updateContent();
     sampleList.scrollToEnsureRowIsOnscreen (0);
     sampleList.repaint();
-    updateRemoveButton(); // nach Listenwechsel: ENTF/LOESCHEN passend setzen
+    updateButtons(); // nach Listenwechsel: MERKEN/VERGESSEN + ENTF passend setzen
 
     // Statuszeile passend zur Lage.
     if (q.isNotEmpty())
@@ -367,28 +366,42 @@ void SampleDiskBrowser::addFolderClicked()
         });
 }
 
-void SampleDiskBrowser::updateRemoveButton()
+bool SampleDiskBrowser::inCollectionView() const
 {
-    bool isCollection = false, isUserFolder = false;
+    if (searching() || currentLocation < 0 || currentLocation >= locations.size())
+        return false;
+    const auto& loc = locations.getReference (currentLocation);
+    return loc.isLocal && loc.folder == collectionFolder();
+}
+
+void SampleDiskBrowser::updateButtons()
+{
+    const bool collection = inCollectionView();
+    const bool hasSelection = sampleList.getSelectedRow() >= 0;
+
+    // Der grosse Sammel-Knopf: in "Meine Sounds" wird MERKEN zu VERGESSEN
+    // (loescht den gewaehlten Sound) - dort, wo man ohnehin hinschaut.
+    saveButton.setButtonText (collection ? loc::t ("VERGESSEN", "FORGET")
+                                         : loc::t ("MERKEN", "REMEMBER"));
+    saveButton.setEnabled (collection ? hasSelection : true);
+
+    // ENTF betrifft nur eigene Ordner (nicht die Sammlung, nicht ST-Disks).
+    bool isUserFolder = false;
     if (currentLocation >= 0 && currentLocation < locations.size())
     {
         const auto& loc = locations.getReference (currentLocation);
-        if (loc.isLocal)
-            (loc.folder == collectionFolder() ? isCollection : isUserFolder) = true;
+        isUserFolder = loc.isLocal && loc.folder != collectionFolder();
     }
+    removeFolderButton.setButtonText (loc::t ("ENTF", "REMOVE"));
+    removeFolderButton.setEnabled (isUserFolder);
+}
 
-    if (isCollection)
-    {
-        // In der Sammlung loescht der Knopf den ausgewaehlten Sound.
-        removeFolderButton.setButtonText (loc::t ("LOESCHEN", "DELETE"));
-        removeFolderButton.setEnabled (! searching() && sampleList.getSelectedRow() >= 0);
-    }
+void SampleDiskBrowser::collectionButtonClicked()
+{
+    if (inCollectionView())
+        deleteFromCollection(); // VERGESSEN
     else
-    {
-        // Sonst entfernt er einen eigenen Ordner aus der Liste (nur dann aktiv).
-        removeFolderButton.setButtonText (loc::t ("ENTF", "REMOVE"));
-        removeFolderButton.setEnabled (isUserFolder);
-    }
+        saveToCollection();     // MERKEN
 }
 
 void SampleDiskBrowser::removeFolderClicked()
@@ -397,17 +410,9 @@ void SampleDiskBrowser::removeFolderClicked()
         return;
 
     const auto& loc = locations.getReference (currentLocation);
-    if (! loc.isLocal)
-        return; // ST-Disks bleiben
+    if (! loc.isLocal || loc.folder == collectionFolder())
+        return; // nur eigene Ordner aus der Liste nehmen (Dateien bleiben unberuehrt)
 
-    // In der Sammlung: den gewaehlten Sound entfernen ...
-    if (loc.folder == collectionFolder())
-    {
-        deleteFromCollection();
-        return;
-    }
-
-    // ... sonst nur den eigenen Ordner aus der Liste nehmen (Dateien bleiben).
     localFolders.removeString (loc.folder.getFullPathName());
     saveFolders();
     rebuildLocations();
@@ -530,7 +535,7 @@ juce::URL SampleDiskBrowser::urlFor (int diskIdx, const juce::String& sampleName
 
 void SampleDiskBrowser::previewSelected (int row)
 {
-    updateRemoveButton(); // LOESCHEN nur, wenn in der Sammlung wirklich etwas gewaehlt ist
+    updateButtons(); // VERGESSEN nur aktiv, wenn in der Sammlung wirklich etwas gewaehlt ist
     if (row < 0 || row >= currentEntries.size())
         return;
 

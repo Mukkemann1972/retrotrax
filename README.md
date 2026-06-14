@@ -10,7 +10,7 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: Stage 1 (v0.4) — Sampler
+## Status: Stage 1 (v0.5) — Sampler
 
 - 8 tracks, 64-row patterns (track count becomes flexible later)
 - **Amiga-style stereo:** tracks are spread across the stereo field automatically
@@ -28,8 +28,9 @@ A project from the Mukkemann universe.
 - **Sample browser with search:** one search box finds a sound across *all*
   disks and your own folders at once; a click previews it instantly
 - **Your own folders & "My Sounds" collection:** add sample folders from your
-  hard drive (they survive restarts), and remember favourite sounds into a
-  personal collection with one button
+  hard drive (they survive restarts), and **REMEMBER** favourite sounds into a
+  personal collection — inside the collection that button becomes **FORGET** and
+  sends a sound back to the trash
 - **Save & open songs:** store your work as a `.retrotrax` file and reopen it
   anytime — missing samples are reported instead of silently failing
 - **Built-in help (`?` button):** topics for every feature, in your language,
