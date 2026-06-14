@@ -40,11 +40,29 @@ private:
     void cutTrack();        // kopieren + Spur leeren
     void pasteTrack();      // Zwischenablage in die aktuelle Spur
 
+    // --- Block-Bearbeitung: Bereich markieren, kopieren, verschieben --------
+    void extendSelection (int rowDelta, int trackDelta); // Umschalt+Pfeil
+    void clearSelection();
+    void blockRect (int& r0, int& r1, int& t0, int& t1) const; // Auswahl, sonst Cursorzelle
+    void copyBlock();
+    void cutBlock();
+    void pasteBlock();      // oben-links = Cursor
+    void nudgeBlock (int rowDelta, int trackDelta);            // Alt+Pfeil: direkt verschieben
+
     std::vector<Snapshot> undoStack, redoStack;
     static constexpr int kMaxUndo = 64;
 
     TrackerEngine::Cell clipColumn[TrackerEngine::kRows];
     bool hasClip = false;
+
+    // Rechteckige Auswahl im Grid (Anker = Start, Cursor = bewegtes Ende).
+    bool hasSelection = false;
+    int  selAnchorRow = 0;
+    int  selAnchorTrack = 0;
+
+    // Block-Zwischenablage [Zeile][Spur].
+    std::vector<std::vector<TrackerEngine::Cell>> blockClip;
+    bool hasBlockClip = false;
 
     RetroTraxProcessor& proc;
     TrackerEngine& engine;

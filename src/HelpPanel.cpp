@@ -121,6 +121,36 @@ void HelpPanel::rebuild()
             "drums, bass and melody.\n\n"
             "(Soon: chaining several patterns into a whole song.)") });
 
+    topics.add ({ loc::t ("Block-Bearbeitung", "Block editing"),
+        loc::t (
+            "Damit bearbeitest du ganze Bereiche auf einmal - z.B. einen Takt\n"
+            "ueber mehrere Spuren.\n\n"
+            "- UMSCHALT + Pfeile: einen Bereich markieren (er wird hell\n"
+            "  hinterlegt). Ein einfacher Pfeil ohne Umschalt hebt die Auswahl\n"
+            "  wieder auf.\n"
+            "- STRG+C kopiert den Block, STRG+X schneidet ihn aus,\n"
+            "  STRG+V fuegt ihn ab der Cursor-Zelle wieder ein.\n"
+            "  (Ohne Auswahl wirken C/X/V wie gehabt auf die ganze Spur.)\n\n"
+            "Das Beste fuers Arbeiten nach Gehoer:\n"
+            "- ALT + Pfeil verschiebt den markierten Block (oder einfach die\n"
+            "  Zelle unterm Cursor) DIREKT um eine Zeile oder Spur - ohne\n"
+            "  loeschen und neu eintippen. Im Stopp hoerst du die Note dabei\n"
+            "  gleich. So kannst du nudgen und hoeren, bis es sitzt.\n\n"
+            "Alles laesst sich mit STRG+Z rueckgaengig machen.",
+            "This lets you edit whole areas at once - e.g. one bar across\n"
+            "several tracks.\n\n"
+            "- SHIFT + arrows: mark an area (it gets a light highlight). A plain\n"
+            "  arrow without shift clears the selection again.\n"
+            "- CTRL+C copies the block, CTRL+X cuts it, CTRL+V pastes it from\n"
+            "  the cursor cell. (With no selection, C/X/V act on the whole\n"
+            "  track as before.)\n\n"
+            "The best part for working by ear:\n"
+            "- ALT + arrow moves the selected block (or just the cell under the\n"
+            "  cursor) DIRECTLY by one row or track - no deleting and retyping.\n"
+            "  While stopped you hear the note as it moves, so you can nudge\n"
+            "  and listen until it sits right.\n\n"
+            "Everything can be undone with CTRL+Z.") });
+
     topics.add ({ loc::t ("Instrumente & Farben", "Instruments & colours"),
         loc::t (
             "Es gibt 16 Instrument-Slots. In jeden laedst du einen Sound (WAV,\n"

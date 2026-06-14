@@ -28,6 +28,7 @@ void PatternGrid::togglePlay()
 
 void PatternGrid::moveCursor (int rowDelta, int colDelta)
 {
+    hasSelection = false; // einfache Navigation hebt eine Auswahl auf
     cursorRow = (cursorRow + rowDelta % TrackerEngine::kRows + TrackerEngine::kRows) % TrackerEngine::kRows;
 
     if (colDelta != 0)
@@ -173,6 +174,7 @@ void PatternGrid::copyTrack()
     for (int r = 0; r < TrackerEngine::kRows; ++r)
         clipColumn[r] = engine.cells[r][cursorTrack];
     hasClip = true;
+    hasBlockClip = false; // Spur kopiert -> Block-Ablage tritt zurueck
 }
 
 void PatternGrid::cutTrack()
@@ -200,6 +202,137 @@ void PatternGrid::pasteTrack()
     repaint();
 }
 
+// --- Block-Bearbeitung -----------------------------------------------------
+
+void PatternGrid::extendSelection (int rowDelta, int trackDelta)
+{
+    if (! hasSelection)
+    {
+        hasSelection   = true;
+        selAnchorRow   = cursorRow;
+        selAnchorTrack = cursorTrack;
+    }
+    // Bei Auswahl NICHT umwickeln - sonst springt das Rechteck quer durchs Pattern.
+    cursorRow   = juce::jlimit (0, TrackerEngine::kRows   - 1, cursorRow   + rowDelta);
+    cursorTrack = juce::jlimit (0, TrackerEngine::kTracks - 1, cursorTrack + trackDelta);
+    repaint();
+}
+
+void PatternGrid::clearSelection()
+{
+    if (hasSelection)
+    {
+        hasSelection = false;
+        repaint();
+    }
+}
+
+void PatternGrid::blockRect (int& r0, int& r1, int& t0, int& t1) const
+{
+    if (hasSelection)
+    {
+        r0 = juce::jmin (selAnchorRow,   cursorRow);
+        r1 = juce::jmax (selAnchorRow,   cursorRow);
+        t0 = juce::jmin (selAnchorTrack, cursorTrack);
+        t1 = juce::jmax (selAnchorTrack, cursorTrack);
+    }
+    else // ohne Auswahl: nur die Zelle unterm Cursor
+    {
+        r0 = r1 = cursorRow;
+        t0 = t1 = cursorTrack;
+    }
+}
+
+void PatternGrid::copyBlock()
+{
+    int r0, r1, t0, t1; blockRect (r0, r1, t0, t1);
+    blockClip.assign (r1 - r0 + 1, std::vector<TrackerEngine::Cell> (t1 - t0 + 1));
+    const juce::ScopedLock sl (engine.lock);
+    for (int r = r0; r <= r1; ++r)
+        for (int t = t0; t <= t1; ++t)
+            blockClip[r - r0][t - t0] = engine.cells[r][t];
+    hasBlockClip = true;
+    hasClip = false; // Block kopiert -> Spur-Ablage tritt zurueck
+}
+
+void PatternGrid::cutBlock()
+{
+    copyBlock();
+    pushUndo();
+    int r0, r1, t0, t1; blockRect (r0, r1, t0, t1);
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int r = r0; r <= r1; ++r)
+            for (int t = t0; t <= t1; ++t)
+                engine.cells[r][t] = TrackerEngine::Cell();
+    }
+    repaint();
+}
+
+void PatternGrid::pasteBlock()
+{
+    if (! hasBlockClip || blockClip.empty())
+        return;
+    pushUndo();
+    const int rows = (int) blockClip.size();
+    const int trks = (int) blockClip[0].size();
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int r = 0; r < rows; ++r)
+            for (int t = 0; t < trks; ++t)
+            {
+                const int dr = cursorRow + r, dt = cursorTrack + t;
+                if (dr >= 0 && dr < TrackerEngine::kRows && dt >= 0 && dt < TrackerEngine::kTracks)
+                    engine.cells[dr][dt] = blockClip[r][t];
+            }
+    }
+    repaint();
+}
+
+void PatternGrid::nudgeBlock (int rowDelta, int trackDelta)
+{
+    int r0, r1, t0, t1; blockRect (r0, r1, t0, t1);
+
+    // Der Zielbereich darf nicht aus dem Pattern hinauslaufen.
+    if (r0 + rowDelta   < 0 || r1 + rowDelta   >= TrackerEngine::kRows
+     || t0 + trackDelta < 0 || t1 + trackDelta >= TrackerEngine::kTracks)
+        return;
+
+    pushUndo();
+    const int rows = r1 - r0 + 1, trks = t1 - t0 + 1;
+    std::vector<std::vector<TrackerEngine::Cell>> tmp (rows, std::vector<TrackerEngine::Cell> (trks));
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int r = 0; r < rows; ++r)            // Block sichern
+            for (int t = 0; t < trks; ++t)
+                tmp[r][t] = engine.cells[r0 + r][t0 + t];
+        for (int r = r0; r <= r1; ++r)            // Quelle leeren
+            for (int t = t0; t <= t1; ++t)
+                engine.cells[r][t] = TrackerEngine::Cell();
+        for (int r = 0; r < rows; ++r)            // am neuen Ort einsetzen
+            for (int t = 0; t < trks; ++t)
+                engine.cells[r0 + rowDelta + r][t0 + trackDelta + t] = tmp[r][t];
+    }
+
+    // Cursor (und ggf. die Auswahl) mit dem Block mitziehen.
+    cursorRow   += rowDelta;
+    cursorTrack += trackDelta;
+    if (hasSelection)
+    {
+        selAnchorRow   += rowDelta;
+        selAnchorTrack += trackDelta;
+    }
+
+    // "Nudgen und hoeren": im Stopp die Note unterm Cursor gleich anspielen.
+    if (! engine.playing.load())
+    {
+        const auto& c = engine.cells[cursorRow][cursorTrack];
+        if (c.note >= 0)
+            engine.audition (c.note, c.instrument);
+    }
+    repaint();
+}
+
 bool PatternGrid::keyPressed (const juce::KeyPress& key)
 {
     const auto code = key.getKeyCode();
@@ -207,14 +340,33 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
     const auto mods = key.getModifiers();
 
     // Strg-Kombinationen zuerst, damit C/V/X/Z nicht als Noten landen.
+    // Mit aktiver Auswahl arbeiten C/X/V auf dem ganzen Block, sonst spaltenweise.
     if (mods.isCommandDown())
     {
         if (c == 'z') { mods.isShiftDown() ? redo() : undo(); return true; }
-        if (c == 'y') { redo();       return true; }
-        if (c == 'c') { copyTrack();  return true; }
-        if (c == 'x') { cutTrack();   return true; }
-        if (c == 'v') { pasteTrack(); return true; }
+        if (c == 'y') { redo(); return true; }
+        if (c == 'c') { hasSelection ? copyBlock() : copyTrack(); return true; }
+        if (c == 'x') { hasSelection ? cutBlock()  : cutTrack();  return true; }
+        if (c == 'v') { hasBlockClip ? pasteBlock() : pasteTrack(); return true; }
         return false; // andere Strg-Kombis ignorieren (keine versehentliche Note)
+    }
+
+    // Alt+Pfeil: markierten Block (oder die Zelle unterm Cursor) direkt verschieben.
+    if (mods.isAltDown())
+    {
+        if (code == juce::KeyPress::upKey)    { nudgeBlock (-1, 0); return true; }
+        if (code == juce::KeyPress::downKey)  { nudgeBlock ( 1, 0); return true; }
+        if (code == juce::KeyPress::leftKey)  { nudgeBlock (0, -1); return true; }
+        if (code == juce::KeyPress::rightKey) { nudgeBlock (0,  1); return true; }
+    }
+
+    // Umschalt+Pfeil: rechteckige Auswahl aufziehen / erweitern.
+    if (mods.isShiftDown())
+    {
+        if (code == juce::KeyPress::upKey)    { extendSelection (-1, 0); return true; }
+        if (code == juce::KeyPress::downKey)  { extendSelection ( 1, 0); return true; }
+        if (code == juce::KeyPress::leftKey)  { extendSelection (0, -1); return true; }
+        if (code == juce::KeyPress::rightKey) { extendSelection (0,  1); return true; }
     }
 
     if (code == juce::KeyPress::spaceKey)           { togglePlay(); return true; }
@@ -224,11 +376,12 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
     if (code == juce::KeyPress::rightKey)           { moveCursor (0, 1);  return true; }
     if (code == juce::KeyPress::pageUpKey)          { moveCursor (-16, 0); return true; }
     if (code == juce::KeyPress::pageDownKey)        { moveCursor (16, 0);  return true; }
-    if (code == juce::KeyPress::homeKey)            { cursorRow = 0; repaint(); return true; }
-    if (code == juce::KeyPress::endKey)             { cursorRow = TrackerEngine::kRows - 1; repaint(); return true; }
+    if (code == juce::KeyPress::homeKey)            { clearSelection(); cursorRow = 0; repaint(); return true; }
+    if (code == juce::KeyPress::endKey)             { clearSelection(); cursorRow = TrackerEngine::kRows - 1; repaint(); return true; }
 
     if (code == juce::KeyPress::tabKey)
     {
+        clearSelection();
         const int delta = key.getModifiers().isShiftDown() ? -1 : 1;
         cursorTrack = (cursorTrack + delta + TrackerEngine::kTracks) % TrackerEngine::kTracks;
         cursorCol = 0;
@@ -305,6 +458,12 @@ void PatternGrid::paint (juce::Graphics& g)
     const int centerLine = visRows / 2;
     const int centerY = kHeaderH + centerLine * kRowH;
 
+    // Auswahl-Rechteck (Anker .. Cursor), nur im Stopp sinnvoll sichtbar.
+    const int selR0 = juce::jmin (selAnchorRow,   cursorRow);
+    const int selR1 = juce::jmax (selAnchorRow,   cursorRow);
+    const int selT0 = juce::jmin (selAnchorTrack, cursorTrack);
+    const int selT1 = juce::jmax (selAnchorTrack, cursorTrack);
+
     g.setFont (rt::mono (15.0f));
 
     // Mittelbalken (aktuelle Zeile)
@@ -333,6 +492,14 @@ void PatternGrid::paint (juce::Graphics& g)
         {
             const auto& cell = engine.cells[row][t];
             const int tx = kLeftW + t * trackW;
+
+            // Markierter Block: zarte Fuellung hinter den Zellen.
+            if (hasSelection && ! playing
+                && row >= selR0 && row <= selR1 && t >= selT0 && t <= selT1)
+            {
+                g.setColour (rt::cursor.withAlpha (0.16f));
+                g.fillRect (tx, y, trackW, kRowH);
+            }
 
             const int noteX = tx + 8;
             const int noteW = trackW * 38 / 100;
