@@ -1,6 +1,7 @@
 #include "PatternGrid.h"
 #include "PluginProcessor.h"
 #include "RetroLookAndFeel.h"
+#include "Localisation.h"
 
 PatternGrid::PatternGrid (RetroTraxProcessor& processor)
     : proc (processor), engine (processor.engine)
@@ -41,6 +42,7 @@ void PatternGrid::moveCursor (int rowDelta, int colDelta)
         cursorCol   = flat % kCols;
     }
     repaint();
+    emitCursorInfo();
 }
 
 // Tastatur als Klavier, fuer deutsches QWERTZ-Layout:
@@ -117,6 +119,7 @@ bool PatternGrid::handleDigitKey (juce::juce_wchar c)
         cell.volume = juce::jmin (v, 64);
     }
     repaint();
+    emitCursorInfo();
     return true;
 }
 
@@ -137,6 +140,7 @@ bool PatternGrid::handleEffectKey (juce::juce_wchar c)
     cell.effect      = (combined >> 8) & 0xF;
     cell.effectParam =  combined       & 0xFF;
     repaint();
+    emitCursorInfo(); // Effekt-Bedeutung live mitschreiben
     return true;
 }
 
@@ -146,6 +150,82 @@ juce::String PatternGrid::effectText (int effect, int param)
         return "...";
     return juce::String::toHexString (effect).toUpperCase()
          + juce::String::formatted ("%02X", param & 0xFF);
+}
+
+// --- Live-Hilfe an der Cursor-Stelle --------------------------------------
+
+void PatternGrid::setLiveHelp (bool on)
+{
+    liveHelp = on;
+    if (on)
+        emitCursorInfo(); // sofort die aktuelle Stelle erklaeren
+}
+
+void PatternGrid::emitCursorInfo()
+{
+    if (liveHelp && onCursorInfo)
+        onCursorInfo (cursorHelpText());
+}
+
+// Klartext-Bedeutung eines Effekts (zweisprachig), z.B. "C40 -> Lautstaerke auf 64".
+juce::String PatternGrid::effectHelp (int effect, int param)
+{
+    if (effect < 0)
+        return loc::t ("Effekt: leer - tippe 3 Hex-Stellen, z.B. C40 (A-F + 0-9)",
+                       "Effect: empty - type 3 hex digits, e.g. C40 (A-F + 0-9)");
+
+    const int x = (param >> 4) & 0xF, y = param & 0xF;
+    const auto pre = effectText (effect, param) + "  ->  ";
+
+    switch (effect)
+    {
+        case 0x0:
+            if (param == 0)
+                return pre + loc::t ("Arpeggio aus (Parameter 0)", "arpeggio off (param 0)");
+            return pre + loc::t ("Arpeggio: Grundton, +" , "arpeggio: root, +")
+                 + juce::String (x) + loc::t (" und +", " and +") + juce::String (y)
+                 + loc::t (" Halbtoene im Wechsel", " semitones, alternating");
+        case 0x1: return pre + loc::t ("Tonhoehe gleitet hoch", "pitch slides up");
+        case 0x2: return pre + loc::t ("Tonhoehe gleitet runter", "pitch slides down");
+        case 0x3: return pre + loc::t ("Tone-Portamento: zur neuen Note hingleiten",
+                                       "tone portamento: glide to the new note");
+        case 0x4: return pre + loc::t ("Vibrato: Tempo ", "vibrato: speed ") + juce::String (x)
+                             + loc::t (", Tiefe ", ", depth ") + juce::String (y);
+        case 0xA: return pre + loc::t ("Lautstaerke-Slide: +", "volume slide: +") + juce::String (x)
+                             + loc::t (" / -", " / -") + juce::String (y) + loc::t (" pro Tick", " per tick");
+        case 0xC: return pre + loc::t ("Lautstaerke setzen auf ", "set volume to ")
+                             + juce::String (juce::jmin (param, 64)) + " (0-64)";
+        case 0xF:
+            if (param > 0 && param < 0x20)
+                return pre + loc::t ("Tempo: ", "tempo: ") + juce::String (param)
+                           + loc::t (" Ticks pro Zeile (Speed)", " ticks per row (speed)");
+            return pre + loc::t ("Tempo: ", "tempo: ") + juce::String (param) + " BPM";
+        default:
+            return pre + loc::t ("Effekt noch ohne Funktion", "effect not in use yet");
+    }
+}
+
+juce::String PatternGrid::cursorHelpText() const
+{
+    const auto& cell = engine.cells[cursorRow][cursorTrack];
+    const auto where = loc::t ("Spur ", "Track ") + juce::String (cursorTrack + 1)
+                     + loc::t (", Zeile ", ", row ") + juce::String::formatted ("%02d", cursorRow) + "  |  ";
+
+    switch (cursorCol)
+    {
+        case 0:
+            return where + loc::t (
+                "NOTE: Tastatur spielt Toene (y s x d c v g b h n j m), Reihe darueber = hoeher; +/- Oktave",
+                "NOTE: keyboard plays notes (y s x d c v g b h n j m), row above = higher; +/- octave");
+        case 1:
+            return where + loc::t ("INSTRUMENT: Ziffern 01-16 waehlen das Sample",
+                                   "INSTRUMENT: digits 01-16 pick the sample");
+        case 2:
+            return where + loc::t ("LAUTSTAERKE: 00 (leer = voll) bis 64",
+                                   "VOLUME: 00 (empty = full) up to 64");
+        default:
+            return where + loc::t ("EFFEKT  ", "EFFECT  ") + effectHelp (cell.effect, cell.effectParam);
+    }
 }
 
 // --- Rueckgaengig/Wiederholen + Spalten-Zwischenablage --------------------
@@ -245,6 +325,7 @@ void PatternGrid::extendSelection (int rowDelta, int trackDelta)
     cursorRow   = juce::jlimit (0, TrackerEngine::kRows   - 1, cursorRow   + rowDelta);
     cursorTrack = juce::jlimit (0, TrackerEngine::kTracks - 1, cursorTrack + trackDelta);
     repaint();
+    emitCursorInfo();
 }
 
 void PatternGrid::clearSelection()
@@ -360,6 +441,7 @@ void PatternGrid::nudgeBlock (int rowDelta, int trackDelta)
             engine.audition (c.note, c.instrument);
     }
     repaint();
+    emitCursorInfo();
 }
 
 bool PatternGrid::keyPressed (const juce::KeyPress& key)
@@ -490,6 +572,7 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
             cursorRow = row;
     }
     repaint();
+    emitCursorInfo();
 }
 
 void PatternGrid::paint (juce::Graphics& g)

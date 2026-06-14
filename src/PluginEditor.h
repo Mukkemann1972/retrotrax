@@ -25,6 +25,7 @@ private:
     void loadSongClicked();
     void syncUiFromState();
     void applyLanguage();
+    void setDefaultHint(); // Standard-Tastenkuerzel-Zeile unten
     juce::File songsFolder() const;
 
     RetroTraxProcessor& proc;
@@ -37,6 +38,7 @@ private:
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::TextButton helpButton { "?" };
+    juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton langButton { "DE" };
     juce::Slider bpmSlider;
     juce::ComboBox instrumentBox;

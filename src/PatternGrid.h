@@ -19,6 +19,11 @@ public:
 
     std::function<void()> onTransportChange; // Editor aktualisiert dann seine Anzeige
 
+    // Live-Hilfe: zeigt im Editor unten im Klartext, was an der Cursor-Stelle gilt.
+    void setLiveHelp (bool on);
+    bool liveHelpOn() const { return liveHelp; }
+    std::function<void(const juce::String&)> onCursorInfo; // Editor zeigt den Text an
+
 private:
     void timerCallback() override;
     void togglePlay();
@@ -28,6 +33,12 @@ private:
     bool handleEffectKey (juce::juce_wchar c); // Hex-Eingabe in der Effekt-Spalte (cursorCol 3)
 
     static juce::String effectText (int effect, int param); // "C40" bzw. "..."
+
+    // Live-Hilfe: Klartext zur aktuellen Cursor-Stelle + Effekt-Bedeutung.
+    void emitCursorInfo();
+    juce::String cursorHelpText() const;
+    static juce::String effectHelp (int effect, int param);
+    bool liveHelp = false;
 
     static int noteOffsetForChar (juce::juce_wchar c);
     static juce::String noteName (int note);

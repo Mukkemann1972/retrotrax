@@ -17,6 +17,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
+    addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (langButton);
     addAndMakeVisible (bpmSlider);
     addAndMakeVisible (instrumentBox);
@@ -49,6 +50,22 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         loc::toggle();
         applyLanguage();
+    };
+
+    // Live-Hilfe-Zeile an/abschalten: an -> der Cursor erklaert sich unten selbst,
+    // aus -> wieder die feste Tastenkuerzel-Zeile.
+    grid.onCursorInfo = [this] (const juce::String& text)
+    {
+        hintLabel.setText (text, juce::dontSendNotification);
+    };
+    liveHelpButton.onClick = [this]
+    {
+        const bool on = ! grid.liveHelpOn();
+        grid.setLiveHelp (on); // zeigt bei "an" sofort die aktuelle Stelle
+        liveHelpButton.setToggleState (on, juce::dontSendNotification);
+        if (! on)
+            setDefaultHint();
+        grid.grabKeyboardFocus();
     };
 
     // Der Knopf OEFFNET nur - ein versehentlicher Doppelklick schliesst nichts.
@@ -112,6 +129,10 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     grid.onTransportChange = [this] { updateTransportButtons(); };
     updateTransportButtons();
+
+    // Live-Hilfe zu Beginn an - Einsteiger sehen sofort, was die Stelle bedeutet.
+    grid.setLiveHelp (true);
+    liveHelpButton.setToggleState (true, juce::dontSendNotification);
 
     setResizable (true, true);
     setResizeLimits (960, 520, 1920, 1200);
@@ -287,14 +308,8 @@ void RetroTraxEditor::syncUiFromState()
     grid.repaint();
 }
 
-void RetroTraxEditor::applyLanguage()
+void RetroTraxEditor::setDefaultHint()
 {
-    langButton.setButtonText (loc::code()); // zeigt die aktuelle Sprache (DE/EN)
-    loadButton.setButtonText     (loc::t ("SAMPLE LADEN", "LOAD SAMPLE"));
-    saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
-    loadSongButton.setButtonText (loc::t ("SONG OEFFNEN", "OPEN SONG"));
-    instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
-    octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     hintLabel.setText (loc::t (
         "Noten: YXCVBNM (+ SDGHJ = Halbtoene) | Q2W3ER... = Oktave hoeher | Pfeile = Cursor | "
         "Tab = Spur | Leertaste = Play/Stop | Entf = Loeschen | +/- = Oktave | "
@@ -303,6 +318,26 @@ void RetroTraxEditor::applyLanguage()
         "Tab = track | Space = play/stop | Del = clear | +/- = octave | "
         "Ctrl+Z/Y = undo/redo | Ctrl+C/V/X = copy/paste/cut track"),
         juce::dontSendNotification);
+}
+
+void RetroTraxEditor::applyLanguage()
+{
+    langButton.setButtonText (loc::code()); // zeigt die aktuelle Sprache (DE/EN)
+    loadButton.setButtonText     (loc::t ("SAMPLE LADEN", "LOAD SAMPLE"));
+    saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
+    loadSongButton.setButtonText (loc::t ("SONG OEFFNEN", "OPEN SONG"));
+    instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
+    octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
+    liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
+    liveHelpButton.setTooltip (loc::t ("Hilfe-Zeile an/aus - erklaert die Stelle unterm Cursor",
+                                       "Help line on/off - explains the spot under the cursor"));
+
+    // Bei aktiver Live-Hilfe die Cursor-Erklaerung in neuer Sprache neu setzen,
+    // sonst die feste Tastenkuerzel-Zeile.
+    if (grid.liveHelpOn())
+        grid.setLiveHelp (true);
+    else
+        setDefaultHint();
 
     refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen
     diskBrowser.applyLanguage();
@@ -346,6 +381,8 @@ void RetroTraxEditor::resized()
     helpButton.setBounds (songRow.removeFromRight (36));
     songRow.removeFromRight (6);
     langButton.setBounds (songRow.removeFromRight (46));
+    songRow.removeFromRight (6);
+    liveHelpButton.setBounds (songRow.removeFromRight (60));
     songRow.removeFromRight (12);
     loadSongButton.setBounds (songRow.removeFromRight (118));
     songRow.removeFromRight (8);
