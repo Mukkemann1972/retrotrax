@@ -179,6 +179,30 @@ void HelpPanel::rebuild()
             "after a restart). REMOVE takes one out again - your files are left\n"
             "untouched.") });
 
+    topics.add ({ loc::t ("SoundFonts (SF2)", "SoundFonts (SF2)"),
+        loc::t (
+            "Eine SF2-Datei (SoundFont) ist eine ganze Klang-Bibliothek in einer\n"
+            "Datei - oft hunderte fertige Sounds. Davon gibt es riesige, frei\n"
+            "nutzbare Sammlungen im Netz.\n\n"
+            "So bindest du eine ein: druecke + ORDNER und waehle statt eines\n"
+            "Ordners einfach eine .sf2-Datei aus. Sie erscheint dann links in der\n"
+            "Quellenliste (farbig hervorgehoben) - klick sie an, und rechts stehen\n"
+            "alle Sounds der Bank.\n\n"
+            "Anklicken hoert vor, IN SLOT LADEN laedt - genau wie bei den ST-Disks.\n"
+            "Das gewaehlte Sample wird dabei als WAV herausgezogen, damit es sich\n"
+            "auch MERKEN und mit dem Song speichern laesst. ENTF nimmt eine\n"
+            "SF2-Bank wieder aus der Liste (die Datei bleibt).",
+            "An SF2 file (SoundFont) is a whole sound library in one file - often\n"
+            "hundreds of ready-made sounds. There are huge, freely usable\n"
+            "collections out there.\n\n"
+            "To add one: press + FOLDER and simply pick a .sf2 file instead of a\n"
+            "folder. It shows up on the left in the source list (highlighted) -\n"
+            "click it and all the bank's sounds appear on the right.\n\n"
+            "Click to preview, LOAD INTO SLOT to load - just like the ST disks.\n"
+            "The chosen sample is extracted to a WAV so you can REMEMBER it and\n"
+            "save it with your song. REMOVE takes an SF2 bank out of the list\n"
+            "again (the file stays).") });
+
     topics.add ({ loc::t ("Meine Sounds (Sammlung)", "My Sounds (collection)"),
         loc::t (
             "Ganz oben in der Ordnerliste steht immer \"Meine Sounds\" - deine\n"

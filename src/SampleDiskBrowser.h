@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 #include "RetroLookAndFeel.h"
 #include "Localisation.h"
+#include "Soundfont2.h"
 
 // Browser fuer Samples aus zwei Quellen:
 //  1. die klassischen Amiga-Sample-Disketten ST-01..ST-XX. Der Katalog
@@ -36,9 +37,10 @@ private:
     struct Location
     {
         juce::String name;     // Anzeigename
-        bool isLocal = false;  // true = eigener Ordner, false = ST-Diskette
+        bool isLocal = false;  // true = eigener Ordner / Sammlung
+        bool isSf2   = false;  // true = SoundFont-2-Bank (folder zeigt auf die .sf2-Datei)
         int diskIndex = -1;    // ST: Index in den Katalog (diskNames/diskSamples)
-        juce::File folder;     // nur bei eigenem Ordner gesetzt
+        juce::File folder;     // eigener Ordner ODER die .sf2-Datei
     };
 
     // Ein einzelnes Sample in der rechten Liste (Inhalt einer Quelle oder
@@ -48,6 +50,7 @@ private:
         int location = -1;     // Index in 'locations'
         juce::String name;     // Anzeigename des Samples
         juce::File localFile;  // nur bei eigenem Ordner gesetzt
+        int sf2Index = -1;     // nur bei SF2: Index in currentSf2.samples
     };
 
     // Ein ListBoxModel pro Liste; beide malen im ProTracker-Stil.
@@ -80,6 +83,10 @@ private:
     // Die immer vorhandene persoenliche Sammlung "Meine Sounds".
     juce::File collectionFolder() const;
 
+    // SoundFont-2: Cache-WAV eines Bank-Samples; bei Bedarf erst herausziehen.
+    juce::File sf2CacheFile (const juce::File& sf2File, const juce::String& sampleName) const;
+    juce::File ensureSf2Cache (const Location& loc, const sf2::Sample& s);
+
     void finished (juce::URL::DownloadTask*, bool success) override;
     void finishLoad (const juce::File& file, bool success);
     void setStatus (const juce::String& text, bool warn = false);
@@ -102,9 +109,10 @@ private:
     juce::Array<juce::StringArray> diskSamples;
     juce::StringArray localFolders;          // gespeicherte eigene Ordner (Pfade)
 
-    juce::Array<Location> locations;         // links: ST-Disks + eigene Ordner
+    juce::Array<Location> locations;         // links: ST-Disks + eigene Ordner + SF2-Banks
     juce::Array<Entry>    currentEntries;    // rechts: Inhalt oder Suchtreffer
     int currentLocation = 0;
+    sf2::Bank currentSf2;                    // Kopfdaten der gerade gewaehlten SF2-Bank
 
     Model diskModel   { *this, true };
     Model sampleModel { *this, false };

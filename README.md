@@ -10,7 +10,7 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: Stage 1 (v0.5) — Sampler
+## Status: Stage 1 (v0.6) — Sampler
 
 - 8 tracks, 64-row patterns (track count becomes flexible later)
 - **Amiga-style stereo:** tracks are spread across the stereo field automatically
@@ -20,6 +20,9 @@ A project from the Mukkemann universe.
   **copy/paste/cut track** (Ctrl+C / V / X)
 - 16 instrument slots, loads WAV / AIFF / FLAC / OGG / MP3 plus the native
   Amiga format **8SVX / IFF** (openly documented)
+- **SoundFonts (SF2):** add a `.sf2` bank (via + FOLDER), browse its sounds,
+  preview and load them — the chosen sample is extracted to a WAV, so you can
+  remember it and save it with your song too
 - **Built-in ST-XX sample disks:** browse the legendary Amiga sample disks
   (ST-01 through ST-XX, 96 disks / ~5,900 sounds, public domain) and load any
   sound with one click — samples are fetched individually from the

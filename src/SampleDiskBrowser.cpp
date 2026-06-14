@@ -121,9 +121,11 @@ void SampleDiskBrowser::Model::paintListBoxItem (int row, juce::Graphics& g,
             return;
 
         const auto& loc = owner.locations.getReference (row);
-        // Eigene Ordner heben sich farblich von den ST-Disketten ab.
+        // Eigene Ordner (gruen) und SF2-Banks (Akzentfarbe) heben sich von den
+        // ST-Disketten ab.
         const auto colour = selected ? juce::Colours::white
-                                      : (loc.isLocal ? rt::instCol : rt::text);
+                                      : (loc.isSf2 ? rt::cursor
+                                                   : (loc.isLocal ? rt::instCol : rt::text));
         g.setColour (colour);
         g.drawText (loc.name, 8, 0, w - 12, h, juce::Justification::centredLeft);
         return;
@@ -136,8 +138,12 @@ void SampleDiskBrowser::Model::paintListBoxItem (int row, juce::Graphics& g,
     const auto& loc = owner.locations.getReference (e.location);
 
     juce::String text = e.name;
-    if (! loc.isLocal && owner.cacheFileFor (loc.diskIndex, e.name).existsAsFile())
-        text << "  *"; // schon lokal vorhanden -> laedt sofort
+    // "*" = schon lokal vorhanden / herausgezogen -> laedt sofort.
+    if (! loc.isLocal && ! loc.isSf2 && loc.diskIndex >= 0
+        && owner.cacheFileFor (loc.diskIndex, e.name).existsAsFile())
+        text << "  *";
+    else if (loc.isSf2 && owner.sf2CacheFile (loc.folder, e.name).existsAsFile())
+        text << "  *";
 
     g.setColour (selected ? juce::Colours::white : rt::text);
 
@@ -185,19 +191,22 @@ void SampleDiskBrowser::rebuildLocations()
 
     // ST-Disketten zuerst ...
     for (int i = 0; i < diskNames.size(); ++i)
-        locations.add ({ diskNames[i], false, i, {} });
+        locations.add ({ diskNames[i], false, false, i, {} });
 
     // ... dann die persoenliche Sammlung (immer vorhanden) ...
     const auto coll = collectionFolder();
     coll.createDirectory();
     locations.add ({ juce::String (juce::CharPointer_UTF8 ("\xe2\x98\x85 ")) + kCollectionName,
-                     true, -1, coll });
+                     true, false, -1, coll });
 
-    // ... und zuletzt die selbst hinzugefuegten Ordner.
+    // ... und zuletzt die selbst hinzugefuegten Quellen: Ordner oder SF2-Banks.
     for (const auto& path : localFolders)
     {
-        juce::File dir (path);
-        locations.add ({ dir.getFileName(), true, -1, dir });
+        juce::File f (path);
+        if (f.isDirectory())
+            locations.add ({ f.getFileName(), true, false, -1, f });
+        else if (f.existsAsFile() && f.hasFileExtension ("sf2"))
+            locations.add ({ "SF2: " + f.getFileNameWithoutExtension(), false, true, -1, f });
     }
 
     diskList.updateContent();
@@ -210,6 +219,11 @@ void SampleDiskBrowser::locationSelected (int row)
         return;
 
     currentLocation = row;
+
+    // Beim Anwaehlen einer SF2-Bank die Kopfdaten einlesen (schnell, ohne PCM).
+    const auto& loc = locations.getReference (row);
+    currentSf2 = loc.isSf2 ? sf2::readBank (loc.folder) : sf2::Bank();
+
     searchBox.setText ({}, juce::dontSendNotification); // Disk-Wahl beendet die Suche
     rebuildEntries(); // ruft am Ende updateButtons()
 }
@@ -254,7 +268,7 @@ void SampleDiskBrowser::rebuildEntries()
                     if (f.getFileNameWithoutExtension().containsIgnoreCase (q))
                         currentEntries.add ({ loc, f.getFileNameWithoutExtension(), f });
             }
-            else
+            else if (! L.isSf2) // ST-Disketten; SF2-Banks bleiben aus der Suche heraus
             {
                 for (const auto& n : diskSamples[L.diskIndex])
                     if (n.containsIgnoreCase (q))
@@ -267,6 +281,9 @@ void SampleDiskBrowser::rebuildEntries()
         const auto& L = locations.getReference (currentLocation);
         if (L.isLocal)
             addLocal (currentLocation, L.folder);
+        else if (L.isSf2)
+            for (int i = 0; i < currentSf2.samples.size(); ++i)
+                currentEntries.add ({ currentLocation, currentSf2.samples[i].name, {}, i });
         else
             for (const auto& n : diskSamples[L.diskIndex])
                 currentEntries.add ({ currentLocation, n, {} });
@@ -292,7 +309,10 @@ void SampleDiskBrowser::rebuildEntries()
     else if (currentLocation >= 0 && currentLocation < locations.size())
     {
         const auto& L = locations.getReference (currentLocation);
-        if (L.isLocal && currentEntries.isEmpty())
+        if (L.isSf2 && currentEntries.isEmpty())
+            setStatus (loc::t ("Diese SF2-Bank enthaelt keine lesbaren Samples.",
+                               "This SF2 bank has no readable samples."), true);
+        else if (L.isLocal && currentEntries.isEmpty())
             setStatus (L.folder == collectionFolder()
                        ? loc::t ("Noch nichts gemerkt - Sample waehlen und MERKEN druecken.",
                                  "Nothing remembered yet - select a sample and press REMEMBER.")
@@ -321,7 +341,11 @@ void SampleDiskBrowser::loadFolders()
     for (auto line : juce::StringArray::fromLines (f.loadFileAsString()))
     {
         line = line.trim();
-        if (line.isNotEmpty() && juce::File (line).isDirectory())
+        const juce::File entry (line);
+        const bool ok = line.isNotEmpty()
+                        && (entry.isDirectory()
+                            || (entry.existsAsFile() && entry.hasFileExtension ("sf2")));
+        if (ok)
             localFolders.addIfNotAlreadyThere (line);
     }
 }
@@ -342,31 +366,40 @@ juce::File SampleDiskBrowser::collectionFolder() const
 void SampleDiskBrowser::selectLocationForFolder (const juce::File& dir)
 {
     for (int i = 0; i < locations.size(); ++i)
-        if (locations.getReference (i).isLocal && locations.getReference (i).folder == dir)
+    {
+        const auto& loc = locations.getReference (i);
+        if ((loc.isLocal || loc.isSf2) && loc.folder == dir)
         {
             diskList.selectRow (i);
             return;
         }
+    }
 }
 
 void SampleDiskBrowser::addFolderClicked()
 {
     chooser = std::make_unique<juce::FileChooser> (
-        loc::t ("Ordner mit eigenen Samples waehlen", "Choose a folder with your own samples"),
-        juce::File::getSpecialLocation (juce::File::userMusicDirectory));
+        loc::t ("Ordner mit Samples oder eine SF2-Bank waehlen",
+                "Choose a folder of samples or an SF2 bank"),
+        juce::File::getSpecialLocation (juce::File::userMusicDirectory),
+        "*.sf2");
 
     chooser->launchAsync (juce::FileBrowserComponent::openMode
-                              | juce::FileBrowserComponent::canSelectDirectories,
+                              | juce::FileBrowserComponent::canSelectDirectories
+                              | juce::FileBrowserComponent::canSelectFiles,
         [this] (const juce::FileChooser& fc)
         {
-            const auto dir = fc.getResult();
-            if (! dir.isDirectory())
+            const auto result = fc.getResult();
+            // Ordner ODER eine .sf2-Datei sind erlaubt.
+            const bool ok = result.isDirectory()
+                            || (result.existsAsFile() && result.hasFileExtension ("sf2"));
+            if (! ok)
                 return;
 
-            localFolders.addIfNotAlreadyThere (dir.getFullPathName());
+            localFolders.addIfNotAlreadyThere (result.getFullPathName());
             saveFolders();
             rebuildLocations();
-            selectLocationForFolder (dir);
+            selectLocationForFolder (result);
         });
 }
 
@@ -389,15 +422,16 @@ void SampleDiskBrowser::updateButtons()
                                          : loc::t ("MERKEN", "REMEMBER"));
     saveButton.setEnabled (collection ? hasSelection : true);
 
-    // ENTF betrifft nur eigene Ordner (nicht die Sammlung, nicht ST-Disks).
-    bool isUserFolder = false;
+    // ENTF nimmt eine selbst hinzugefuegte Quelle (eigener Ordner ODER SF2-Bank)
+    // aus der Liste - nicht die Sammlung, nicht die ST-Disks.
+    bool removable = false;
     if (currentLocation >= 0 && currentLocation < locations.size())
     {
         const auto& loc = locations.getReference (currentLocation);
-        isUserFolder = loc.isLocal && loc.folder != collectionFolder();
+        removable = loc.isSf2 || (loc.isLocal && loc.folder != collectionFolder());
     }
     removeFolderButton.setButtonText (loc::t ("ENTF", "REMOVE"));
-    removeFolderButton.setEnabled (isUserFolder);
+    removeFolderButton.setEnabled (removable);
 }
 
 void SampleDiskBrowser::collectionButtonClicked()
@@ -414,9 +448,11 @@ void SampleDiskBrowser::removeFolderClicked()
         return;
 
     const auto& loc = locations.getReference (currentLocation);
-    if (! loc.isLocal || loc.folder == collectionFolder())
-        return; // nur eigene Ordner aus der Liste nehmen (Dateien bleiben unberuehrt)
+    const bool removable = loc.isSf2 || (loc.isLocal && loc.folder != collectionFolder());
+    if (! removable)
+        return; // Sammlung und ST-Disks bleiben
 
+    // Nur aus der Liste nehmen - die Datei(en) auf der Platte bleiben unberuehrt.
     localFolders.removeString (loc.folder.getFullPathName());
     saveFolders();
     rebuildLocations();
@@ -499,10 +535,14 @@ void SampleDiskBrowser::saveToCollection()
         return;
     }
 
-    // Quelldatei finden (eigener Ordner: direkt; ST: aus dem Cache).
+    // Quelldatei finden (eigener Ordner: direkt; ST: aus dem Cache;
+    // SF2: das Sample wird als WAV herausgezogen).
     juce::File source;
     if (L.isLocal)
         source = e.localFile;
+    else if (L.isSf2)
+        source = (e.sf2Index >= 0 && e.sf2Index < currentSf2.samples.size())
+                     ? ensureSf2Cache (L, currentSf2.samples[e.sf2Index]) : juce::File();
     else
         source = cacheFileFor (L.diskIndex, e.name);
 
@@ -548,6 +588,52 @@ juce::File SampleDiskBrowser::cacheFileFor (int diskIdx, const juce::String& sam
         .getChildFile (diskNames[diskIdx]).getChildFile (sampleName + ".aiff");
 }
 
+// ---- SoundFont 2: Samples als WAV cachen ----------------------------------
+
+// Schreibt einen Puffer als 16-Bit-WAV (Cache fuer SF2-Samples).
+static bool writeWavFile (const juce::File& file, const juce::AudioBuffer<float>& buf, double rate)
+{
+    file.getParentDirectory().createDirectory();
+    file.deleteFile();
+
+    juce::WavAudioFormat fmt;
+    std::unique_ptr<juce::FileOutputStream> os (file.createOutputStream());
+    if (os == nullptr)
+        return false;
+
+    std::unique_ptr<juce::AudioFormatWriter> writer (
+        fmt.createWriterFor (os.get(), rate, (unsigned int) buf.getNumChannels(), 16, {}, 0));
+    if (writer == nullptr)
+        return false;
+
+    os.release(); // ab jetzt gehoert der Stream dem Writer
+    return writer->writeFromAudioSampleBuffer (buf, 0, buf.getNumSamples());
+}
+
+juce::File SampleDiskBrowser::sf2CacheFile (const juce::File& sf2File,
+                                            const juce::String& sampleName) const
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("MukkemannRetroTrax").getChildFile ("SF2-Cache")
+        .getChildFile (juce::File::createLegalFileName (sf2File.getFileNameWithoutExtension()))
+        .getChildFile (juce::File::createLegalFileName (sampleName) + ".wav");
+}
+
+juce::File SampleDiskBrowser::ensureSf2Cache (const Location& loc, const sf2::Sample& s)
+{
+    auto cache = sf2CacheFile (loc.folder, s.name);
+    if (cache.existsAsFile())
+        return cache;
+
+    juce::AudioBuffer<float> buf;
+    double rate = 44100.0;
+    if (! sf2::readSamplePCM (loc.folder, currentSf2, s, buf, rate))
+        return {};
+    if (! writeWavFile (cache, buf, rate))
+        return {};
+    return cache;
+}
+
 juce::URL SampleDiskBrowser::urlFor (int diskIdx, const juce::String& sampleName) const
 {
     const auto esc = [] (const juce::String& s)
@@ -574,6 +660,24 @@ void SampleDiskBrowser::previewSelected (int row)
     {
         if (e.localFile.existsAsFile())
             proc.previewFile (e.localFile);
+        return;
+    }
+
+    if (L.isSf2)
+    {
+        // Sample aus der Bank ziehen (als WAV cachen) und vorspielen.
+        if (e.sf2Index >= 0 && e.sf2Index < currentSf2.samples.size())
+        {
+            const auto wav = ensureSf2Cache (L, currentSf2.samples[e.sf2Index]);
+            if (wav.existsAsFile())
+            {
+                proc.previewFile (wav);
+                sampleList.repaint(); // Sternchen aktualisieren
+            }
+            else
+                setStatus (loc::t ("Dieses SF2-Sample konnte nicht gelesen werden.",
+                                   "This SF2 sample could not be read."), true);
+        }
         return;
     }
 
@@ -617,6 +721,16 @@ void SampleDiskBrowser::loadSelected()
     if (L.isLocal)
     {
         finishLoad (e.localFile, e.localFile.existsAsFile());
+        return;
+    }
+
+    // SF2: Sample als WAV herausziehen und wie eine Datei laden.
+    if (L.isSf2)
+    {
+        juce::File wav;
+        if (e.sf2Index >= 0 && e.sf2Index < currentSf2.samples.size())
+            wav = ensureSf2Cache (L, currentSf2.samples[e.sf2Index]);
+        finishLoad (wav, wav.existsAsFile());
         return;
     }
 

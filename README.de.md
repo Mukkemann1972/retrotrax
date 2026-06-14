@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: Etappe 1 (v0.5) — Sampler
+## Stand: Etappe 1 (v0.6) — Sampler
 
 - 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
 - **Stereo-Klang im Amiga-Stil:** die Spuren werden automatisch im Stereobild
@@ -20,6 +20,9 @@ Ein Projekt aus dem Mukkemann-Universum.
   **Spur kopieren/einfügen/ausschneiden** (Strg+C / V / X)
 - 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3 sowie das native
   Amiga-Format **8SVX / IFF** (offen dokumentiert)
+- **SoundFonts (SF2):** eine `.sf2`-Bank einbinden (über + ORDNER), ihre Sounds
+  durchstöbern, vorhören und laden — das gewählte Sample wird als WAV
+  herausgezogen, lässt sich also auch merken und mit dem Song speichern
 - **ST-XX Sample-Disks eingebaut:** die legendären Amiga-Sample-Disketten
   (ST-01 bis ST-XX, 96 Disketten / ~5.900 Sounds, Public Domain) durchstöbern
   und per Klick laden — die Sounds kommen einzeln vom
