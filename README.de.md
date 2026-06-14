@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: Etappe 1 (v0.2) — Sampler
+## Stand: Etappe 1 (v0.3) — Sampler
 
 - 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
 - 16 Instrument-Slots, lädt WAV / AIFF / FLAC / OGG / MP3
@@ -19,6 +19,17 @@ Ein Projekt aus dem Mukkemann-Universum.
   und per Klick laden — die Sounds kommen einzeln vom
   [Internet Archive](https://archive.org/details/AmigaSTXX_originals_plus_conversions)
   und werden lokal gecacht, das Plugin selbst bleibt klein
+- **Sample-Browser mit Suche:** ein Suchfeld findet einen Sound über *alle*
+  Disks und deine eigenen Ordner zugleich; ein Klick spielt ihn sofort vor
+- **Eigene Ordner & Sammlung „Meine Sounds":** eigene Sample-Ordner von der
+  Festplatte einbinden (bleiben nach Neustart erhalten) und Lieblings-Sounds
+  per Knopf in einer persönlichen Sammlung merken
+- **Songs speichern & öffnen:** deine Arbeit als `.retrotrax`-Datei sichern und
+  jederzeit wieder öffnen — fehlende Samples werden gemeldet statt still zu fehlen
+- **Eingebaute Hilfe (`?`-Knopf):** Themen zu jeder Funktion, in deiner Sprache,
+  wächst mit dem Programm mit
+- **Zweisprachig (Deutsch / Englisch):** jederzeit per DE/EN-Knopf umschaltbar;
+  beim ersten Start nach der Systemsprache
 - **Instrument-Farben:** jedes Instrument hat eine feste Farbe aus einer
   16er-Retro-Palette — die Noten leuchten im Pattern-Grid in der Farbe ihres
   Instruments, ein Farbpunkt neben der Instrument-Auswahl zeigt die aktuelle "Malfarbe"
