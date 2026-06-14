@@ -341,13 +341,23 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
 
     // Strg-Kombinationen zuerst, damit C/V/X/Z nicht als Noten landen.
     // Mit aktiver Auswahl arbeiten C/X/V auf dem ganzen Block, sonst spaltenweise.
+    // WICHTIG: bei gedrueckter Strg-Taste liefert Windows als Text-Zeichen ein
+    // Steuerzeichen (Strg+C -> Code 3), nicht 'c'. Darum ueber den Tasten-Code
+    // pruefen (plattformrobust), nicht ueber getTextCharacter().
     if (mods.isCommandDown())
     {
-        if (c == 'z') { mods.isShiftDown() ? redo() : undo(); return true; }
-        if (c == 'y') { redo(); return true; }
-        if (c == 'c') { hasSelection ? copyBlock() : copyTrack(); return true; }
-        if (c == 'x') { hasSelection ? cutBlock()  : cutTrack();  return true; }
-        if (c == 'v') { hasBlockClip ? pasteBlock() : pasteTrack(); return true; }
+        const int kc = key.getKeyCode();
+        const auto is = [kc, c] (char letter)
+        {
+            const int upper = letter - 'a' + 'A';
+            return kc == upper || kc == letter || c == (juce::juce_wchar) letter;
+        };
+
+        if (is ('z')) { mods.isShiftDown() ? redo() : undo(); return true; }
+        if (is ('y')) { redo(); return true; }
+        if (is ('c')) { hasSelection ? copyBlock() : copyTrack(); return true; }
+        if (is ('x')) { hasSelection ? cutBlock()  : cutTrack();  return true; }
+        if (is ('v')) { hasBlockClip ? pasteBlock() : pasteTrack(); return true; }
         return false; // andere Strg-Kombis ignorieren (keine versehentliche Note)
     }
 
