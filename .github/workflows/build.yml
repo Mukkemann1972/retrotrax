@@ -4,6 +4,11 @@ on:
   push:
   workflow_dispatch:
 
+# Aeltere JS-Actions (z. B. softprops/action-gh-release) auf Node 24 zwingen,
+# bevor GitHub Node 20 am 16.06.2026 abschaltet.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: ${{ matrix.name }}
