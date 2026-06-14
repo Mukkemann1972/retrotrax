@@ -77,6 +77,7 @@ bool PatternGrid::handleNoteKey (juce::juce_wchar c)
     if (offset < 0)
         return false;
 
+    pushUndo();
     const int note = juce::jlimit (0, TrackerEngine::kMaxNote,
                                    proc.currentOctave.load() * 12 + offset);
     auto& cell = engine.cells[cursorRow][cursorTrack];
@@ -93,6 +94,7 @@ bool PatternGrid::handleDigitKey (juce::juce_wchar c)
     if (c < '0' || c > '9')
         return false;
 
+    pushUndo();
     const int digit = (int) (c - '0');
     auto& cell = engine.cells[cursorRow][cursorTrack];
 
@@ -116,10 +118,104 @@ bool PatternGrid::handleDigitKey (juce::juce_wchar c)
     return true;
 }
 
+// --- Rueckgaengig/Wiederholen + Spalten-Zwischenablage --------------------
+
+PatternGrid::Snapshot PatternGrid::takeSnapshot() const
+{
+    Snapshot s;
+    const juce::ScopedLock sl (engine.lock);
+    for (int r = 0; r < TrackerEngine::kRows; ++r)
+        for (int t = 0; t < TrackerEngine::kTracks; ++t)
+            s.cells[r][t] = engine.cells[r][t];
+    return s;
+}
+
+void PatternGrid::restore (const Snapshot& s)
+{
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int r = 0; r < TrackerEngine::kRows; ++r)
+            for (int t = 0; t < TrackerEngine::kTracks; ++t)
+                engine.cells[r][t] = s.cells[r][t];
+    }
+    repaint();
+}
+
+void PatternGrid::pushUndo()
+{
+    undoStack.push_back (takeSnapshot());
+    if ((int) undoStack.size() > kMaxUndo)
+        undoStack.erase (undoStack.begin());
+    redoStack.clear(); // ein neuer Schritt verwirft den Wiederholen-Pfad
+}
+
+void PatternGrid::undo()
+{
+    if (undoStack.empty())
+        return;
+    redoStack.push_back (takeSnapshot());
+    restore (undoStack.back());
+    undoStack.pop_back();
+}
+
+void PatternGrid::redo()
+{
+    if (redoStack.empty())
+        return;
+    undoStack.push_back (takeSnapshot());
+    restore (redoStack.back());
+    redoStack.pop_back();
+}
+
+void PatternGrid::copyTrack()
+{
+    const juce::ScopedLock sl (engine.lock);
+    for (int r = 0; r < TrackerEngine::kRows; ++r)
+        clipColumn[r] = engine.cells[r][cursorTrack];
+    hasClip = true;
+}
+
+void PatternGrid::cutTrack()
+{
+    copyTrack();
+    pushUndo();
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int r = 0; r < TrackerEngine::kRows; ++r)
+            engine.cells[r][cursorTrack] = TrackerEngine::Cell();
+    }
+    repaint();
+}
+
+void PatternGrid::pasteTrack()
+{
+    if (! hasClip)
+        return;
+    pushUndo();
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int r = 0; r < TrackerEngine::kRows; ++r)
+            engine.cells[r][cursorTrack] = clipColumn[r];
+    }
+    repaint();
+}
+
 bool PatternGrid::keyPressed (const juce::KeyPress& key)
 {
     const auto code = key.getKeyCode();
     const auto c    = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+    const auto mods = key.getModifiers();
+
+    // Strg-Kombinationen zuerst, damit C/V/X/Z nicht als Noten landen.
+    if (mods.isCommandDown())
+    {
+        if (c == 'z') { mods.isShiftDown() ? redo() : undo(); return true; }
+        if (c == 'y') { redo();       return true; }
+        if (c == 'c') { copyTrack();  return true; }
+        if (c == 'x') { cutTrack();   return true; }
+        if (c == 'v') { pasteTrack(); return true; }
+        return false; // andere Strg-Kombis ignorieren (keine versehentliche Note)
+    }
 
     if (code == juce::KeyPress::spaceKey)           { togglePlay(); return true; }
     if (code == juce::KeyPress::upKey)              { moveCursor (-1, 0); return true; }
@@ -142,6 +238,7 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
 
     if (code == juce::KeyPress::deleteKey || code == juce::KeyPress::backspaceKey)
     {
+        pushUndo();
         auto& cell = engine.cells[cursorRow][cursorTrack];
         if (cursorCol == 0)      cell = TrackerEngine::Cell();
         else if (cursorCol == 1) cell.instrument = -1;

@@ -29,6 +29,23 @@ private:
     static int noteOffsetForChar (juce::juce_wchar c);
     static juce::String noteName (int note);
 
+    // --- Rueckgaengig/Wiederholen + Zwischenablage (Spalten) ---------------
+    struct Snapshot { TrackerEngine::Cell cells[TrackerEngine::kRows][TrackerEngine::kTracks]; };
+    Snapshot takeSnapshot() const;
+    void restore (const Snapshot& s);
+    void pushUndo();        // aktuellen Stand sichern, bevor etwas veraendert wird
+    void undo();
+    void redo();
+    void copyTrack();       // aktuelle Spur in die Zwischenablage
+    void cutTrack();        // kopieren + Spur leeren
+    void pasteTrack();      // Zwischenablage in die aktuelle Spur
+
+    std::vector<Snapshot> undoStack, redoStack;
+    static constexpr int kMaxUndo = 64;
+
+    TrackerEngine::Cell clipColumn[TrackerEngine::kRows];
+    bool hasClip = false;
+
     RetroTraxProcessor& proc;
     TrackerEngine& engine;
 

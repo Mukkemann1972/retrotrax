@@ -84,7 +84,12 @@ void HelpPanel::rebuild()
             "  Leertaste            Play / Stop\n"
             "  Entf / Ruecktaste    Zelle loeschen\n"
             "  + / -                Oktave wechseln\n"
-            "  Ziffern              Wert in Instrument-/Lautstaerke-Spalte",
+            "  Ziffern              Wert in Instrument-/Lautstaerke-Spalte\n\n"
+            "  Strg+Z / Strg+Y      Rueckgaengig / Wiederholen\n"
+            "  Strg+C / V / X       Spur kopieren / einfuegen / ausschneiden\n\n"
+            "Vertippt? Kein Problem - Strg+Z nimmt jeden Schritt zurueck (bis zu\n"
+            "64). Mit Strg+C/V kopierst du eine ganze Spur z.B. von Spur 1 nach 5:\n"
+            "Cursor in die Quellspur, Strg+C, dann in die Zielspur und Strg+V.",
             "Your keyboard is the piano (German QWERTZ layout):\n\n"
             "  Y X C V B N M        notes in the current octave\n"
             "  S D   G H J          the black keys (semitones)\n"
@@ -94,7 +99,12 @@ void HelpPanel::rebuild()
             "  Space bar            play / stop\n"
             "  Delete / Backspace   clear cell\n"
             "  + / -                change octave\n"
-            "  Number keys          value in instrument / volume column") });
+            "  Number keys          value in instrument / volume column\n\n"
+            "  Ctrl+Z / Ctrl+Y      undo / redo\n"
+            "  Ctrl+C / V / X       copy / paste / cut track\n\n"
+            "Typo? No problem - Ctrl+Z takes back every step (up to 64). With\n"
+            "Ctrl+C/V you copy a whole track, e.g. from track 1 to 5: cursor into\n"
+            "the source track, Ctrl+C, then into the target track and Ctrl+V.") });
 
     topics.add ({ loc::t ("Pattern & Spuren", "Pattern & tracks"),
         loc::t (

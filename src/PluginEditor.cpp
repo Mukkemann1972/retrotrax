@@ -293,9 +293,11 @@ void RetroTraxEditor::applyLanguage()
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     hintLabel.setText (loc::t (
         "Noten: YXCVBNM (+ SDGHJ = Halbtoene) | Q2W3ER... = Oktave hoeher | Pfeile = Cursor | "
-        "Tab = Spur | Leertaste = Play/Stop | Entf = Loeschen | +/- = Oktave",
+        "Tab = Spur | Leertaste = Play/Stop | Entf = Loeschen | +/- = Oktave | "
+        "Strg+Z/Y = Rueckgaengig | Strg+C/V/X = Spur kopieren/einfuegen/ausschneiden",
         "Notes: YXCVBNM (+ SDGHJ = semitones) | Q2W3ER... = octave up | Arrows = cursor | "
-        "Tab = track | Space = play/stop | Del = clear | +/- = octave"),
+        "Tab = track | Space = play/stop | Del = clear | +/- = octave | "
+        "Ctrl+Z/Y = undo/redo | Ctrl+C/V/X = copy/paste/cut track"),
         juce::dontSendNotification);
 
     refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen
