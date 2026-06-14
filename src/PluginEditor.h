@@ -5,6 +5,8 @@
 #include "PatternGrid.h"
 #include "RetroLookAndFeel.h"
 #include "SampleDiskBrowser.h"
+#include "HelpPanel.h"
+#include "Localisation.h"
 
 class RetroTraxEditor : public juce::AudioProcessorEditor
 {
@@ -22,6 +24,7 @@ private:
     void saveSongClicked();
     void loadSongClicked();
     void syncUiFromState();
+    void applyLanguage();
     juce::File songsFolder() const;
 
     RetroTraxProcessor& proc;
@@ -33,6 +36,8 @@ private:
     juce::TextButton stDisksButton { "SAMPLES" };
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton loadSongButton { "SONG OEFFNEN" };
+    juce::TextButton helpButton { "?" };
+    juce::TextButton langButton { "DE" };
     juce::Slider bpmSlider;
     juce::ComboBox instrumentBox;
     juce::ComboBox octaveBox;
@@ -57,6 +62,7 @@ private:
 
     PatternGrid grid;
     SampleDiskBrowser diskBrowser;
+    HelpPanel helpPanel;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;
     juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song

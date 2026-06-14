@@ -3,16 +3,21 @@
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p)
 {
+    loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
+
     setLookAndFeel (&lnf);
 
     addAndMakeVisible (grid);
     addChildComponent (diskBrowser); // unsichtbar, bis SAMPLES gedrueckt wird
+    addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadButton);
     addAndMakeVisible (stDisksButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
+    addAndMakeVisible (helpButton);
+    addAndMakeVisible (langButton);
     addAndMakeVisible (bpmSlider);
     addAndMakeVisible (instrumentBox);
     addAndMakeVisible (octaveBox);
@@ -27,6 +32,24 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     loadButton.onClick = [this] { loadSampleClicked(); };
     saveSongButton.onClick = [this] { saveSongClicked(); };
     loadSongButton.onClick = [this] { loadSongClicked(); };
+
+    helpButton.onClick = [this]
+    {
+        helpPanel.setVisible (true);
+        helpPanel.toFront (false);
+        helpPanel.grabKeyboardFocus();
+    };
+    helpPanel.onClose = [this]
+    {
+        helpPanel.setVisible (false);
+        grid.grabKeyboardFocus();
+    };
+
+    langButton.onClick = [this]
+    {
+        loc::toggle();
+        applyLanguage();
+    };
 
     // Der Knopf OEFFNET nur — ein versehentlicher Doppelklick schliesst nichts.
     // Zu ist der Browser erst per SCHLIESSEN-Knopf oder ESC.
@@ -60,7 +83,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     bpmSlider.onValueChange = [this] { proc.engine.bpm = (float) bpmSlider.getValue(); };
 
     for (int i = 1; i <= TrackerEngine::kInstruments; ++i)
-        instrumentBox.addItem (juce::String::formatted ("%02d (leer)", i), i);
+        instrumentBox.addItem (juce::String::formatted ("%02d ", i) + loc::t ("(leer)", "(empty)"), i);
     instrumentBox.setSelectedId (proc.currentInstrument.load() + 1, juce::dontSendNotification);
     instrumentBox.onChange = [this]
     {
@@ -84,9 +107,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     hintLabel.setFont (rt::mono (13.0f));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centred);
-    hintLabel.setText ("Noten: YXCVBNM (+ SDGHJ = Halbtoene) | Q2W3ER... = Oktave hoeher | Pfeile = Cursor | "
-                       "Tab = Spur | Leertaste = Play/Stop | Entf = Loeschen | +/- = Oktave",
-                       juce::dontSendNotification);
+
+    applyLanguage(); // alle Beschriftungen in der aktuellen Sprache setzen
 
     grid.onTransportChange = [this] { updateTransportButtons(); };
     updateTransportButtons();
@@ -120,7 +142,7 @@ void RetroTraxEditor::refreshInstrumentBox()
     {
         auto name = proc.engine.getInstrumentName (i);
         instrumentBox.changeItemText (i + 1,
-            juce::String::formatted ("%02d ", i + 1) + (name.isEmpty() ? "(leer)" : name));
+            juce::String::formatted ("%02d ", i + 1) + (name.isEmpty() ? loc::t ("(leer)", "(empty)") : name));
     }
 
     // changeItemText aktualisiert die zugeklappte Box nicht — Text von Hand nachziehen,
@@ -133,7 +155,8 @@ void RetroTraxEditor::refreshInstrumentBox()
 void RetroTraxEditor::loadSampleClicked()
 {
     chooser = std::make_unique<juce::FileChooser> (
-        "Sample auswaehlen (WAV, AIFF, FLAC, OGG, MP3)",
+        loc::t ("Sample auswaehlen (WAV, AIFF, FLAC, OGG, MP3)",
+                "Choose a sample (WAV, AIFF, FLAC, OGG, MP3)"),
         juce::File::getSpecialLocation (juce::File::userMusicDirectory),
         "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3");
 
@@ -148,14 +171,17 @@ void RetroTraxEditor::loadSampleClicked()
             if (proc.loadInstrument (slot, file))
             {
                 refreshInstrumentBox();
-                hintLabel.setText ("Sample \"" + file.getFileName() + "\" in Slot "
+                hintLabel.setText (loc::t ("Sample \"", "Sample \"") + file.getFileName()
+                                       + loc::t ("\" in Slot ", "\" loaded into slot ")
                                        + juce::String::formatted ("%02d", slot + 1)
-                                       + " geladen. Klick ins Grid und tippe Noten!",
+                                       + loc::t (" geladen. Klick ins Grid und tippe Noten!",
+                                                 ". Click into the grid and type notes!"),
                                    juce::dontSendNotification);
             }
             else
             {
-                hintLabel.setText ("Konnte \"" + file.getFileName() + "\" nicht laden.",
+                hintLabel.setText ("\"" + file.getFileName() + loc::t ("\" konnte nicht geladen werden.",
+                                                                       "\" could not be loaded."),
                                    juce::dontSendNotification);
             }
         });
@@ -174,10 +200,10 @@ void RetroTraxEditor::saveSongClicked()
     // Vorgeschlagener Name: der aktuelle Song, sonst ein frischer Standardname.
     const auto start = currentSongFile.existsAsFile()
                            ? currentSongFile
-                           : songsFolder().getChildFile ("Mein Song.retrotrax");
+                           : songsFolder().getChildFile (loc::t ("Mein Song", "My Song") + ".retrotrax");
 
     songChooser = std::make_unique<juce::FileChooser> (
-        "Song speichern", start, "*.retrotrax");
+        loc::t ("Song speichern", "Save song"), start, "*.retrotrax");
 
     songChooser->launchAsync (juce::FileBrowserComponent::saveMode
                                   | juce::FileBrowserComponent::warnAboutOverwriting,
@@ -193,13 +219,14 @@ void RetroTraxEditor::saveSongClicked()
             if (proc.saveSong (file))
             {
                 currentSongFile = file;
-                hintLabel.setText ("Song \"" + file.getFileNameWithoutExtension()
-                                       + "\" gespeichert.",
+                hintLabel.setText (loc::t ("Song \"", "Song \"") + file.getFileNameWithoutExtension()
+                                       + loc::t ("\" gespeichert.", "\" saved."),
                                    juce::dontSendNotification);
             }
             else
             {
-                hintLabel.setText ("Song konnte nicht gespeichert werden — Schreibrechte pruefen.",
+                hintLabel.setText (loc::t ("Song konnte nicht gespeichert werden — Schreibrechte pruefen.",
+                                           "Could not save the song — check write permissions."),
                                    juce::dontSendNotification);
             }
         });
@@ -210,7 +237,7 @@ void RetroTraxEditor::loadSongClicked()
     const auto start = currentSongFile.existsAsFile() ? currentSongFile : songsFolder();
 
     songChooser = std::make_unique<juce::FileChooser> (
-        "Song oeffnen", start, "*.retrotrax");
+        loc::t ("Song oeffnen", "Open song"), start, "*.retrotrax");
 
     songChooser->launchAsync (juce::FileBrowserComponent::openMode
                                   | juce::FileBrowserComponent::canSelectFiles,
@@ -223,7 +250,9 @@ void RetroTraxEditor::loadSongClicked()
             juce::StringArray missing;
             if (! proc.loadSong (file, missing))
             {
-                hintLabel.setText ("\"" + file.getFileName() + "\" ist keine gueltige RetroTrax-Datei.",
+                hintLabel.setText ("\"" + file.getFileName()
+                                       + loc::t ("\" ist keine gueltige RetroTrax-Datei.",
+                                                 "\" is not a valid RetroTrax file."),
                                    juce::dontSendNotification);
                 return;
             }
@@ -231,10 +260,13 @@ void RetroTraxEditor::loadSongClicked()
             currentSongFile = file;
             syncUiFromState();
 
-            juce::String msg = "Song \"" + file.getFileNameWithoutExtension() + "\" geoeffnet.";
+            juce::String msg = loc::t ("Song \"", "Song \"") + file.getFileNameWithoutExtension()
+                                   + loc::t ("\" geoeffnet.", "\" opened.");
             if (! missing.isEmpty())
-                msg << "  Achtung: " << missing.size() << " Sample(s) nicht gefunden ("
-                    << missing.joinIntoString (", ") << ") — Slot bleibt leer.";
+                msg << loc::t ("  Achtung: ", "  Note: ") << missing.size()
+                    << loc::t (" Sample(s) nicht gefunden (", " sample(s) not found (")
+                    << missing.joinIntoString (", ")
+                    << loc::t (") — Slot bleibt leer.", ") — slot stays empty.");
             hintLabel.setText (msg, juce::dontSendNotification);
         });
 }
@@ -249,6 +281,27 @@ void RetroTraxEditor::syncUiFromState()
     instDot.repaint();
     updateTransportButtons();
     grid.repaint();
+}
+
+void RetroTraxEditor::applyLanguage()
+{
+    langButton.setButtonText (loc::code()); // zeigt die aktuelle Sprache (DE/EN)
+    loadButton.setButtonText     (loc::t ("SAMPLE LADEN", "LOAD SAMPLE"));
+    saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
+    loadSongButton.setButtonText (loc::t ("SONG OEFFNEN", "OPEN SONG"));
+    instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
+    octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
+    hintLabel.setText (loc::t (
+        "Noten: YXCVBNM (+ SDGHJ = Halbtoene) | Q2W3ER... = Oktave hoeher | Pfeile = Cursor | "
+        "Tab = Spur | Leertaste = Play/Stop | Entf = Loeschen | +/- = Oktave",
+        "Notes: YXCVBNM (+ SDGHJ = semitones) | Q2W3ER... = octave up | Arrows = cursor | "
+        "Tab = track | Space = play/stop | Del = clear | +/- = octave"),
+        juce::dontSendNotification);
+
+    refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen
+    diskBrowser.applyLanguage();
+    helpPanel.applyLanguage();
+    repaint();
 }
 
 void RetroTraxEditor::paint (juce::Graphics& g)
@@ -271,8 +324,9 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText ("v0.3 | Sampler - Songs - SID kommt!",
-                360, 0, juce::jmax (0, getWidth() - 360 - 310), header.getHeight(),
+    g.drawText (loc::t ("v0.3 | Sampler - Songs - SID kommt!",
+                        "v0.3 | sampler - songs - SID coming!"),
+                360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
 
@@ -280,11 +334,16 @@ void RetroTraxEditor::resized()
 {
     auto area = getLocalBounds();
 
-    // Song-Knoepfe rechts in der Titelzeile (klar getrennt vom Sample-Laden).
+    // Titelzeile rechts: ganz aussen Hilfe + Sprache, dann die Song-Knoepfe
+    // (klar getrennt vom Sample-Laden in der Steuerzeile darunter).
     auto songRow = juce::Rectangle<int> (0, 0, getWidth(), 54).reduced (12, 14);
-    loadSongButton.setBounds (songRow.removeFromRight (124));
+    helpButton.setBounds (songRow.removeFromRight (36));
+    songRow.removeFromRight (6);
+    langButton.setBounds (songRow.removeFromRight (46));
+    songRow.removeFromRight (12);
+    loadSongButton.setBounds (songRow.removeFromRight (118));
     songRow.removeFromRight (8);
-    saveSongButton.setBounds (songRow.removeFromRight (150));
+    saveSongButton.setBounds (songRow.removeFromRight (140));
 
     area.removeFromTop (54); // Titelzeile (nur paint)
 
@@ -311,4 +370,5 @@ void RetroTraxEditor::resized()
     const auto gridArea = area.reduced (8, 4);
     grid.setBounds (gridArea);
     diskBrowser.setBounds (gridArea); // liegt als Overlay genau ueber dem Grid
+    helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
 }

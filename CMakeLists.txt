@@ -28,6 +28,7 @@ target_sources(RetroTrax PRIVATE
     src/PluginEditor.cpp
     src/PatternGrid.cpp
     src/SampleDiskBrowser.cpp
+    src/HelpPanel.cpp
 )
 
 target_include_directories(RetroTrax PRIVATE src)

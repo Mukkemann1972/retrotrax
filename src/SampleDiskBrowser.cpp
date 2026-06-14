@@ -37,7 +37,6 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
     searchBox.setMultiLine (false);
     searchBox.setReturnKeyStartsNewLine (false);
     searchBox.setFont (rt::mono (13.0f));
-    searchBox.setTextToShowWhenEmpty ("Suche in allen Disks & Ordnern ...", rt::textDim);
     searchBox.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff262c38));
     searchBox.setColour (juce::TextEditor::textColourId, rt::text);
     searchBox.setColour (juce::TextEditor::outlineColourId, rt::steel.withAlpha (0.5f));
@@ -72,9 +71,25 @@ SampleDiskBrowser::SampleDiskBrowser (RetroTraxProcessor& p) : proc (p)
 
     statusLabel.setFont (rt::mono (13.0f));
 
+    applyLanguage(); // Beschriftungen + Platzhalter setzen
+
     loadFolders();
     rebuildLocations();
     diskList.selectRow (0); // -> locationSelected(0) -> rebuildEntries()
+}
+
+void SampleDiskBrowser::applyLanguage()
+{
+    searchBox.setTextToShowWhenEmpty (
+        loc::t ("Suche in allen Disks & Ordnern ...", "Search all disks & folders ..."),
+        rt::textDim);
+    addFolderButton.setButtonText    (loc::t ("+ ORDNER", "+ FOLDER"));
+    removeFolderButton.setButtonText (loc::t ("ENTF", "REMOVE"));
+    saveButton.setButtonText         (loc::t ("MERKEN", "REMEMBER"));
+    loadButton.setButtonText         (loc::t ("IN SLOT LADEN", "LOAD INTO SLOT"));
+    closeButton.setButtonText        (loc::t ("SCHLIESSEN", "CLOSE"));
+    repaint();
+    rebuildEntries(); // Statuszeile in neuer Sprache
 }
 
 SampleDiskBrowser::~SampleDiskBrowser()
@@ -268,18 +283,22 @@ void SampleDiskBrowser::rebuildEntries()
     if (q.isNotEmpty())
     {
         if (currentEntries.isEmpty())
-            setStatus ("Nichts gefunden fuer \"" + q + "\".", true);
+            setStatus (loc::t ("Nichts gefunden fuer \"", "No matches for \"") + q + "\".", true);
         else
-            setStatus (juce::String (currentEntries.size()) + " Treffer fuer \"" + q
-                       + "\" — anklicken hoert vor, dann IN SLOT LADEN.");
+            setStatus (juce::String (currentEntries.size())
+                       + loc::t (" Treffer fuer \"", " matches for \"") + q
+                       + loc::t ("\" — anklicken hoert vor, dann IN SLOT LADEN.",
+                                 "\" — click to preview, then LOAD INTO SLOT."));
     }
     else if (currentLocation >= 0 && currentLocation < locations.size())
     {
         const auto& L = locations.getReference (currentLocation);
         if (L.isLocal && currentEntries.isEmpty())
             setStatus (L.folder == collectionFolder()
-                       ? "Noch nichts gemerkt — Sample waehlen und MERKEN druecken."
-                       : "Ordner enthaelt keine Audiodateien (WAV/AIFF/FLAC/OGG/MP3).", true);
+                       ? loc::t ("Noch nichts gemerkt — Sample waehlen und MERKEN druecken.",
+                                 "Nothing remembered yet — select a sample and press REMEMBER.")
+                       : loc::t ("Ordner enthaelt keine Audiodateien (WAV/AIFF/FLAC/OGG/MP3).",
+                                 "Folder has no audio files (WAV/AIFF/FLAC/OGG/MP3)."), true);
         else
             setDefaultStatus();
     }
@@ -334,7 +353,7 @@ void SampleDiskBrowser::selectLocationForFolder (const juce::File& dir)
 void SampleDiskBrowser::addFolderClicked()
 {
     chooser = std::make_unique<juce::FileChooser> (
-        "Ordner mit eigenen Samples waehlen",
+        loc::t ("Ordner mit eigenen Samples waehlen", "Choose a folder with your own samples"),
         juce::File::getSpecialLocation (juce::File::userMusicDirectory));
 
     chooser->launchAsync (juce::FileBrowserComponent::openMode
@@ -373,7 +392,7 @@ void SampleDiskBrowser::saveToCollection()
     const int row = sampleList.getSelectedRow();
     if (row < 0 || row >= currentEntries.size())
     {
-        setStatus ("Bitte erst ein Sample auswaehlen.", true);
+        setStatus (loc::t ("Bitte erst ein Sample auswaehlen.", "Please select a sample first."), true);
         return;
     }
 
@@ -383,7 +402,8 @@ void SampleDiskBrowser::saveToCollection()
     // Schon in der Sammlung? Dann nichts zu tun.
     if (L.isLocal && L.folder == collectionFolder())
     {
-        setStatus ("\"" + e.name + "\" ist schon in deiner Sammlung.");
+        setStatus ("\"" + e.name + loc::t ("\" ist schon in deiner Sammlung.",
+                                            "\" is already in your collection."));
         return;
     }
 
@@ -397,7 +417,8 @@ void SampleDiskBrowser::saveToCollection()
     if (! source.existsAsFile())
     {
         // ST-Sample noch nicht geladen: erst anklicken (hoert vor & laedt herunter).
-        setStatus ("Sample erst anklicken (laedt es herunter), dann MERKEN.", true);
+        setStatus (loc::t ("Sample erst anklicken (laedt es herunter), dann MERKEN.",
+                           "Click the sample first (downloads it), then REMEMBER."), true);
         return;
     }
 
@@ -413,14 +434,16 @@ void SampleDiskBrowser::saveToCollection()
 
     if (source.copyFileTo (target))
     {
-        setStatus ("\"" + e.name + "\" in deine Sammlung gemerkt.");
+        setStatus ("\"" + e.name + loc::t ("\" in deine Sammlung gemerkt.",
+                                           "\" remembered into your collection."));
         // Falls die Sammlung gerade offen ist, frisch anzeigen.
         if (! searching() && locations.getReference (currentLocation).folder == coll)
             rebuildEntries();
     }
     else
     {
-        setStatus ("Konnte \"" + e.name + "\" nicht in die Sammlung kopieren.", true);
+        setStatus ("\"" + e.name + loc::t ("\" konnte nicht in die Sammlung kopiert werden.",
+                                           "\" could not be copied into the collection."), true);
     }
 }
 
@@ -471,7 +494,7 @@ void SampleDiskBrowser::previewSelected (int row)
     // Noch nicht im Cache: im Hintergrund holen, dann anspielen.
     // Erst in eine .part-Datei — abgebrochene Downloads landen nie im Cache.
     file.getParentDirectory().createDirectory();
-    setStatus ("Hole " + e.name + " zum Vorhoeren ...");
+    setStatus (loc::t ("Hole ", "Fetching ") + e.name + loc::t (" zum Vorhoeren ...", " to preview ..."));
     previewTask = urlFor (L.diskIndex, e.name)
                       .downloadToFile (juce::File (file.getFullPathName() + ".part"),
                                        juce::URL::DownloadTaskOptions().withListener (this));
@@ -487,7 +510,7 @@ void SampleDiskBrowser::loadSelected()
     const int row = sampleList.getSelectedRow();
     if (row < 0 || row >= currentEntries.size())
     {
-        setStatus ("Bitte erst ein Sample auswaehlen.", true);
+        setStatus (loc::t ("Bitte erst ein Sample auswaehlen.", "Please select a sample first."), true);
         return;
     }
 
@@ -514,7 +537,7 @@ void SampleDiskBrowser::loadSelected()
     }
 
     target.getParentDirectory().createDirectory();
-    setStatus ("Lade " + pendingSample + " von archive.org ...");
+    setStatus (loc::t ("Lade ", "Loading ") + pendingSample + loc::t (" von archive.org ...", " from archive.org ..."));
     loadButton.setEnabled (false);
 
     task = urlFor (pendingDisk, pendingSample)
@@ -524,7 +547,8 @@ void SampleDiskBrowser::loadSelected()
     if (task == nullptr)
     {
         loadButton.setEnabled (true);
-        setStatus ("Download konnte nicht gestartet werden (Internet?).", true);
+        setStatus (loc::t ("Download konnte nicht gestartet werden (Internet?).",
+                           "Could not start the download (internet?)."), true);
     }
 }
 
@@ -559,7 +583,8 @@ void SampleDiskBrowser::finished (juce::URL::DownloadTask* t, bool success)
                 }
                 else
                 {
-                    sp->setStatus ("Vorhoeren fehlgeschlagen — Internetverbindung pruefen.", true);
+                    sp->setStatus (loc::t ("Vorhoeren fehlgeschlagen — Internetverbindung pruefen.",
+                                           "Preview failed — check your internet connection."), true);
                 }
                 return;
             }
@@ -576,21 +601,25 @@ void SampleDiskBrowser::finishLoad (const juce::File& file, bool success)
     {
         if (! file.existsAsFile() || file.getSize() < 64)
             file.deleteFile(); // halbe Downloads nicht im Cache lassen
-        setStatus ("Laden fehlgeschlagen — Datei pruefen / Internetverbindung pruefen.", true);
+        setStatus (loc::t ("Laden fehlgeschlagen — Datei / Internetverbindung pruefen.",
+                           "Loading failed — check the file / your internet connection."), true);
         return;
     }
 
     const int slot = proc.currentInstrument.load();
     if (! proc.loadInstrument (slot, file))
     {
-        setStatus ("Konnte \"" + pendingSample + "\" nicht laden.", true);
+        setStatus ("\"" + pendingSample + loc::t ("\" konnte nicht geladen werden.",
+                                                  "\" could not be loaded."), true);
         return;
     }
 
     proc.engine.audition (60, slot); // gleich anspielen (C-5 = Originaltonhoehe)
     sampleList.repaint();            // Cache-Sternchen aktualisieren
     setStatus (pendingLocationName + "/" + pendingSample
-               + " in Slot " + juce::String::formatted ("%02d", slot + 1) + " geladen.");
+               + loc::t (" in Slot ", " loaded into slot ")
+               + juce::String::formatted ("%02d", slot + 1)
+               + loc::t (" geladen.", "."));
 
     if (onSampleLoaded)
         onSampleLoaded (pendingSample, slot);
@@ -604,8 +633,11 @@ void SampleDiskBrowser::setStatus (const juce::String& text, bool warn)
 
 void SampleDiskBrowser::setDefaultStatus()
 {
-    setStatus ("Anklicken hoert vor — IN SLOT LADEN (oder Doppelklick) | "
-               "MERKEN sichert in deine Sammlung | ESC schliesst.");
+    setStatus (loc::t (
+        "Anklicken hoert vor — IN SLOT LADEN (oder Doppelklick) | "
+        "MERKEN sichert in deine Sammlung | ESC schliesst.",
+        "Click to preview — LOAD INTO SLOT (or double-click) | "
+        "REMEMBER saves to your collection | ESC closes."));
 }
 
 bool SampleDiskBrowser::keyPressed (const juce::KeyPress& key)
@@ -628,11 +660,13 @@ void SampleDiskBrowser::paint (juce::Graphics& g)
 
     g.setFont (rt::mono (15.0f, true));
     g.setColour (rt::cursor);
-    g.drawText ("SAMPLE-BROWSER", 12, 6, getWidth() - 24, 20, juce::Justification::centredLeft);
+    g.drawText (loc::t ("SAMPLE-BROWSER", "SAMPLE BROWSER"), 12, 6, getWidth() - 24, 20,
+                juce::Justification::centredLeft);
 
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::textDim);
-    g.drawText ("ST-XX Amiga-Sounds (Public Domain) + eigene Ordner — * = schon geladen",
+    g.drawText (loc::t ("ST-XX Amiga-Sounds (Public Domain) + eigene Ordner — * = schon geladen",
+                        "ST-XX Amiga sounds (public domain) + your own folders — * = already downloaded"),
                 12, 26, getWidth() - 24, 16, juce::Justification::centredLeft);
 }
 

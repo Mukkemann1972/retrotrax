@@ -2,6 +2,7 @@
 
 #include "PluginProcessor.h"
 #include "RetroLookAndFeel.h"
+#include "Localisation.h"
 
 // Browser fuer Samples aus zwei Quellen:
 //  1. die klassischen Amiga-Sample-Disketten ST-01..ST-XX. Der Katalog
@@ -25,6 +26,9 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     bool keyPressed (const juce::KeyPress&) override;
+
+    // Nach einem Sprachwechsel aufrufen: Beschriftungen neu setzen.
+    void applyLanguage();
 
 private:
     // Eine Quelle in der linken Liste: entweder eine ST-Diskette oder ein
