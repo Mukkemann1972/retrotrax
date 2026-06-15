@@ -31,7 +31,10 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
         s.setRange (lo, hi, interval);
         s.setTextValueSuffix (suffix);
         s.setNumDecimalPlacesToDisplay (decimals);
-        s.onValueChange = [this] { applyToProc(); };
+        // Werte wirken live (ohne Ton), das fertige Ergebnis wird beim Loslassen
+        // einmal angespielt - so hoert man die Huellkurve sauber statt zu stottern.
+        s.onValueChange = [this] { writeParams(); };
+        s.onDragEnd     = [this] { previewNote(); };
         addAndMakeVisible (s);
 
         lab.setFont (rt::mono (12.0f, true));
@@ -48,6 +51,9 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (hintLabel);
+
+    testButton.onClick = [this] { previewNote(); };
+    addAndMakeVisible (testButton);
 
     closeButton.onClick = [this] { if (onClose) onClose(); };
     addAndMakeVisible (closeButton);
@@ -71,9 +77,12 @@ void SidPanel::applyLanguage()
     releaseLabel.setText (loc::t ("AUSKLANG (R)", "RELEASE (R)"), juce::dontSendNotification);
 
     hintLabel.setText (loc::t (
-        "Tippe Noten ins Grid - dieser SID klingt sofort.  Taste 1 = Note aus (laesst ausklingen).",
-        "Type notes into the grid - this SID sounds right away.  Key 1 = note off (lets it fade)."),
+        "Regler loslassen oder TEST = anspielen (mit Ausklang).  Im Grid: Taste 1 = Note aus.",
+        "Release a slider or press TEST to play (with fade-out).  In the grid: key 1 = note off."),
         juce::dontSendNotification);
+    testButton.setButtonText (loc::t ("TEST", "TEST"));
+    testButton.setTooltip (loc::t ("Aktuellen SID-Klang anspielen - anschlagen, halten, loslassen",
+                                   "Play the current SID sound - attack, hold, release"));
     closeButton.setButtonText (loc::t ("SCHLIESSEN", "CLOSE"));
 }
 
@@ -103,7 +112,7 @@ void SidPanel::selectWave (Wave w)
     proc.editSid (slot, [w] (TrackerEngine::Instrument& i) { i.wave = w; });
     updateWaveButtons();
     if (onChanged) onChanged();
-    proc.engine.audition (60, slot); // C-5 zum Vorhoeren
+    previewNote(); // neue Wellenform gleich hoeren
 }
 
 void SidPanel::updateWaveButtons()
@@ -119,7 +128,7 @@ void SidPanel::updateWaveButtons()
     pwSlider.setEnabled (w == Wave::Pulse);
 }
 
-void SidPanel::applyToProc()
+void SidPanel::writeParams()
 {
     if (loading)
         return;
@@ -139,7 +148,24 @@ void SidPanel::applyToProc()
         i.release    = rel;
     });
     if (onChanged) onChanged();
-    proc.engine.audition (60, slot);
+}
+
+void SidPanel::previewNote()
+{
+    if (! proc.isSid (slot))
+        return;
+
+    // Halte-Zeit so waehlen, dass man Anstieg + Abfall sicher durchhoert,
+    // bevor automatisch losgelassen wird - dann klingt der Ausklang (R) aus.
+    double sr = proc.getSampleRate();
+    if (sr <= 0.0)
+        sr = 44100.0;
+    const double a    = attackSlider.getValue();
+    const double d    = decaySlider.getValue();
+    const double hold = a + d + 0.45;          // Sekunden bis zum Note-Aus
+    const int    gate = (int) (hold * sr);
+
+    proc.engine.audition (60, slot, gate); // C-5 anschlagen, halten, loslassen
 }
 
 bool SidPanel::keyPressed (const juce::KeyPress& key)
@@ -196,5 +222,8 @@ void SidPanel::resized()
 
     auto bottom = getLocalBounds().reduced (14).removeFromBottom (30);
     closeButton.setBounds (bottom.removeFromRight (120).reduced (0, 2));
+    bottom.removeFromRight (8);
+    testButton.setBounds (bottom.removeFromRight (90).reduced (0, 2));
+    bottom.removeFromRight (12);
     hintLabel.setBounds (bottom);
 }

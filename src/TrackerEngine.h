@@ -110,10 +110,13 @@ public:
     }
 
     // Sofort anspielen (Vorhoeren beim Eintippen / MIDI-Eingang), eigene Extra-Stimme.
-    void audition (int note, int instrumentIdx)
+    // gateSamples > 0: Note nach dieser Dauer automatisch loslassen (Note-Aus) -
+    // so demonstriert das SID-Fenster die ganze Huellkurve inkl. Ausklang.
+    void audition (int note, int instrumentIdx, int gateSamples = -1)
     {
         const juce::ScopedLock sl (lock);
         triggerVoice (kTracks, note, instrumentIdx, -1);
+        voices[kTracks].gate = gateSamples;
     }
 
     // Vorschau ohne Instrument-Slot (ST-Disks-Browser): das Sample gehoert
@@ -221,6 +224,7 @@ private:
         float  vol   = 1.0f; // 0..1 aktuelle Lautstaerke (von Cxx/Axy)
         int    fadeIn = 0;   // verbleibende Samples der Anstiegsblende
         int    fadeOut = 0;  // Note-Aus bei Sample-Stimmen: sanft ausblenden
+        int    gate = -1;    // > 0: nach so vielen Samples automatisch Note-Aus (Vorhoeren)
         bool   active = false;
         // --- SID-Synth-Status ---
         int          envStage = 0;          // 0 leer, 1 Attack, 2 Decay, 3 Sustain, 4 Release
@@ -355,6 +359,7 @@ private:
         v.vol         = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
         panGains (voiceIdx, v.vol, v.gainL, v.gainR);
         v.fadeOut = 0;
+        v.gate    = -1; // nur das Vorhoeren setzt ein automatisches Note-Aus
         if (synth)
         {
             // Huellkurve startet im Attack; sie blendet selbst ein -> kein Klick.
@@ -473,6 +478,18 @@ private:
         {
             if (! v.active || v.inst == nullptr)
                 continue;
+
+            // Vorhoer-Note nach Ablauf der Gate-Zeit automatisch loslassen.
+            if (v.gate > 0)
+            {
+                v.gate -= num;
+                if (v.gate <= 0)
+                {
+                    v.gate = -1;
+                    releaseVoice (v);
+                }
+            }
+
             if (v.inst->kind == Instrument::Kind::Synth)
                 renderSynth (buffer, v, offset, num, outCh);
             else

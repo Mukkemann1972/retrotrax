@@ -28,7 +28,8 @@ private:
     using Wave = TrackerEngine::Instrument::Wave;
 
     void selectWave (Wave w);
-    void applyToProc(); // Reglerwerte ins Instrument schreiben + kurz anspielen
+    void writeParams();  // Reglerwerte ins Instrument schreiben (live, ohne Ton)
+    void previewNote();  // ein C-5 mit automatischem Note-Aus -> ganze Huellkurve hoerbar
     void updateWaveButtons();
 
     RetroTraxProcessor& proc;
@@ -46,6 +47,7 @@ private:
     juce::Slider pwSlider, attackSlider, decaySlider, sustainSlider, releaseSlider;
 
     juce::Label      hintLabel;
+    juce::TextButton testButton  { "TEST" }; // aktuellen Klang anspielen (mit Ausklang)
     juce::TextButton closeButton { "SCHLIESSEN" };
 
     bool loading = false; // true, waehrend refresh() die Regler setzt (keine Callbacks)
