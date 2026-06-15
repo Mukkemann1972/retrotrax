@@ -25,12 +25,15 @@ public:
     std::function<void()> onChanged; // Editor zieht den Instrument-Namen nach
 
 private:
-    using Wave = TrackerEngine::Instrument::Wave;
+    using Wave   = TrackerEngine::Instrument::Wave;
+    using Filter = TrackerEngine::Instrument::Filter;
 
     void selectWave (Wave w);
+    void selectFilter (Filter f);
     void writeParams();  // Reglerwerte ins Instrument schreiben (live, ohne Ton)
     void previewNote();  // ein C-5 mit automatischem Note-Aus -> ganze Huellkurve hoerbar
     void updateWaveButtons();
+    void updateFilterButtons();
 
     RetroTraxProcessor& proc;
     int slot = 0; // Slot, den dieses Panel gerade bearbeitet
@@ -45,6 +48,14 @@ private:
 
     juce::Label  pwLabel,  attackLabel, decayLabel, sustainLabel, releaseLabel;
     juce::Slider pwSlider, attackSlider, decaySlider, sustainSlider, releaseSlider;
+
+    juce::Label  filterLabel;
+    juce::TextButton filtOff  { "AUS" };
+    juce::TextButton filtLow  { "TIEFPASS" };
+    juce::TextButton filtHigh { "HOCHPASS" };
+    juce::TextButton filtBand { "BANDPASS" };
+    juce::Label  cutoffLabel, resoLabel;
+    juce::Slider cutoffSlider, resoSlider;
 
     juce::Label      hintLabel;
     juce::TextButton testButton  { "TEST" }; // aktuellen Klang anspielen (mit Ausklang)

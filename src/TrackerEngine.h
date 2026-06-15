@@ -34,6 +34,7 @@ public:
         // denselben 16 Slots, frei mischbar in einem Song.
         enum class Kind { Sample, Synth };
         enum class Wave { Triangle, Saw, Pulse, Noise }; // klassische C64-Wellenformen
+        enum class Filter { Off, LowPass, HighPass, BandPass }; // SID-Multimode-Filter
 
         Kind kind = Kind::Sample;
 
@@ -50,6 +51,10 @@ public:
         float decay       = 0.18f;
         float sustain     = 0.65f;
         float release      = 0.25f;
+
+        Filter filter     = Filter::Off; // Filtertyp (Off = ungefiltert)
+        float  cutoff     = 0.7f;        // Grenzfrequenz 0..1 (exponentiell auf Hz abgebildet)
+        float  resonance  = 0.12f;       // Resonanz/Betonung an der Grenzfrequenz 0..1
     };
 
     void prepare (double newSampleRate)
@@ -231,6 +236,7 @@ private:
         float        envLevel = 0.0f;       // aktueller Huellkurven-Pegel 0..1
         float        noiseVal = 0.0f;       // gehaltener Rauschwert (-1..1)
         juce::uint32 noiseReg = 0x7FFFF8u;  // 23-Bit-Schieberegister wie im echten SID
+        float        fic1 = 0.0f, fic2 = 0.0f; // Filter-Speicher (State-Variable-Filter)
         // --- Effekt-Status der laufenden Zeile ---
         int    effect = -1;
         int    effectParam = 0;
@@ -366,6 +372,8 @@ private:
             v.envStage = 1;
             v.envLevel = 0.0f;
             v.noiseReg = 0x7FFFF8u;
+            v.fic1     = 0.0f;
+            v.fic2     = 0.0f;
             v.fadeIn   = 0;
         }
         else
@@ -566,6 +574,21 @@ private:
         const float pw     = juce::jlimit (0.02f, 0.98f, inst->pulseWidth);
         double ph = v.pos; // Phase 0..1
 
+        // Filter-Koeffizienten einmal pro Block (TPT-State-Variable-Filter).
+        const auto ftype = inst->filter;
+        float fg = 0.0f, fk = 0.0f, fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
+        if (ftype != Instrument::Filter::Off)
+        {
+            // Cutoff exponentiell: 0 -> ~30 Hz, 1 -> ~11 kHz (gut musikalisch).
+            float fc = 30.0f * std::pow (380.0f, juce::jlimit (0.0f, 1.0f, inst->cutoff));
+            fc = juce::jlimit (20.0f, (float) (sampleRate * 0.45), fc);
+            fg  = std::tan (juce::MathConstants<float>::pi * fc / sr);
+            fk  = 2.0f - 1.9f * juce::jlimit (0.0f, 1.0f, inst->resonance); // 2 (zahm) .. 0.1 (klingelt)
+            fa1 = 1.0f / (1.0f + fg * (fg + fk));
+            fa2 = fg * fa1;
+            fa3 = fg * fa2;
+        }
+
         for (int i = 0; i < num; ++i)
         {
             // Huellkurve einen Schritt weiterfahren.
@@ -586,6 +609,20 @@ private:
                 case Instrument::Wave::Noise:    osc = v.noiseVal; break;
                 case Instrument::Wave::Pulse:
                 default:                         osc = ph < pw ? 1.0f : -1.0f; break;
+            }
+
+            // Filter (TPT-SVF): erst die Wellenform filtern, dann die Huellkurve
+            // formt die Lautstaerke - klassische Synth-Reihenfolge OSC -> Filter -> Pegel.
+            if (ftype != Instrument::Filter::Off)
+            {
+                const float n3 = osc   - v.fic2;
+                const float n1 = fa1 * v.fic1 + fa2 * n3;
+                const float n2 = v.fic2 + fa2 * v.fic1 + fa3 * n3;
+                v.fic1 = 2.0f * n1 - v.fic1;
+                v.fic2 = 2.0f * n2 - v.fic2;
+                osc = ftype == Instrument::Filter::LowPass  ? n2
+                    : ftype == Instrument::Filter::HighPass ? (osc - fk * n1 - n2)
+                                                            : n1; // BandPass
             }
 
             const float s = osc * v.envLevel;

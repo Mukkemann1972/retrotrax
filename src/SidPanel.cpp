@@ -42,10 +42,22 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
         addAndMakeVisible (lab);
     };
     setupSlider (pwSlider,      pwLabel,      5.0,  95.0, 1.0,  " %", 0);
+    setupSlider (cutoffSlider,  cutoffLabel,  0.0, 100.0, 1.0,  " %", 0);
+    setupSlider (resoSlider,    resoLabel,    0.0, 100.0, 1.0,  " %", 0);
     setupSlider (attackSlider,  attackLabel,  0.0,  1.50, 0.005, " s", 3);
     setupSlider (decaySlider,   decayLabel,   0.0,  2.00, 0.005, " s", 3);
     setupSlider (sustainSlider, sustainLabel, 0.0, 100.0, 1.0,  " %", 0);
     setupSlider (releaseSlider, releaseLabel, 0.0,  2.00, 0.005, " s", 3);
+
+    filterLabel.setFont (rt::mono (12.0f, true));
+    filterLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (filterLabel);
+    for (auto* b : { &filtOff, &filtLow, &filtHigh, &filtBand })
+        addAndMakeVisible (*b);
+    filtOff.onClick  = [this] { selectFilter (Filter::Off); };
+    filtLow.onClick  = [this] { selectFilter (Filter::LowPass); };
+    filtHigh.onClick = [this] { selectFilter (Filter::HighPass); };
+    filtBand.onClick = [this] { selectFilter (Filter::BandPass); };
 
     hintLabel.setFont (rt::mono (12.0f));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -69,6 +81,14 @@ void SidPanel::applyLanguage()
     waveSaw.setButtonText   (loc::t ("SAEGE", "SAW"));
     wavePulse.setButtonText (loc::t ("PULS", "PULSE"));
     waveNoise.setButtonText (loc::t ("RAUSCHEN", "NOISE"));
+
+    filterLabel.setText (loc::t ("FILTER", "FILTER"), juce::dontSendNotification);
+    filtOff.setButtonText  (loc::t ("AUS", "OFF"));
+    filtLow.setButtonText  (loc::t ("TIEFPASS", "LOW-PASS"));
+    filtHigh.setButtonText (loc::t ("HOCHPASS", "HIGH-PASS"));
+    filtBand.setButtonText (loc::t ("BANDPASS", "BAND-PASS"));
+    cutoffLabel.setText  (loc::t ("GRENZE (CUTOFF)", "CUTOFF"), juce::dontSendNotification);
+    resoLabel.setText    (loc::t ("RESONANZ", "RESONANCE"), juce::dontSendNotification);
 
     pwLabel.setText      (loc::t ("PULSWEITE", "PULSE WIDTH"), juce::dontSendNotification);
     attackLabel.setText  (loc::t ("ANSTIEG (A)", "ATTACK (A)"), juce::dontSendNotification);
@@ -98,6 +118,8 @@ void SidPanel::refresh()
 
     loading = true; // Regler setzen, ohne dass die Callbacks zurueckschreiben
     pwSlider.setValue      (s.pulseWidth * 100.0, juce::dontSendNotification);
+    cutoffSlider.setValue  (s.cutoff * 100.0,  juce::dontSendNotification);
+    resoSlider.setValue    (s.resonance * 100.0, juce::dontSendNotification);
     attackSlider.setValue  (s.attack,  juce::dontSendNotification);
     decaySlider.setValue   (s.decay,   juce::dontSendNotification);
     sustainSlider.setValue (s.sustain * 100.0, juce::dontSendNotification);
@@ -105,6 +127,7 @@ void SidPanel::refresh()
     loading = false;
 
     updateWaveButtons();
+    updateFilterButtons();
 }
 
 void SidPanel::selectWave (Wave w)
@@ -128,12 +151,37 @@ void SidPanel::updateWaveButtons()
     pwSlider.setEnabled (w == Wave::Pulse);
 }
 
+void SidPanel::selectFilter (Filter f)
+{
+    proc.editSid (slot, [f] (TrackerEngine::Instrument& i) { i.filter = f; });
+    updateFilterButtons();
+    if (onChanged) onChanged();
+    previewNote();
+}
+
+void SidPanel::updateFilterButtons()
+{
+    TrackerEngine::Instrument s;
+    const Filter f = proc.getSid (slot, s) ? s.filter : Filter::Off;
+    filtOff.setToggleState  (f == Filter::Off,      juce::dontSendNotification);
+    filtLow.setToggleState  (f == Filter::LowPass,  juce::dontSendNotification);
+    filtHigh.setToggleState (f == Filter::HighPass, juce::dontSendNotification);
+    filtBand.setToggleState (f == Filter::BandPass, juce::dontSendNotification);
+
+    // Cutoff/Resonanz nur sinnvoll, wenn ein Filter aktiv ist.
+    const bool on = (f != Filter::Off);
+    cutoffSlider.setEnabled (on);
+    resoSlider.setEnabled (on);
+}
+
 void SidPanel::writeParams()
 {
     if (loading)
         return;
 
     const float pw  = (float) (pwSlider.getValue()      / 100.0);
+    const float cut = (float) (cutoffSlider.getValue()  / 100.0);
+    const float res = (float) (resoSlider.getValue()    / 100.0);
     const float a   = (float)  attackSlider.getValue();
     const float d   = (float)  decaySlider.getValue();
     const float sus = (float) (sustainSlider.getValue() / 100.0);
@@ -142,6 +190,8 @@ void SidPanel::writeParams()
     proc.editSid (slot, [=] (TrackerEngine::Instrument& i)
     {
         i.pulseWidth = pw;
+        i.cutoff     = cut;
+        i.resonance  = res;
         i.attack     = a;
         i.decay      = d;
         i.sustain    = sus;
@@ -194,27 +244,36 @@ void SidPanel::resized()
     slotLabel.setBounds  (top.removeFromLeft (120));
     area.removeFromTop (10);
 
-    // Wellenform-Reihe
-    waveLabel.setBounds (area.removeFromTop (18));
-    auto waveRow = area.removeFromTop (34);
-    const int bw = juce::jmin (130, (waveRow.getWidth() - 24) / 4);
-    for (auto* b : { &waveTri, &waveSaw, &wavePulse, &waveNoise })
+    // Eine Reihe mit vier gleich breiten Knoepfen (Wellenform bzw. Filtertyp).
+    auto buttonRow = [&area] (juce::Label& lab, std::initializer_list<juce::TextButton*> btns)
     {
-        b->setBounds (waveRow.removeFromLeft (bw));
-        waveRow.removeFromLeft (8);
-    }
-    area.removeFromTop (16);
+        lab.setBounds (area.removeFromTop (16));
+        auto row = area.removeFromTop (30);
+        const int bw = juce::jmin (130, (row.getWidth() - 24) / 4);
+        for (auto* b : btns)
+        {
+            b->setBounds (row.removeFromLeft (bw));
+            row.removeFromLeft (8);
+        }
+        area.removeFromTop (10);
+    };
 
     // Ein Regler je Zeile: links Beschriftung, rechts der Balken.
     auto sliderRow = [&area] (juce::Label& lab, juce::Slider& s)
     {
-        auto row = area.removeFromTop (30);
+        auto row = area.removeFromTop (26);
         lab.setBounds (row.removeFromLeft (150));
         row.removeFromLeft (6);
         s.setBounds (row.removeFromLeft (juce::jmin (360, row.getWidth())));
-        area.removeFromTop (8);
+        area.removeFromTop (6);
     };
+
+    buttonRow (waveLabel, { &waveTri, &waveSaw, &wavePulse, &waveNoise });
     sliderRow (pwLabel,      pwSlider);
+    buttonRow (filterLabel, { &filtOff, &filtLow, &filtHigh, &filtBand });
+    sliderRow (cutoffLabel,  cutoffSlider);
+    sliderRow (resoLabel,    resoSlider);
+    area.removeFromTop (6);
     sliderRow (attackLabel,  attackSlider);
     sliderRow (decayLabel,   decaySlider);
     sliderRow (sustainLabel, sustainSlider);
