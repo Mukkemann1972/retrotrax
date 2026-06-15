@@ -662,32 +662,46 @@ void PatternGrid::paint (juce::Graphics& g)
             // Cursor-Markierung (nur sichtbar, wenn die Cursor-Zeile gerade angezeigt wird)
             if (row == cursorRow && t == cursorTrack && ! playing)
             {
-                g.setColour (rt::cursor);
                 const int cx = cursorCol == 0 ? noteX - 3 : (cursorCol == 1 ? instX - 3
                              : cursorCol == 2 ? volX  - 3 : fxX - 3);
                 const int cw = cursorCol == 0 ? noteW + 6 : (cursorCol == 1 ? instW + 6
                              : cursorCol == 2 ? volW  + 6 : fxW + 6);
-                g.drawRoundedRectangle ((float) cx, (float) y + 1.0f, (float) cw, (float) kRowH - 2.0f, 3.0f, 1.6f);
+                const juce::Rectangle<float> cr ((float) cx, (float) y + 1.0f,
+                                                 (float) cw, (float) kRowH - 2.0f);
+                // Deutliche Fuellung + kraeftiger Rahmen: man sieht sofort, in
+                // welcher der vier Spalten man gerade tippt.
+                g.setColour (rt::cursor.withAlpha (0.30f));
+                g.fillRoundedRectangle (cr, 3.0f);
+                g.setColour (rt::cursor);
+                g.drawRoundedRectangle (cr, 3.0f, 2.2f);
             }
 
-            const bool empty = cell.note < 0;
-            // Jede Note leuchtet in der Farbe ihres Instruments
-            g.setColour (empty ? rt::textDim.withAlpha (0.55f)
-                               : rt::instColour (cell.instrument));
+            // Leere Felder zeigen ein zartes "..", gesetzte Werte stehen fett und
+            // in kraeftiger Farbe da - so sieht man sofort, was eingetragen ist.
+            const juce::Colour emptyCol = rt::textDim.withAlpha (0.45f);
+
+            const bool noteEmpty = cell.note < 0;
+            g.setFont (rt::mono (15.0f, ! noteEmpty));
+            g.setColour (noteEmpty ? emptyCol : rt::instColour (cell.instrument));
             g.drawText (noteName (cell.note), noteX, y, noteW, kRowH, juce::Justification::centredLeft);
 
-            g.setColour (cell.instrument < 0 ? rt::textDim.withAlpha (0.55f)
-                                             : rt::instColour (cell.instrument));
-            g.drawText (cell.instrument < 0 ? juce::String ("00")
-                                            : juce::String::formatted ("%02d", cell.instrument + 1),
+            const bool instEmpty = cell.instrument < 0;
+            g.setFont (rt::mono (15.0f, ! instEmpty));
+            g.setColour (instEmpty ? emptyCol : rt::instColour (cell.instrument));
+            g.drawText (instEmpty ? juce::String ("..")
+                                  : juce::String::formatted ("%02d", cell.instrument + 1),
                         instX, y, instW, kRowH, juce::Justification::centredLeft);
 
-            g.setColour (cell.volume < 0 ? rt::textDim.withAlpha (0.55f) : rt::volCol);
-            g.drawText (cell.volume < 0 ? juce::String ("00")
-                                        : juce::String::formatted ("%02d", cell.volume),
+            const bool volEmpty = cell.volume < 0;
+            g.setFont (rt::mono (15.0f, ! volEmpty));
+            g.setColour (volEmpty ? emptyCol : rt::volCol.brighter (0.2f));
+            g.drawText (volEmpty ? juce::String ("..")
+                                 : juce::String::formatted ("%02d", cell.volume),
                         volX, y, volW, kRowH, juce::Justification::centredLeft);
 
-            g.setColour (cell.effect < 0 ? rt::textDim.withAlpha (0.55f) : rt::fxCol);
+            const bool fxEmpty = cell.effect < 0;
+            g.setFont (rt::mono (15.0f, ! fxEmpty));
+            g.setColour (fxEmpty ? emptyCol : rt::fxCol);
             g.drawText (effectText (cell.effect, cell.effectParam),
                         fxX, y, fxW, kRowH, juce::Justification::centredLeft);
         }
