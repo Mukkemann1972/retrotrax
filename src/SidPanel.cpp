@@ -64,6 +64,17 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
         addAndMakeVisible (*b);
     }
 
+    // Eigene SID-Sounds: Auswahlliste + MERKEN/VERGESSEN.
+    mineLabel.setFont (rt::mono (12.0f, true));
+    mineLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (mineLabel);
+    addAndMakeVisible (mineBox);
+    mineBox.onChange = [this] { loadMine(); };           // Auswahl laedt den Klang
+    addAndMakeVisible (saveMineButton);
+    addAndMakeVisible (deleteMineButton);
+    saveMineButton.onClick   = [this] { saveMine(); };
+    deleteMineButton.onClick = [this] { deleteMine(); };
+
     waveLabel.setFont (rt::mono (12.0f, true));
     waveLabel.setColour (juce::Label::textColourId, rt::textDim);
     addAndMakeVisible (waveLabel);
@@ -154,6 +165,14 @@ void SidPanel::applyLanguage()
                                               "Load a ready-made starting sound - then tweak freely"));
     }
 
+    mineLabel.setText (loc::t ("MEINE SID-SOUNDS", "MY SID SOUNDS"), juce::dontSendNotification);
+    saveMineButton.setButtonText   (loc::t ("MERKEN", "REMEMBER"));
+    deleteMineButton.setButtonText (loc::t ("VERGESSEN", "FORGET"));
+    saveMineButton.setTooltip (loc::t ("Diesen Klang unter eigenem Namen speichern",
+                                       "Save this sound under your own name"));
+    deleteMineButton.setTooltip (loc::t ("Den gewaehlten eigenen Klang loeschen (Papierkorb)",
+                                         "Delete the selected sound (to trash)"));
+
     waveLabel.setText  (loc::t ("WELLENFORM", "WAVEFORM"), juce::dontSendNotification);
     waveTri.setButtonText   (loc::t ("DREIECK", "TRIANGLE"));
     waveSaw.setButtonText   (loc::t ("SAEGE", "SAW"));
@@ -222,6 +241,7 @@ void SidPanel::refresh()
     updateFilterButtons();
     updateModButtons();
     updateEngineButtons();
+    refreshMineList();
 }
 
 void SidPanel::applyPreset (int index)
@@ -244,6 +264,166 @@ void SidPanel::applyPreset (int index)
     refresh();              // alle Regler und Knoepfe auf die Preset-Werte ziehen
     if (onChanged) onChanged();
     previewNote();          // Preset gleich anspielen
+}
+
+// --- Eigene SID-Sounds ------------------------------------------------------
+// Gespeichert als kleine .sidpreset-XML-Dateien (gleiche Attribute wie im Song),
+// eine Datei je Klang, im App-Datenordner neben "Meine Sounds" beim Sampler.
+juce::File SidPanel::mySidDir() const
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+             .getChildFile ("MukkemannRetroTrax").getChildFile ("SID-Presets");
+}
+
+void SidPanel::refreshMineList()
+{
+    const auto chosen = mineBox.getText(); // nach dem Neuaufbau wieder waehlen
+    mineBox.clear (juce::dontSendNotification);
+
+    auto files = mySidDir().findChildFiles (juce::File::findFiles, false, "*.sidpreset");
+    files.sort();
+    int id = 1;
+    for (const auto& f : files)
+        mineBox.addItem (f.getFileNameWithoutExtension(), id++);
+
+    mineBox.setTextWhenNothingSelected (files.isEmpty()
+        ? loc::t ("(noch nichts gemerkt)", "(nothing saved yet)")
+        : loc::t ("eigenen Sound waehlen ...", "pick a saved sound ..."));
+
+    if (chosen.isNotEmpty())
+        for (int i = 0; i < mineBox.getNumItems(); ++i)
+            if (mineBox.getItemText (i) == chosen)
+                { mineBox.setSelectedItemIndex (i, juce::dontSendNotification); break; }
+
+    deleteMineButton.setEnabled (! files.isEmpty());
+}
+
+void SidPanel::saveMine()
+{
+    if (! proc.isSid (slot))
+        return;
+
+    nameDialog = std::make_unique<juce::AlertWindow> (
+        loc::t ("SID-Sound merken", "Remember SID sound"),
+        loc::t ("Name fuer diesen Klang:", "Name for this sound:"),
+        juce::MessageBoxIconType::NoIcon);
+    nameDialog->addTextEditor ("name", juce::String());
+    nameDialog->addButton (loc::t ("SPEICHERN", "SAVE"), 1, juce::KeyPress (juce::KeyPress::returnKey));
+    nameDialog->addButton (loc::t ("ABBRECHEN", "CANCEL"), 0, juce::KeyPress (juce::KeyPress::escapeKey));
+    nameDialog->enterModalState (true, juce::ModalCallbackFunction::create (
+        [this] (int result)
+        {
+            if (result == 1 && nameDialog != nullptr)
+            {
+                const auto name = nameDialog->getTextEditorContents ("name").trim();
+                if (name.isNotEmpty())
+                    writeMine (name);
+            }
+            nameDialog.reset();
+        }), false);
+}
+
+void SidPanel::writeMine (const juce::String& name)
+{
+    TrackerEngine::Instrument s;
+    if (! proc.getSid (slot, s))
+        return;
+
+    juce::XmlElement xml ("SIDPRESET");
+    xml.setAttribute ("name", name);
+    xml.setAttribute ("eng",  (int) s.engine);
+    xml.setAttribute ("wave", (int) s.wave);
+    xml.setAttribute ("pw",   s.pulseWidth);
+    xml.setAttribute ("a",    s.attack);
+    xml.setAttribute ("d",    s.decay);
+    xml.setAttribute ("s",    s.sustain);
+    xml.setAttribute ("rel",  s.release);
+    xml.setAttribute ("flt",  (int) s.filter);
+    xml.setAttribute ("cut",  s.cutoff);
+    xml.setAttribute ("res",  s.resonance);
+    xml.setAttribute ("ring", s.ringMod ? 1 : 0);
+    xml.setAttribute ("sync", s.sync ? 1 : 0);
+    xml.setAttribute ("mtune",s.modTune);
+    xml.setAttribute ("pwmr", s.pwmRate);
+    xml.setAttribute ("pwmd", s.pwmDepth);
+
+    auto dir = mySidDir();
+    dir.createDirectory();
+    xml.writeTo (dir.getChildFile (juce::File::createLegalFileName (name) + ".sidpreset"));
+
+    refreshMineList();
+    for (int i = 0; i < mineBox.getNumItems(); ++i)   // den frisch gemerkten auswaehlen
+        if (mineBox.getItemText (i) == name)
+            { mineBox.setSelectedItemIndex (i, juce::dontSendNotification); break; }
+    deleteMineButton.setEnabled (true);
+}
+
+void SidPanel::loadMine()
+{
+    if (! proc.isSid (slot))
+        return;
+
+    const auto name = mineBox.getText();
+    auto file = mySidDir().getChildFile (juce::File::createLegalFileName (name) + ".sidpreset");
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("SIDPRESET"))
+        return;
+
+    proc.editSid (slot, [&xml] (TrackerEngine::Instrument& i)
+    {
+        // Eigene Sounds werden exakt so geladen, wie gespeichert - inkl. Klangmotor.
+        i.engine     = (TrackerEngine::Instrument::Engine) juce::jlimit (0, 1, xml->getIntAttribute ("eng", 0));
+        i.wave       = (TrackerEngine::Instrument::Wave)   juce::jlimit (0, 3, xml->getIntAttribute ("wave", 2));
+        i.pulseWidth = (float) xml->getDoubleAttribute ("pw",  0.5);
+        i.attack     = (float) xml->getDoubleAttribute ("a",   0.004);
+        i.decay      = (float) xml->getDoubleAttribute ("d",   0.18);
+        i.sustain    = (float) xml->getDoubleAttribute ("s",   0.65);
+        i.release    = (float) xml->getDoubleAttribute ("rel", 0.25);
+        i.filter     = (TrackerEngine::Instrument::Filter) juce::jlimit (0, 3, xml->getIntAttribute ("flt", 0));
+        i.cutoff     = (float) xml->getDoubleAttribute ("cut", 0.7);
+        i.resonance  = (float) xml->getDoubleAttribute ("res", 0.12);
+        i.ringMod    = xml->getIntAttribute ("ring", 0) != 0;
+        i.sync       = xml->getIntAttribute ("sync", 0) != 0;
+        i.modTune    = (float) xml->getDoubleAttribute ("mtune", 12.0);
+        i.pwmRate    = (float) xml->getDoubleAttribute ("pwmr", 0.0);
+        i.pwmDepth   = (float) xml->getDoubleAttribute ("pwmd", 0.0);
+    });
+
+    // Regler/Knoepfe nachziehen - aber NICHT die Liste neu aufbauen (sonst Callback-
+    // Schleife ueber mineBox.onChange). Darum hier gezielt nur die Editoren auffrischen.
+    TrackerEngine::Instrument s;
+    if (proc.getSid (slot, s))
+    {
+        loading = true;
+        pwSlider.setValue      (s.pulseWidth * 100.0, juce::dontSendNotification);
+        pwmRateSlider.setValue (s.pwmRate, juce::dontSendNotification);
+        pwmDepthSlider.setValue(s.pwmDepth * 100.0, juce::dontSendNotification);
+        cutoffSlider.setValue  (s.cutoff * 100.0, juce::dontSendNotification);
+        resoSlider.setValue    (s.resonance * 100.0, juce::dontSendNotification);
+        modTuneSlider.setValue (s.modTune, juce::dontSendNotification);
+        attackSlider.setValue  (s.attack, juce::dontSendNotification);
+        decaySlider.setValue   (s.decay, juce::dontSendNotification);
+        sustainSlider.setValue (s.sustain * 100.0, juce::dontSendNotification);
+        releaseSlider.setValue (s.release, juce::dontSendNotification);
+        loading = false;
+        updateWaveButtons();
+        updateFilterButtons();
+        updateModButtons();
+        updateEngineButtons();
+    }
+    if (onChanged) onChanged();
+    previewNote();
+}
+
+void SidPanel::deleteMine()
+{
+    const auto name = mineBox.getText();
+    if (name.isEmpty())
+        return;
+    auto file = mySidDir().getChildFile (juce::File::createLegalFileName (name) + ".sidpreset");
+    if (file.existsAsFile())
+        file.moveToTrash();
+    refreshMineList();
 }
 
 void SidPanel::selectEngine (Engine e)
@@ -436,6 +616,18 @@ void SidPanel::resized()
                 row.removeFromLeft (6);
             }
         }
+    }
+    area.removeFromTop (12);
+
+    // Eigene SID-Sounds: Liste links, MERKEN/VERGESSEN rechts.
+    mineLabel.setBounds (area.removeFromTop (16));
+    {
+        auto row = area.removeFromTop (28);
+        deleteMineButton.setBounds (row.removeFromRight (110));
+        row.removeFromRight (6);
+        saveMineButton.setBounds   (row.removeFromRight (110));
+        row.removeFromRight (10);
+        mineBox.setBounds (row);
     }
     area.removeFromTop (12);
 

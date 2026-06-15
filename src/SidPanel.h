@@ -33,6 +33,14 @@ private:
     void selectFilter (Filter f);
     void selectEngine (Engine e); // Klangmotor umschalten (Klassisch / Echter Chip)
     void applyPreset (int index); // Werks-Preset auf den aktuellen Slot legen
+
+    // Eigene SID-Sounds (analog "Meine Sounds" beim Sampler).
+    juce::File mySidDir() const;   // Ordner mit den gespeicherten Presets
+    void refreshMineList();        // Auswahlliste aus dem Ordner neu fuellen
+    void saveMine();               // aktuellen Klang merken (fragt nach Namen)
+    void writeMine (const juce::String& name); // Klang als Datei schreiben
+    void loadMine();               // gewaehlten eigenen Sound auf den Slot legen
+    void deleteMine();             // gewaehlten eigenen Sound vergessen (Papierkorb)
     void toggleRing();
     void toggleSync();
     void writeParams();  // Reglerwerte ins Instrument schreiben (live, ohne Ton)
@@ -56,6 +64,13 @@ private:
     // Werks-Presets: eine Handvoll fertiger Startklaenge zum Anklicken.
     juce::Label                        presetLabel;
     juce::OwnedArray<juce::TextButton> presetButtons;
+
+    // Eigene SID-Sounds: Auswahlliste + MERKEN/VERGESSEN.
+    juce::Label      mineLabel;
+    juce::ComboBox   mineBox;
+    juce::TextButton saveMineButton   { "MERKEN" };
+    juce::TextButton deleteMineButton { "VERGESSEN" };
+    std::unique_ptr<juce::AlertWindow> nameDialog; // Namensabfrage beim Merken
 
     juce::Label  waveLabel;
     juce::TextButton waveTri   { "DREIECK" };
