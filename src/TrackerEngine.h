@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_basics/juce_audio_basics.h>
+#include "SidChip.h"
 #include <atomic>
 #include <cmath>
 #include <memory>
@@ -73,6 +74,29 @@ public:
         samplesUntilTick = 0.0;
         for (auto& v : voices)
             v.active = false;
+        for (auto& c : sidChips)
+            c.prepare (newSampleRate); // echte reSIDfp-Chips an die Ausgaberate anpassen
+    }
+
+    // Klang-Parameter eines SID-Instruments in die schlanke SidChip-Struktur kippen.
+    static SidParams toSidParams (const Instrument& inst)
+    {
+        SidParams p;
+        p.wave       = (int) inst.wave;   // Enum-Reihenfolge passt 1:1 (Dreieck/Saege/Puls/Rauschen)
+        p.pulseWidth = inst.pulseWidth;
+        p.attack     = inst.attack;
+        p.decay      = inst.decay;
+        p.sustain    = inst.sustain;
+        p.release    = inst.release;
+        p.filter     = (int) inst.filter; // 0=aus 1=Tiefpass 2=Hochpass 3=Bandpass
+        p.cutoff     = inst.cutoff;
+        p.resonance  = inst.resonance;
+        p.ringMod    = inst.ringMod;
+        p.sync       = inst.sync;
+        p.modTune    = inst.modTune;
+        p.pwmRate    = inst.pwmRate;
+        p.pwmDepth   = inst.pwmDepth;
+        return p;
     }
 
     void play()
@@ -379,15 +403,11 @@ private:
         v.gate    = -1; // nur das Vorhoeren setzt ein automatisches Note-Aus
         if (synth)
         {
-            // Huellkurve startet im Attack; sie blendet selbst ein -> kein Klick.
-            v.envStage = 1;
-            v.envLevel = 0.0f;
-            v.noiseReg = 0x7FFFF8u;
-            v.fic1     = 0.0f;
-            v.fic2     = 0.0f;
-            v.modPhase = 0.0;
-            v.pwmPhase = 0.0;
-            v.fadeIn   = 0;
+            // Echten reSIDfp-Chip dieser Stimme anwerfen; er loest die Attack-Phase
+            // selbst aus (Gate-Flanke) -> kein Klick. step = Schwingungen/Sample,
+            // also ist step * Abtastrate die Tonhoehe in Hz.
+            sidChips[voiceIdx].noteOn (toSidParams (*inst), v.step * sampleRate);
+            v.fadeIn = 0;
         }
         else
         {
@@ -403,7 +423,7 @@ private:
         if (! v.active || v.inst == nullptr)
             return;
         if (v.inst->kind == Instrument::Kind::Synth)
-            v.envStage = 4; // Release
+            sidChips[v.voiceIdx].noteOff(); // Gate aus -> Huellkurve geht ins Release
         else if (v.fadeOut == 0)
             v.fadeOut = kFade;
     }
@@ -576,143 +596,20 @@ private:
         v.pos = pos;
     }
 
-    // SID-Synth: Oszillator (Dreieck/Saege/Puls/Rauschen) + ADSR-Huellkurve.
+    // SID-Synth: laeuft jetzt ueber den echten reSIDfp-Chip dieser Stimme. Die
+    // Tonhoehe kommt laufend aus v.step (von Slides/Vibrato/Arpeggio/Portamento
+    // veraendert) - so wirken alle Effekte unveraendert weiter. Der Chip rendert,
+    // resampelt selbst auf unsere Ausgaberate und meldet ueber den Rueckgabewert,
+    // wenn die Stimme nach dem Loslassen verstummt ist.
     void renderSynth (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
     {
-        const auto* inst = v.inst;
-        const float sr     = (float) sampleRate;
-        const float atkInc = inst->attack  > 0.0f ? 1.0f / (inst->attack  * sr) : 1.0f;
-        const float decInc = inst->decay   > 0.0f ? (1.0f - inst->sustain) / (inst->decay * sr) : 1.0f;
-        const float relInc = inst->release > 0.0f ? 1.0f / (inst->release * sr) : 1.0f;
-        const float pw     = juce::jlimit (0.02f, 0.98f, inst->pulseWidth);
-        double ph = v.pos; // Phase 0..1
-
-        // Zweiter Oszillator fuer Ring-Mod / Hard-Sync. Bei Sync ist der zweite
-        // Oszillator der "Master" auf Notentonhoehe (haelt die Melodie sauber),
-        // der hoerbare laeuft hoeher (modTune) und wird vom Master zurueckgesetzt.
-        // Bei Ring laeuft der hoerbare auf Notentonhoehe, der zweite (modTune)
-        // wird aufmultipliziert -> metallischer Klang.
-        const bool  ring = inst->ringMod;
-        const bool  sync = inst->sync;
-        const double r   = std::pow (2.0, inst->modTune / 12.0);
-        double mph        = v.modPhase;
-        const double mainStep = sync ? v.step * r : v.step;
-        const double modStep  = sync ? v.step     : v.step * r;
-
-        // Pulsweiten-Modulation (nur Puls-Welle): LFO laesst die Pulsweite wabern.
-        const bool   pwmOn  = (inst->wave == Instrument::Wave::Pulse
-                                && inst->pwmDepth > 0.0f && inst->pwmRate > 0.0f);
-        const float  pwmInc = inst->pwmRate / sr;
-        double       pwmPh  = v.pwmPhase;
-
-        // Filter-Koeffizienten einmal pro Block (TPT-State-Variable-Filter).
-        const auto ftype = inst->filter;
-        float fg = 0.0f, fk = 0.0f, fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
-        if (ftype != Instrument::Filter::Off)
-        {
-            // Cutoff exponentiell: 0 -> ~30 Hz, 1 -> ~11 kHz (gut musikalisch).
-            float fc = 30.0f * std::pow (380.0f, juce::jlimit (0.0f, 1.0f, inst->cutoff));
-            fc = juce::jlimit (20.0f, (float) (sampleRate * 0.45), fc);
-            fg  = std::tan (juce::MathConstants<float>::pi * fc / sr);
-            fk  = 2.0f - 1.9f * juce::jlimit (0.0f, 1.0f, inst->resonance); // 2 (zahm) .. 0.1 (klingelt)
-            fa1 = 1.0f / (1.0f + fg * (fg + fk));
-            fa2 = fg * fa1;
-            fa3 = fg * fa2;
-        }
-
-        for (int i = 0; i < num; ++i)
-        {
-            // Huellkurve einen Schritt weiterfahren.
-            switch (v.envStage)
-            {
-                case 1: v.envLevel += atkInc; if (v.envLevel >= 1.0f)          { v.envLevel = 1.0f;          v.envStage = 2; } break;
-                case 2: v.envLevel -= decInc; if (v.envLevel <= inst->sustain) { v.envLevel = inst->sustain; v.envStage = 3; } break;
-                case 3: break; // Sustain haelt, bis Note-Aus kommt
-                case 4: v.envLevel -= relInc; if (v.envLevel <= 0.0f)          { v.envLevel = 0.0f;          v.active = false; } break;
-                default: break;
-            }
-
-            // Aktuelle Pulsweite (ggf. vom LFO moduliert).
-            float pwNow = pw;
-            if (pwmOn)
-            {
-                const float lfo = std::sin (pwmPh * juce::MathConstants<double>::twoPi);
-                pwNow = juce::jlimit (0.05f, 0.95f, pw + inst->pwmDepth * 0.45f * lfo);
-                pwmPh += pwmInc;
-                if (pwmPh >= 1.0)
-                    pwmPh -= 1.0;
-            }
-
-            float osc;
-            switch (inst->wave)
-            {
-                case Instrument::Wave::Triangle: osc = ph < 0.5 ? (float) (4.0 * ph - 1.0) : (float) (3.0 - 4.0 * ph); break;
-                case Instrument::Wave::Saw:      osc = (float) (2.0 * ph - 1.0); break;
-                case Instrument::Wave::Noise:    osc = v.noiseVal; break;
-                case Instrument::Wave::Pulse:
-                default:                         osc = ph < pwNow ? 1.0f : -1.0f; break;
-            }
-
-            // Ring-Modulation: hoerbare Welle mal Dreieck des zweiten Oszillators.
-            if (ring)
-            {
-                const float modTri = mph < 0.5 ? (float) (4.0 * mph - 1.0) : (float) (3.0 - 4.0 * mph);
-                osc *= modTri;
-            }
-
-            // Filter (TPT-SVF): erst die Wellenform filtern, dann die Huellkurve
-            // formt die Lautstaerke - klassische Synth-Reihenfolge OSC -> Filter -> Pegel.
-            if (ftype != Instrument::Filter::Off)
-            {
-                const float n3 = osc   - v.fic2;
-                const float n1 = fa1 * v.fic1 + fa2 * n3;
-                const float n2 = v.fic2 + fa2 * v.fic1 + fa3 * n3;
-                v.fic1 = 2.0f * n1 - v.fic1;
-                v.fic2 = 2.0f * n2 - v.fic2;
-                osc = ftype == Instrument::Filter::LowPass  ? n2
-                    : ftype == Instrument::Filter::HighPass ? (osc - fk * n1 - n2)
-                                                            : n1; // BandPass
-            }
-
-            const float s = osc * v.envLevel;
-            for (int ch = 0; ch < outCh; ++ch)
-            {
-                const float g = (ch == 0 ? v.gainL : ch == 1 ? v.gainR : 0.5f * (v.gainL + v.gainR));
-                buffer.addSample (ch, offset + i, s * g * 0.42f);
-            }
-
-            ph += mainStep;
-            if (ph >= 1.0)
-            {
-                ph -= 1.0;
-                // Pro Schwingung ein neuer Rauschwert (23-Bit-LFSR wie im SID).
-                const juce::uint32 bit = ((v.noiseReg >> 22) ^ (v.noiseReg >> 17)) & 1u;
-                v.noiseReg = ((v.noiseReg << 1) | bit) & 0x7FFFFFu;
-                v.noiseVal = (float) ((v.noiseReg >> 11) & 0xFFFu) / 2048.0f - 1.0f;
-            }
-
-            // Zweiten Oszillator weiterdrehen; bei Hard-Sync setzt sein Ueberlauf
-            // die hoerbare Phase auf 0 zurueck (das "Zerreissen").
-            if (ring || sync)
-            {
-                mph += modStep;
-                if (mph >= 1.0)
-                {
-                    mph -= 1.0;
-                    if (sync)
-                        ph = 0.0;
-                }
-            }
-
-            if (! v.active)
-                break;
-        }
-        v.pos = ph;
-        v.modPhase = mph;
-        v.pwmPhase = pwmPh;
+        const double freqHz = v.step * sampleRate;
+        if (! sidChips[v.voiceIdx].render (buffer, offset, num, freqHz, v.gainL, v.gainR, outCh))
+            v.active = false;
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme
+    SidChip sidChips[kTracks + 1]; // ein echter reSIDfp-Chip pro Stimme (inkl. Vorhoeren)
     std::unique_ptr<Instrument> preview; // Sample der ST-Disks-Vorschau
     double sampleRate = 44100.0;
     double samplesUntilTick = 0.0;
