@@ -10,13 +10,25 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.11 — Sampler + SID-Synthesizer
+## Stand: v0.18 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
   Pulsweite / Rauschen), **ADSR-Hüllkurve** und ein Multimode-**Filter**
   (Tief-/Hoch-/Bandpass mit Cutoff + Resonanz). Sample und SID lassen sich frei
   in einem Song mischen; jede Änderung spielt sofort einen Probe-Ton an
+- **Umschaltbarer Klang-Motor:** pro Instrument zwischen **Klassisch** (der
+  eingebaute Synth, der vertraute RetroTrax-Klang) und **Echter Chip** wählen —
+  einer originalgetreuen **reSIDfp**-Emulation des MOS 6581. Gleiche Regler,
+  deine Wahl des Klangs
+- **PWM, Ring-Modulation & Hard-Sync:** der klassische SID-Modulationskasten —
+  wabernde Pulsweite, metallische Ring-Töne und schreiende Sync-Leads
+- **Unisono-Stack:** 1–3 leicht verstimmte Stimmen pro Note stapeln für einen
+  fetten, breiten Klang (Super-Saw / Multi-SID) — beim echten Chip nutzt das die
+  3 echten SID-Hardware-Stimmen
+- **Werks-Presets & eigene Sounds:** ein Klick lädt einen fertigen SID-Klang
+  (Bass, Lead, Glocke, Drums, Pad, Sync-Lead, Blip); **MERKEN** speichert deine
+  eigenen Klänge in eine persönliche SID-Liste, die in jedem Song bereitsteht
 - **Effekt-Spalte:** Arpeggio, Slides, Tone-Portamento, Vibrato, Lautstärke und
   Tempo (klassische Tracker-Effekte als Hex-Eingabe) mit kontextsensitiver Live-Hilfe
 - **Song-Modus:** mehrere Patterns (bis zu 64) zu einem ganzen Lied verketten
@@ -61,14 +73,16 @@ Ein Projekt aus dem Mukkemann-Universum.
 
 ## Fahrplan
 
-- **Etappe 2 (läuft):** Echte C64-SID-Emulation (reSIDfp) mit Original-Filter,
-  Ring-Modulation und Sync — als zusätzliche Option *neben* dem eingebauten SID;
-  MOD/XM-Import (mit Sample-Ernte), **CLAP-Format** (zusätzlich zu VST3, via
-  clap-juce-extensions)
-- **Etappe 3:** Beliebig viele Spuren, die Filter der alten Sampler
-  (Akai S900/S950/S1000 inkl. 12-Bit-Charakter, Emulator, Ensoniq …),
-  16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus malen wie mit dem Lichtgriffel),
-  Anfänger-Modus
+- **In Etappe 2 erledigt:** echte C64-SID-Emulation (reSIDfp) neben dem
+  eingebauten Synth, Ring-Modulation, Hard-Sync, PWM, Werks-Presets, eigene
+  SID-Sounds und der Unisono-Stack ✅
+- **Als Nächstes:** Akkord-Modus (eine Note spielt einen ganzen Akkord), mehr
+  Spuren, MOD/XM-Import (mit Sample-Ernte), **CLAP-Format** (zusätzlich zu VST3,
+  via clap-juce-extensions)
+- **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
+- **Später:** die Filter der alten Sampler (Akai S900/S950/S1000 inkl.
+  12-Bit-Charakter, Emulator, Ensoniq …), 16er-Drumpad, **Fairlight-Zeichentool**
+  (Wellenformen mit der Maus malen wie mit dem Lichtgriffel), Anfänger-Modus
 
 ## Bedienung
 

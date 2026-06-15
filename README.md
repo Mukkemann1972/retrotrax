@@ -10,13 +10,24 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.11 — Sampler + SID synthesizer
+## Status: v0.18 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
   pulse width / noise), an **ADSR envelope** and a multimode **filter**
   (low-/high-/band-pass with cutoff + resonance). Mix samples and SID freely in
   one song; every change plays a test note right away
+- **Switchable sound engine:** choose per instrument between **Classic** (the
+  built-in synth, the familiar RetroTrax sound) and **Real Chip** — an authentic
+  **reSIDfp** emulation of the MOS 6581. Same controls, your pick of sound
+- **PWM, ring modulation & hard sync:** the classic SID modulation toolkit —
+  sweeping pulse width, metallic ring tones and screaming sync leads
+- **Unison stack:** stack 1–3 slightly detuned voices per note for a fat, wide
+  sound (super-saw / multi-SID idea) — on the real chip this drives the 3 actual
+  hardware SID voices
+- **Factory presets & your own sounds:** one click loads a ready-made SID sound
+  (bass, lead, bell, drums, pad, sync lead, blip); **REMEMBER** saves your own
+  creations into a personal SID list that's ready in every song
 - **Effect column:** arpeggio, slides, tone portamento, vibrato, volume and tempo
   (classic tracker effects as hex input) with context-sensitive live help
 - **Song mode:** chain several patterns (up to 64) into a whole song
@@ -61,14 +72,16 @@ A project from the Mukkemann universe.
 
 ## Roadmap
 
-- **Stage 2 (in progress):** Real C64 SID emulation (reSIDfp) with the original
-  filter, ring modulation and sync — as an extra option *alongside* the built-in
-  SID; MOD/XM import (with sample harvesting), **CLAP format** (in addition to
-  VST3, via clap-juce-extensions)
-- **Stage 3:** Unlimited tracks, filters of the classic samplers
-  (Akai S900/S950/S1000 incl. 12-bit character, Emulator, Ensoniq …),
-  16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms with the mouse, light-pen style),
-  beginner mode
+- **Done in stage 2:** real C64 SID emulation (reSIDfp) alongside the built-in
+  synth, ring modulation, hard sync, PWM, factory presets, your own SID sounds,
+  and the unison stack ✅
+- **Next:** chord mode (one note plays a whole chord), more tracks, MOD/XM import
+  (with sample harvesting), **CLAP format** (in addition to VST3, via
+  clap-juce-extensions)
+- **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
+- **Later:** filters of the classic samplers (Akai S900/S950/S1000 incl. 12-bit
+  character, Emulator, Ensoniq …), 16-pad drum grid, **Fairlight-style drawing
+  tool** (paint waveforms with the mouse, light-pen style), beginner mode
 
 ## Controls
 
