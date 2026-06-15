@@ -10,8 +10,19 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: Stage 1 (v0.6) — Sampler
+## Status: v0.11 — Sampler + SID synthesizer
 
+- **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
+  of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
+  pulse width / noise), an **ADSR envelope** and a multimode **filter**
+  (low-/high-/band-pass with cutoff + resonance). Mix samples and SID freely in
+  one song; every change plays a test note right away
+- **Effect column:** arpeggio, slides, tone portamento, vibrato, volume and tempo
+  (classic tracker effects as hex input) with context-sensitive live help
+- **Song mode:** chain several patterns (up to 64) into a whole song
+- **Block editing:** select areas, copy/cut and move them directly with Alt+arrow
+  (nudge by ear)
+- **Note off (key 1):** lets SID voices fade out cleanly
 - 8 tracks, 64-row patterns (track count becomes flexible later)
 - **Amiga-style stereo:** tracks are spread across the stereo field automatically
   (LRRL like ProTracker) — your beat sounds wide and lively on its own; every
@@ -50,9 +61,10 @@ A project from the Mukkemann universe.
 
 ## Roadmap
 
-- **Stage 2:** Real C64 SID emulation (reSIDfp), classic effects
-  (arpeggio, portamento, vibrato, sample offset …), MOD/XM import, multiple patterns + song order,
-  **CLAP format** (in addition to VST3, via clap-juce-extensions)
+- **Stage 2 (in progress):** Real C64 SID emulation (reSIDfp) with the original
+  filter, ring modulation and sync — as an extra option *alongside* the built-in
+  SID; MOD/XM import (with sample harvesting), **CLAP format** (in addition to
+  VST3, via clap-juce-extensions)
 - **Stage 3:** Unlimited tracks, filters of the classic samplers
   (Akai S900/S950/S1000 incl. 12-bit character, Emulator, Ensoniq …),
   16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms with the mouse, light-pen style),

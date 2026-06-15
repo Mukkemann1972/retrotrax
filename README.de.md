@@ -10,8 +10,19 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: Etappe 1 (v0.6) — Sampler
+## Stand: v0.11 — Sampler + SID-Synthesizer
 
+- **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
+  erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
+  Pulsweite / Rauschen), **ADSR-Hüllkurve** und ein Multimode-**Filter**
+  (Tief-/Hoch-/Bandpass mit Cutoff + Resonanz). Sample und SID lassen sich frei
+  in einem Song mischen; jede Änderung spielt sofort einen Probe-Ton an
+- **Effekt-Spalte:** Arpeggio, Slides, Tone-Portamento, Vibrato, Lautstärke und
+  Tempo (klassische Tracker-Effekte als Hex-Eingabe) mit kontextsensitiver Live-Hilfe
+- **Song-Modus:** mehrere Patterns (bis zu 64) zu einem ganzen Lied verketten
+- **Block-Bearbeitung:** Bereiche markieren, kopieren/ausschneiden und per
+  Alt+Pfeil direkt verschieben (gehörgenaues Nudgen)
+- **Note-Aus (Taste 1):** lässt SID-Stimmen sauber ausklingen
 - 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
 - **Stereo-Klang im Amiga-Stil:** die Spuren werden automatisch im Stereobild
   verteilt (LRRL wie ProTracker) — der Beat klingt von allein breit und lebendig;
@@ -50,9 +61,10 @@ Ein Projekt aus dem Mukkemann-Universum.
 
 ## Fahrplan
 
-- **Etappe 2:** Echte C64-SID-Emulation (reSIDfp), klassische Effekte
-  (Arpeggio, Portamento, Vibrato, Sample-Offset …), MOD/XM-Import, mehrere Patterns + Song-Reihenfolge,
-  **CLAP-Format** (zusätzlich zu VST3, via clap-juce-extensions)
+- **Etappe 2 (läuft):** Echte C64-SID-Emulation (reSIDfp) mit Original-Filter,
+  Ring-Modulation und Sync — als zusätzliche Option *neben* dem eingebauten SID;
+  MOD/XM-Import (mit Sample-Ernte), **CLAP-Format** (zusätzlich zu VST3, via
+  clap-juce-extensions)
 - **Etappe 3:** Beliebig viele Spuren, die Filter der alten Sampler
   (Akai S900/S950/S1000 inkl. 12-Bit-Charakter, Emulator, Ensoniq …),
   16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus malen wie mit dem Lichtgriffel),
