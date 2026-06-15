@@ -30,10 +30,13 @@ private:
 
     void selectWave (Wave w);
     void selectFilter (Filter f);
+    void toggleRing();
+    void toggleSync();
     void writeParams();  // Reglerwerte ins Instrument schreiben (live, ohne Ton)
     void previewNote();  // ein C-5 mit automatischem Note-Aus -> ganze Huellkurve hoerbar
     void updateWaveButtons();
     void updateFilterButtons();
+    void updateModButtons();
 
     RetroTraxProcessor& proc;
     int slot = 0; // Slot, den dieses Panel gerade bearbeitet
@@ -56,6 +59,11 @@ private:
     juce::TextButton filtBand { "BANDPASS" };
     juce::Label  cutoffLabel, resoLabel;
     juce::Slider cutoffSlider, resoSlider;
+
+    juce::Label  modLabel, modTuneLabel;
+    juce::TextButton ringButton { "RING-MOD" };
+    juce::TextButton syncButton { "HARD-SYNC" };
+    juce::Slider modTuneSlider;
 
     juce::Label      hintLabel;
     juce::TextButton testButton  { "TEST" }; // aktuellen Klang anspielen (mit Ausklang)

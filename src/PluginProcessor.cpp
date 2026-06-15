@@ -126,6 +126,9 @@ bool RetroTraxProcessor::getSid (int slot, TrackerEngine::Instrument& out) const
     out.filter     = p->filter;
     out.cutoff     = p->cutoff;
     out.resonance  = p->resonance;
+    out.ringMod    = p->ringMod;
+    out.sync       = p->sync;
+    out.modTune    = p->modTune;
     return true;
 }
 
@@ -181,6 +184,9 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("flt", (int) ip->filter);
             e->setAttribute ("cut", ip->cutoff);
             e->setAttribute ("res", ip->resonance);
+            e->setAttribute ("ring", ip->ringMod ? 1 : 0);
+            e->setAttribute ("sync", ip->sync ? 1 : 0);
+            e->setAttribute ("mtune", ip->modTune);
         }
         else if (ip->filePath.isNotEmpty())
         {
@@ -256,6 +262,9 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                                        juce::jlimit (0, 3, e->getIntAttribute ("flt", 0));
                 inst->cutoff     = (float) e->getDoubleAttribute ("cut", 0.7);
                 inst->resonance  = (float) e->getDoubleAttribute ("res", 0.12);
+                inst->ringMod    = e->getIntAttribute ("ring", 0) != 0;
+                inst->sync       = e->getIntAttribute ("sync", 0) != 0;
+                inst->modTune    = (float) e->getDoubleAttribute ("mtune", 12.0);
                 inst->name       = e->getStringAttribute ("name", "SID");
                 engine.setInstrument (slot, std::move (inst));
                 continue;

@@ -55,6 +55,11 @@ public:
         Filter filter     = Filter::Off; // Filtertyp (Off = ungefiltert)
         float  cutoff     = 0.7f;        // Grenzfrequenz 0..1 (exponentiell auf Hz abgebildet)
         float  resonance  = 0.12f;       // Resonanz/Betonung an der Grenzfrequenz 0..1
+
+        // Zweiter Oszillator: Ring-Modulation (metallisch) und/oder Hard-Sync (schreiend).
+        bool   ringMod    = false;
+        bool   sync       = false;
+        float  modTune    = 12.0f;       // Tonhoehe des zweiten Oszillators in Halbtoenen (rel. zur Note)
     };
 
     void prepare (double newSampleRate)
@@ -237,6 +242,7 @@ private:
         float        noiseVal = 0.0f;       // gehaltener Rauschwert (-1..1)
         juce::uint32 noiseReg = 0x7FFFF8u;  // 23-Bit-Schieberegister wie im echten SID
         float        fic1 = 0.0f, fic2 = 0.0f; // Filter-Speicher (State-Variable-Filter)
+        double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         // --- Effekt-Status der laufenden Zeile ---
         int    effect = -1;
         int    effectParam = 0;
@@ -374,6 +380,7 @@ private:
             v.noiseReg = 0x7FFFF8u;
             v.fic1     = 0.0f;
             v.fic2     = 0.0f;
+            v.modPhase = 0.0;
             v.fadeIn   = 0;
         }
         else
@@ -574,6 +581,18 @@ private:
         const float pw     = juce::jlimit (0.02f, 0.98f, inst->pulseWidth);
         double ph = v.pos; // Phase 0..1
 
+        // Zweiter Oszillator fuer Ring-Mod / Hard-Sync. Bei Sync ist der zweite
+        // Oszillator der "Master" auf Notentonhoehe (haelt die Melodie sauber),
+        // der hoerbare laeuft hoeher (modTune) und wird vom Master zurueckgesetzt.
+        // Bei Ring laeuft der hoerbare auf Notentonhoehe, der zweite (modTune)
+        // wird aufmultipliziert -> metallischer Klang.
+        const bool  ring = inst->ringMod;
+        const bool  sync = inst->sync;
+        const double r   = std::pow (2.0, inst->modTune / 12.0);
+        double mph        = v.modPhase;
+        const double mainStep = sync ? v.step * r : v.step;
+        const double modStep  = sync ? v.step     : v.step * r;
+
         // Filter-Koeffizienten einmal pro Block (TPT-State-Variable-Filter).
         const auto ftype = inst->filter;
         float fg = 0.0f, fk = 0.0f, fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
@@ -611,6 +630,13 @@ private:
                 default:                         osc = ph < pw ? 1.0f : -1.0f; break;
             }
 
+            // Ring-Modulation: hoerbare Welle mal Dreieck des zweiten Oszillators.
+            if (ring)
+            {
+                const float modTri = mph < 0.5 ? (float) (4.0 * mph - 1.0) : (float) (3.0 - 4.0 * mph);
+                osc *= modTri;
+            }
+
             // Filter (TPT-SVF): erst die Wellenform filtern, dann die Huellkurve
             // formt die Lautstaerke - klassische Synth-Reihenfolge OSC -> Filter -> Pegel.
             if (ftype != Instrument::Filter::Off)
@@ -632,7 +658,7 @@ private:
                 buffer.addSample (ch, offset + i, s * g * 0.42f);
             }
 
-            ph += v.step;
+            ph += mainStep;
             if (ph >= 1.0)
             {
                 ph -= 1.0;
@@ -642,10 +668,24 @@ private:
                 v.noiseVal = (float) ((v.noiseReg >> 11) & 0xFFFu) / 2048.0f - 1.0f;
             }
 
+            // Zweiten Oszillator weiterdrehen; bei Hard-Sync setzt sein Ueberlauf
+            // die hoerbare Phase auf 0 zurueck (das "Zerreissen").
+            if (ring || sync)
+            {
+                mph += modStep;
+                if (mph >= 1.0)
+                {
+                    mph -= 1.0;
+                    if (sync)
+                        ph = 0.0;
+                }
+            }
+
             if (! v.active)
                 break;
         }
         v.pos = ph;
+        v.modPhase = mph;
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme
