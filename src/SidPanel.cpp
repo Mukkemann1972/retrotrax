@@ -12,6 +12,14 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     slotLabel.setColour (juce::Label::textColourId, rt::text);
     addAndMakeVisible (slotLabel);
 
+    engineLabel.setFont (rt::mono (12.0f, true));
+    engineLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (engineLabel);
+    addAndMakeVisible (engineClassic);
+    addAndMakeVisible (engineChip);
+    engineClassic.onClick = [this] { selectEngine (Engine::Classic); };
+    engineChip.onClick    = [this] { selectEngine (Engine::RealChip); };
+
     waveLabel.setFont (rt::mono (12.0f, true));
     waveLabel.setColour (juce::Label::textColourId, rt::textDim);
     addAndMakeVisible (waveLabel);
@@ -87,6 +95,13 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
 void SidPanel::applyLanguage()
 {
     titleLabel.setText (loc::t ("SID-SYNTHESIZER", "SID SYNTHESIZER"), juce::dontSendNotification);
+    engineLabel.setText (loc::t ("KLANG-MOTOR", "SOUND ENGINE"), juce::dontSendNotification);
+    engineClassic.setButtonText (loc::t ("KLASSISCH", "CLASSIC"));
+    engineChip.setButtonText    (loc::t ("ECHTER CHIP", "REAL CHIP"));
+    engineClassic.setTooltip (loc::t ("Selbstgebauter Synth - der vertraute RetroTrax-Klang",
+                                      "Self-built synth - the familiar RetroTrax sound"));
+    engineChip.setTooltip (loc::t ("Echte reSIDfp-Emulation des MOS-6581-Chips (originaler C64-Sound)",
+                                   "Real reSIDfp emulation of the MOS 6581 chip (authentic C64 sound)"));
     waveLabel.setText  (loc::t ("WELLENFORM", "WAVEFORM"), juce::dontSendNotification);
     waveTri.setButtonText   (loc::t ("DREIECK", "TRIANGLE"));
     waveSaw.setButtonText   (loc::t ("SAEGE", "SAW"));
@@ -154,6 +169,23 @@ void SidPanel::refresh()
     updateWaveButtons();
     updateFilterButtons();
     updateModButtons();
+    updateEngineButtons();
+}
+
+void SidPanel::selectEngine (Engine e)
+{
+    proc.editSid (slot, [e] (TrackerEngine::Instrument& i) { i.engine = e; });
+    updateEngineButtons();
+    if (onChanged) onChanged();
+    previewNote(); // neuen Klangmotor gleich hoeren
+}
+
+void SidPanel::updateEngineButtons()
+{
+    TrackerEngine::Instrument s;
+    const Engine e = proc.getSid (slot, s) ? s.engine : Engine::Classic;
+    engineClassic.setToggleState (e == Engine::Classic,  juce::dontSendNotification);
+    engineChip.setToggleState    (e == Engine::RealChip, juce::dontSendNotification);
 }
 
 void SidPanel::selectWave (Wave w)
@@ -308,6 +340,12 @@ void SidPanel::resized()
     auto top = area.removeFromTop (26);
     titleLabel.setBounds (top.removeFromLeft (240));
     slotLabel.setBounds  (top.removeFromLeft (120));
+    // Klangmotor-Umschalter rechts in der Kopfzeile.
+    engineChip.setBounds    (top.removeFromRight (120));
+    top.removeFromRight (6);
+    engineClassic.setBounds (top.removeFromRight (120));
+    top.removeFromRight (10);
+    engineLabel.setBounds   (top.removeFromRight (juce::jmax (0, juce::jmin (120, top.getWidth()))));
     area.removeFromTop (10);
 
     // Platz fuer die untere Zeile (TEST/SCHLIESSEN/Hinweis) reservieren.

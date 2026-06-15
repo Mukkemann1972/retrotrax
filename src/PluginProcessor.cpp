@@ -117,6 +117,7 @@ bool RetroTraxProcessor::getSid (int slot, TrackerEngine::Instrument& out) const
     const auto& p = engine.instruments[slot];
     if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Synth)
         return false;
+    out.engine     = p->engine;
     out.wave       = p->wave;
     out.pulseWidth = p->pulseWidth;
     out.attack     = p->attack;
@@ -177,6 +178,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("slot", i);
             e->setAttribute ("kind", "synth");
             e->setAttribute ("name", ip->name);
+            e->setAttribute ("eng",  (int) ip->engine);
             e->setAttribute ("wave", (int) ip->wave);
             e->setAttribute ("pw",  ip->pulseWidth);
             e->setAttribute ("a",   ip->attack);
@@ -255,6 +257,8 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
             {
                 auto inst = std::make_unique<TrackerEngine::Instrument>();
                 inst->kind       = TrackerEngine::Instrument::Kind::Synth;
+                inst->engine     = (TrackerEngine::Instrument::Engine)
+                                       juce::jlimit (0, 1, e->getIntAttribute ("eng", 0)); // alt -> Classic
                 inst->wave       = (TrackerEngine::Instrument::Wave)
                                        juce::jlimit (0, 3, e->getIntAttribute ("wave", 2));
                 inst->pulseWidth = (float) e->getDoubleAttribute ("pw",  0.5);

@@ -282,8 +282,11 @@ void HelpPanel::rebuild()
             "Tipps: Bass = Puls, kurzes A/D, mittleres S. Lead = Saege oder\n"
             "Dreieck mit etwas Vibrato (Effekt 4xy). Drums = Rauschen mit sehr\n"
             "kurzem A/D und S=0.\n"
-            "(Der echte SID-Chip mit Filter, Ring-Mod und Sync kommt spaeter als\n"
-            "zusaetzliche Option - der eingebaute SID bleibt erhalten.)",
+            "KLANG-MOTOR (oben im SID-Fenster): waehle pro Instrument zwischen\n"
+            "KLASSISCH (der gewohnte selbstgebaute Synth) und ECHTER CHIP (die\n"
+            "originalgetreue reSIDfp-Emulation des MOS-6581-Chips). Beide spielen\n"
+            "aus denselben Reglern - probier aus, was dir besser gefaellt. Alte\n"
+            "Songs bleiben auf KLASSISCH und klingen unveraendert.",
             "Besides samples, every slot can also be a sound you create yourself -\n"
             "in the style of the legendary C64 SID chip. Mix samples and SID\n"
             "freely in one song, slot by slot.\n\n"
@@ -316,8 +319,11 @@ void HelpPanel::rebuild()
             "Tips: bass = pulse, short A/D, medium S. Lead = saw or triangle with\n"
             "a little vibrato (effect 4xy). Drums = noise with very short A/D and\n"
             "S=0.\n"
-            "(The real SID chip with filter, ring mod and sync comes later as an\n"
-            "extra option - the built-in SID stays.)") });
+            "SOUND ENGINE (top of the SID window): choose per instrument between\n"
+            "CLASSIC (the familiar self-built synth) and REAL CHIP (the authentic\n"
+            "reSIDfp emulation of the MOS 6581 chip). Both play from the same\n"
+            "controls - try which one you like better. Old songs stay on CLASSIC\n"
+            "and sound unchanged.") });
 
     topics.add ({ loc::t ("Klang & Stereo", "Sound & stereo"),
         loc::t (

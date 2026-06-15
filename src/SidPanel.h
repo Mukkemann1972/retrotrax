@@ -27,9 +27,11 @@ public:
 private:
     using Wave   = TrackerEngine::Instrument::Wave;
     using Filter = TrackerEngine::Instrument::Filter;
+    using Engine = TrackerEngine::Instrument::Engine;
 
     void selectWave (Wave w);
     void selectFilter (Filter f);
+    void selectEngine (Engine e); // Klangmotor umschalten (Klassisch / Echter Chip)
     void toggleRing();
     void toggleSync();
     void writeParams();  // Reglerwerte ins Instrument schreiben (live, ohne Ton)
@@ -37,12 +39,19 @@ private:
     void updateWaveButtons();
     void updateFilterButtons();
     void updateModButtons();
+    void updateEngineButtons();
 
     RetroTraxProcessor& proc;
     int slot = 0; // Slot, den dieses Panel gerade bearbeitet
 
     juce::Label  titleLabel;
     juce::Label  slotLabel;
+
+    // Klangmotor-Umschalter (oben): selbstgebaut vs. echter reSIDfp-Chip.
+    juce::Label      engineLabel;
+    juce::TextButton engineClassic { "KLASSISCH" };
+    juce::TextButton engineChip    { "ECHTER CHIP" };
+
     juce::Label  waveLabel;
     juce::TextButton waveTri   { "DREIECK" };
     juce::TextButton waveSaw   { "SAEGE" };
