@@ -600,6 +600,10 @@ void PatternGrid::paint (juce::Graphics& g)
     g.fillAll (rt::bg);
 
     const int trackW = (w - kLeftW) / TrackerEngine::kTracks;
+    // Zellen-Schrift waechst/schrumpft mit der Spurbreite, damit die zweistelligen
+    // Instrument-/Lautstaerke-Zahlen in der schmalen Spalte (14 % der Spur) immer
+    // ganz reinpassen - egal wie klein das Fenster gezogen ist.
+    const float cellFontH = juce::jlimit (9.0f, 15.0f, (float) trackW * 0.11f);
     const bool playing = engine.playing.load();
     const int focusRow = playing ? engine.currentRow.load() : cursorRow;
     const int visRows  = juce::jmax (1, (h - kHeaderH) / kRowH);
@@ -681,26 +685,26 @@ void PatternGrid::paint (juce::Graphics& g)
             const juce::Colour emptyCol = rt::textDim.withAlpha (0.45f);
 
             const bool noteEmpty = cell.note < 0;
-            g.setFont (rt::mono (15.0f, ! noteEmpty));
+            g.setFont (rt::mono (cellFontH, ! noteEmpty));
             g.setColour (noteEmpty ? emptyCol : rt::instColour (cell.instrument));
             g.drawText (noteName (cell.note), noteX, y, noteW, kRowH, juce::Justification::centredLeft);
 
             const bool instEmpty = cell.instrument < 0;
-            g.setFont (rt::mono (15.0f, ! instEmpty));
+            g.setFont (rt::mono (cellFontH, ! instEmpty));
             g.setColour (instEmpty ? emptyCol : rt::instColour (cell.instrument));
             g.drawText (instEmpty ? juce::String ("..")
                                   : juce::String::formatted ("%02d", cell.instrument + 1),
                         instX, y, instW, kRowH, juce::Justification::centredLeft);
 
             const bool volEmpty = cell.volume < 0;
-            g.setFont (rt::mono (15.0f, ! volEmpty));
+            g.setFont (rt::mono (cellFontH, ! volEmpty));
             g.setColour (volEmpty ? emptyCol : rt::volCol.brighter (0.2f));
             g.drawText (volEmpty ? juce::String ("..")
                                  : juce::String::formatted ("%02d", cell.volume),
                         volX, y, volW, kRowH, juce::Justification::centredLeft);
 
             const bool fxEmpty = cell.effect < 0;
-            g.setFont (rt::mono (15.0f, ! fxEmpty));
+            g.setFont (rt::mono (cellFontH, ! fxEmpty));
             g.setColour (fxEmpty ? emptyCol : rt::fxCol);
             g.drawText (effectText (cell.effect, cell.effectParam),
                         fxX, y, fxW, kRowH, juce::Justification::centredLeft);

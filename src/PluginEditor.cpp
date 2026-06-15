@@ -212,7 +212,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     setResizable (true, true);
     setResizeLimits (960, 520, 1920, 1200);
-    setSize (1000, 640);
+    setSize (1160, 720); // etwas groesser: die Spur-Spalten sind gleich gut lesbar
 
     juce::MessageManager::callAsync ([sp = juce::Component::SafePointer<PatternGrid> (&grid)]
     {
