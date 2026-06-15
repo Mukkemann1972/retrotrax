@@ -16,10 +16,11 @@ public:
     static constexpr int kMaxNote     = 119; // bis Oktave 9
     static constexpr int kMaxPatterns = 64;  // so viele eigene Patterns kann ein Song haben
     static constexpr int kMaxOrder    = 128; // so lang darf die Abspiel-Reihenfolge sein
+    static constexpr int kNoteOff     = -2;  // "Note aus": laesst eine SID-Stimme ausklingen
 
     struct Cell
     {
-        int note       = -1; // -1 = leer, sonst 0..119 (Oktave * 12 + Halbton)
+        int note       = -1; // -1 = leer, -2 = Note-Aus, sonst 0..119 (Oktave * 12 + Halbton)
         int instrument = -1; // -1 = leer, sonst 0..15
         int volume     = -1; // -1 = voll, sonst 0..64
         int effect     = -1; // -1 = leer, sonst 0..15 (Effekt-Befehl, z.B. 0=Arpeggio, C=Lautstaerke, F=Tempo)
@@ -28,10 +29,27 @@ public:
 
     struct Instrument
     {
+        // Ein Instrument ist entweder ein gesampelter Klang (Sample) oder ein
+        // selbst erzeugter SID-Synth (Synth) - beide Arten leben friedlich in
+        // denselben 16 Slots, frei mischbar in einem Song.
+        enum class Kind { Sample, Synth };
+        enum class Wave { Triangle, Saw, Pulse, Noise }; // klassische C64-Wellenformen
+
+        Kind kind = Kind::Sample;
+
+        // --- Sample-Klang ---
         juce::AudioBuffer<float> data;
         double sourceRate = 44100.0;
         juce::String name;
         juce::String filePath;
+
+        // --- SID-Synth (nur bei kind == Synth) ---
+        Wave  wave        = Wave::Pulse;
+        float pulseWidth  = 0.5f;   // 0..1, nur fuer die Puls-Welle
+        float attack      = 0.004f; // Huellkurve in Sekunden / Sustain als Pegel 0..1
+        float decay       = 0.18f;
+        float sustain     = 0.65f;
+        float release      = 0.25f;
     };
 
     void prepare (double newSampleRate)
@@ -202,7 +220,13 @@ private:
         float  gainR = 0.5f;
         float  vol   = 1.0f; // 0..1 aktuelle Lautstaerke (von Cxx/Axy)
         int    fadeIn = 0;   // verbleibende Samples der Anstiegsblende
+        int    fadeOut = 0;  // Note-Aus bei Sample-Stimmen: sanft ausblenden
         bool   active = false;
+        // --- SID-Synth-Status ---
+        int          envStage = 0;          // 0 leer, 1 Attack, 2 Decay, 3 Sustain, 4 Release
+        float        envLevel = 0.0f;       // aktueller Huellkurven-Pegel 0..1
+        float        noiseVal = 0.0f;       // gehaltener Rauschwert (-1..1)
+        juce::uint32 noiseReg = 0x7FFFF8u;  // 23-Bit-Schieberegister wie im echten SID
         // --- Effekt-Status der laufenden Zeile ---
         int    effect = -1;
         int    effectParam = 0;
@@ -239,10 +263,14 @@ private:
         return sampleRate * 2.5 / juce::jmax (20.0f, bpm.load());
     }
 
-    // Abspielschritt (Rate) fuer eine Note; C-5 (60) = Originaltonhoehe.
+    // Abspielschritt fuer eine Note. Beim Sample: Samples pro Ausgabe-Sample
+    // (C-5 = Originaltonhoehe). Beim SID-Synth: Schwingungen pro Ausgabe-Sample
+    // (Phasenzuwachs), C-5/Note 60 ergibt sich aus der A4=440-Stimmung.
     double stepForNote (const Instrument* inst, int note) const
     {
         note = juce::jlimit (0, kMaxNote, note);
+        if (inst->kind == Instrument::Kind::Synth)
+            return (440.0 * std::pow (2.0, (note - 69) / 12.0)) / sampleRate;
         return (inst->sourceRate / sampleRate) * std::pow (2.0, (note - 60) / 12.0);
     }
 
@@ -288,7 +316,9 @@ private:
             // Tone-Portamento (3xx) schlaegt die Note NICHT neu an, sondern gleitet hin.
             const bool tonePorta = (c.effect == 0x3);
 
-            if (c.note >= 0 && ! tonePorta)
+            if (c.note == kNoteOff)
+                releaseVoice (v);
+            else if (c.note >= 0 && ! tonePorta)
                 triggerVoice (t, c.note, c.instrument, c.volume);
 
             applyRowEffect (t, c); // Cxx/Fxx/3xx-Ziel: einmal pro Zeile (Tick 0)
@@ -307,14 +337,15 @@ private:
         if (voiceIdx < 0 || voiceIdx > kTracks)
             return;
         auto& v = voices[voiceIdx];
-        if (inst == nullptr || inst->data.getNumSamples() < 2)
+        const bool synth = (inst != nullptr && inst->kind == Instrument::Kind::Synth);
+        if (inst == nullptr || (! synth && inst->data.getNumSamples() < 2))
         {
             v.active = false;
             return;
         }
         note = juce::jlimit (0, kMaxNote, note);
         v.inst        = inst;
-        v.pos         = 0.0;
+        v.pos         = 0.0; // beim Synth = Oszillator-Phase 0..1
         v.note        = note;
         v.baseStep    = stepForNote (inst, note); // C-5 = Originaltonhoehe
         v.step        = v.baseStep;
@@ -323,8 +354,32 @@ private:
         v.voiceIdx    = voiceIdx;
         v.vol         = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
         panGains (voiceIdx, v.vol, v.gainL, v.gainR);
-        v.fadeIn = kFade;
+        v.fadeOut = 0;
+        if (synth)
+        {
+            // Huellkurve startet im Attack; sie blendet selbst ein -> kein Klick.
+            v.envStage = 1;
+            v.envLevel = 0.0f;
+            v.noiseReg = 0x7FFFF8u;
+            v.fadeIn   = 0;
+        }
+        else
+        {
+            v.envStage = 0;
+            v.fadeIn   = kFade;
+        }
         v.active = true;
+    }
+
+    // Note-Aus: SID-Stimmen gehen ins Release, Sample-Stimmen blenden kurz aus.
+    void releaseVoice (Voice& v)
+    {
+        if (! v.active || v.inst == nullptr)
+            return;
+        if (v.inst->kind == Instrument::Kind::Synth)
+            v.envStage = 4; // Release
+        else if (v.fadeOut == 0)
+            v.fadeOut = kFade;
     }
 
     // Lautstaerke (0..64) einer Stimme setzen und Pegel inkl. Panorama neu berechnen.
@@ -418,47 +473,125 @@ private:
         {
             if (! v.active || v.inst == nullptr)
                 continue;
-
-            const auto& d  = v.inst->data;
-            const int len  = d.getNumSamples();
-            const int srcCh = d.getNumChannels();
-            double pos = v.pos;
-
-            for (int i = 0; i < num; ++i)
-            {
-                if (pos >= (double) (len - 1))
-                {
-                    v.active = false;
-                    break;
-                }
-                const int   i0   = (int) pos;
-                const float frac = (float) (pos - i0);
-
-                // Huellkurve: am Notenanfang kurz einblenden, kurz vor Sample-Ende
-                // wieder ausblenden - so knackt es weder beim Start noch beim Stopp.
-                float env = 1.0f;
-                if (v.fadeIn > 0)
-                {
-                    env = (float) (kFade - v.fadeIn) / (float) kFade;
-                    --v.fadeIn;
-                }
-                const double remain = (double) (len - 1) - pos;
-                if (remain < (double) kFade)
-                    env *= (float) (remain / (double) kFade);
-
-                for (int ch = 0; ch < outCh; ++ch)
-                {
-                    const float* src = d.getReadPointer (juce::jmin (ch, srcCh - 1));
-                    const float  s   = src[i0] + (src[i0 + 1] - src[i0]) * frac;
-                    const float  g   = (ch == 0 ? v.gainL
-                                      : ch == 1 ? v.gainR
-                                                : 0.5f * (v.gainL + v.gainR));
-                    buffer.addSample (ch, offset + i, s * g * env * 0.5f);
-                }
-                pos += v.step;
-            }
-            v.pos = pos;
+            if (v.inst->kind == Instrument::Kind::Synth)
+                renderSynth (buffer, v, offset, num, outCh);
+            else
+                renderSample (buffer, v, offset, num, outCh);
         }
+    }
+
+    void renderSample (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
+    {
+        const auto& d  = v.inst->data;
+        const int len  = d.getNumSamples();
+        const int srcCh = d.getNumChannels();
+        double pos = v.pos;
+
+        for (int i = 0; i < num; ++i)
+        {
+            if (pos >= (double) (len - 1))
+            {
+                v.active = false;
+                break;
+            }
+            const int   i0   = (int) pos;
+            const float frac = (float) (pos - i0);
+
+            // Huellkurve: am Notenanfang kurz einblenden, kurz vor Sample-Ende
+            // wieder ausblenden - so knackt es weder beim Start noch beim Stopp.
+            float env = 1.0f;
+            if (v.fadeIn > 0)
+            {
+                env = (float) (kFade - v.fadeIn) / (float) kFade;
+                --v.fadeIn;
+            }
+            const double remain = (double) (len - 1) - pos;
+            if (remain < (double) kFade)
+                env *= (float) (remain / (double) kFade);
+
+            // Note-Aus: in kFade Samples sanft auf Null fahren, dann Stimme aus.
+            bool finish = false;
+            if (v.fadeOut > 0)
+            {
+                env *= (float) v.fadeOut / (float) kFade;
+                if (--v.fadeOut == 0)
+                    finish = true;
+            }
+
+            for (int ch = 0; ch < outCh; ++ch)
+            {
+                const float* src = d.getReadPointer (juce::jmin (ch, srcCh - 1));
+                const float  s   = src[i0] + (src[i0 + 1] - src[i0]) * frac;
+                const float  g   = (ch == 0 ? v.gainL
+                                  : ch == 1 ? v.gainR
+                                            : 0.5f * (v.gainL + v.gainR));
+                buffer.addSample (ch, offset + i, s * g * env * 0.5f);
+            }
+            pos += v.step;
+
+            if (finish)
+            {
+                v.active = false;
+                break;
+            }
+        }
+        v.pos = pos;
+    }
+
+    // SID-Synth: Oszillator (Dreieck/Saege/Puls/Rauschen) + ADSR-Huellkurve.
+    void renderSynth (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
+    {
+        const auto* inst = v.inst;
+        const float sr     = (float) sampleRate;
+        const float atkInc = inst->attack  > 0.0f ? 1.0f / (inst->attack  * sr) : 1.0f;
+        const float decInc = inst->decay   > 0.0f ? (1.0f - inst->sustain) / (inst->decay * sr) : 1.0f;
+        const float relInc = inst->release > 0.0f ? 1.0f / (inst->release * sr) : 1.0f;
+        const float pw     = juce::jlimit (0.02f, 0.98f, inst->pulseWidth);
+        double ph = v.pos; // Phase 0..1
+
+        for (int i = 0; i < num; ++i)
+        {
+            // Huellkurve einen Schritt weiterfahren.
+            switch (v.envStage)
+            {
+                case 1: v.envLevel += atkInc; if (v.envLevel >= 1.0f)          { v.envLevel = 1.0f;          v.envStage = 2; } break;
+                case 2: v.envLevel -= decInc; if (v.envLevel <= inst->sustain) { v.envLevel = inst->sustain; v.envStage = 3; } break;
+                case 3: break; // Sustain haelt, bis Note-Aus kommt
+                case 4: v.envLevel -= relInc; if (v.envLevel <= 0.0f)          { v.envLevel = 0.0f;          v.active = false; } break;
+                default: break;
+            }
+
+            float osc;
+            switch (inst->wave)
+            {
+                case Instrument::Wave::Triangle: osc = ph < 0.5 ? (float) (4.0 * ph - 1.0) : (float) (3.0 - 4.0 * ph); break;
+                case Instrument::Wave::Saw:      osc = (float) (2.0 * ph - 1.0); break;
+                case Instrument::Wave::Noise:    osc = v.noiseVal; break;
+                case Instrument::Wave::Pulse:
+                default:                         osc = ph < pw ? 1.0f : -1.0f; break;
+            }
+
+            const float s = osc * v.envLevel;
+            for (int ch = 0; ch < outCh; ++ch)
+            {
+                const float g = (ch == 0 ? v.gainL : ch == 1 ? v.gainR : 0.5f * (v.gainL + v.gainR));
+                buffer.addSample (ch, offset + i, s * g * 0.42f);
+            }
+
+            ph += v.step;
+            if (ph >= 1.0)
+            {
+                ph -= 1.0;
+                // Pro Schwingung ein neuer Rauschwert (23-Bit-LFSR wie im SID).
+                const juce::uint32 bit = ((v.noiseReg >> 22) ^ (v.noiseReg >> 17)) & 1u;
+                v.noiseReg = ((v.noiseReg << 1) | bit) & 0x7FFFFFu;
+                v.noiseVal = (float) ((v.noiseReg >> 11) & 0xFFFu) / 2048.0f - 1.0f;
+            }
+
+            if (! v.active)
+                break;
+        }
+        v.pos = ph;
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme

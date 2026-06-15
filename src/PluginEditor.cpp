@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p)
+    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -10,10 +10,12 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (grid);
     addChildComponent (diskBrowser); // unsichtbar, bis SAMPLES gedrueckt wird
     addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
+    addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadButton);
     addAndMakeVisible (stDisksButton);
+    addAndMakeVisible (sidButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
@@ -127,6 +129,35 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                                + juce::String::formatted ("%02d", slot + 1)
                                + " geladen und angespielt.",
                            juce::dontSendNotification);
+    };
+
+    // SID: aktuellen Slot zu einem SID-Synth machen und den Editor oeffnen.
+    sidButton.onClick = [this]
+    {
+        const int slot = proc.currentInstrument.load();
+        if (! proc.isSid (slot))
+            proc.makeSidInstrument (slot); // ersetzt den Slot-Inhalt durch einen SID
+        refreshInstrumentBox();
+        instDot.colour = rt::instColour (slot);
+        instDot.repaint();
+
+        sidPanel.refresh();
+        sidPanel.setVisible (true);
+        sidButton.setToggleState (true, juce::dontSendNotification);
+        sidPanel.toFront (false);
+        sidPanel.grabKeyboardFocus();
+    };
+    sidPanel.onClose = [this]
+    {
+        sidPanel.setVisible (false);
+        sidButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+    sidPanel.onChanged = [this]
+    {
+        refreshInstrumentBox();
+        instDot.colour = rt::instColour (proc.currentInstrument.load());
+        instDot.repaint();
     };
 
     bpmSlider.setSliderStyle (juce::Slider::LinearBar);
@@ -411,9 +442,13 @@ void RetroTraxEditor::applyLanguage()
     else
         setDefaultHint();
 
+    sidButton.setTooltip (loc::t ("Aktuellen Slot zu einem SID-Synth machen (Wellenform + Huellkurve)",
+                                  "Turn the current slot into a SID synth (waveform + envelope)"));
+
     refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen
     diskBrowser.applyLanguage();
     helpPanel.applyLanguage();
+    sidPanel.applyLanguage();
     repaint();
 }
 
@@ -437,8 +472,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.10 | Effekt-Spalte - Song-Modus - SID kommt!",
-                        "v0.10 | effect column - song mode - SID coming!"),
+    g.drawText (loc::t ("v0.11 | SID-Synthesizer ist da - Wellenformen + Huellkurve",
+                        "v0.11 | SID synth is here - waveforms + envelope"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -467,7 +502,7 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (6);
     stopButton.setBounds (controls.removeFromLeft (74));
     controls.removeFromLeft (14);
-    bpmSlider.setBounds (controls.removeFromLeft (150));
+    bpmSlider.setBounds (controls.removeFromLeft (110));
     controls.removeFromLeft (14);
     octLabel.setBounds (controls.removeFromLeft (52));
     octaveBox.setBounds (controls.removeFromLeft (58));
@@ -475,11 +510,13 @@ void RetroTraxEditor::resized()
     instLabel.setBounds (controls.removeFromLeft (46));
     instDot.setBounds (controls.removeFromLeft (22).reduced (0, 4));
     controls.removeFromLeft (4);
-    instrumentBox.setBounds (controls.removeFromLeft (190));
+    instrumentBox.setBounds (controls.removeFromLeft (150));
     controls.removeFromLeft (10);
     loadButton.setBounds (controls.removeFromLeft (130));
     controls.removeFromLeft (6);
-    stDisksButton.setBounds (controls.removeFromLeft (96));
+    stDisksButton.setBounds (controls.removeFromLeft (84));
+    controls.removeFromLeft (6);
+    sidButton.setBounds (controls.removeFromLeft (64));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
@@ -502,4 +539,5 @@ void RetroTraxEditor::resized()
     grid.setBounds (gridArea);
     diskBrowser.setBounds (gridArea); // liegt als Overlay genau ueber dem Grid
     helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
+    sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
 }

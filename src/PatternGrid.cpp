@@ -70,6 +70,8 @@ juce::String PatternGrid::noteName (int note)
 {
     static const char* names[] = { "C-", "C#", "D-", "D#", "E-", "F-",
                                    "F#", "G-", "G#", "A-", "A#", "B-" };
+    if (note == TrackerEngine::kNoteOff)
+        return "OFF";
     if (note < 0)
         return "---";
     return juce::String (names[note % 12]) + juce::String (note / 12);
@@ -214,9 +216,13 @@ juce::String PatternGrid::cursorHelpText() const
     switch (cursorCol)
     {
         case 0:
+            if (cell.note == TrackerEngine::kNoteOff)
+                return where + loc::t (
+                    "NOTE-AUS (OFF): laesst eine SID-Stimme ausklingen. Taste 1 setzt sie, ENTF loescht.",
+                    "NOTE OFF: lets a SID voice fade out. Key 1 sets it, DEL clears.");
             return where + loc::t (
-                "NOTE: Tastatur spielt Toene (y s x d c v g b h n j m), Reihe darueber = hoeher; +/- Oktave",
-                "NOTE: keyboard plays notes (y s x d c v g b h n j m), row above = higher; +/- octave");
+                "NOTE: Tastatur spielt Toene (y s x d c v g b h n j m), Reihe darueber = hoeher; +/- Oktave; 1 = Note-Aus",
+                "NOTE: keyboard plays notes (y s x d c v g b h n j m), row above = higher; +/- octave; 1 = note off");
         case 1:
             return where + loc::t ("INSTRUMENT: Ziffern 01-16 waehlen das Sample",
                                    "INSTRUMENT: digits 01-16 pick the sample");
@@ -527,6 +533,18 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
 
     if (cursorCol == 0)
     {
+        // Taste 1 = Note-Aus: laesst eine SID-Stimme ausklingen (oder stoppt ein Sample).
+        if (c == '1')
+        {
+            pushUndo();
+            auto& cell = engine.cells[cursorRow][cursorTrack];
+            cell.note = TrackerEngine::kNoteOff;
+            cell.instrument = -1;
+            moveCursor (1, 0);
+            repaint();
+            emitCursorInfo();
+            return true;
+        }
         if (handleNoteKey (c))
             return true;
     }

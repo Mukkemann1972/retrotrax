@@ -6,6 +6,7 @@
 #include "RetroLookAndFeel.h"
 #include "SampleDiskBrowser.h"
 #include "HelpPanel.h"
+#include "SidPanel.h"
 #include "Localisation.h"
 
 class RetroTraxEditor : public juce::AudioProcessorEditor
@@ -36,6 +37,7 @@ private:
     juce::TextButton stopButton { "STOP" };
     juce::TextButton loadButton { "SAMPLE LADEN" };
     juce::TextButton stDisksButton { "SAMPLES" };
+    juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::TextButton helpButton { "?" };
@@ -75,6 +77,7 @@ private:
     PatternGrid grid;
     SampleDiskBrowser diskBrowser;
     HelpPanel helpPanel;
+    SidPanel sidPanel;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;
     juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song

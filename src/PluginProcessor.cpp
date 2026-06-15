@@ -76,6 +76,68 @@ bool RetroTraxProcessor::previewFile (const juce::File& file)
     return true;
 }
 
+// Sprechender Name fuer einen SID-Slot, z.B. "SID Puls".
+static juce::String sidName (const TrackerEngine::Instrument& inst)
+{
+    using W = TrackerEngine::Instrument::Wave;
+    switch (inst.wave)
+    {
+        case W::Triangle: return "SID Dreieck";
+        case W::Saw:      return "SID Saege";
+        case W::Noise:    return "SID Rauschen";
+        case W::Pulse:
+        default:          return "SID Puls";
+    }
+}
+
+void RetroTraxProcessor::makeSidInstrument (int slot)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return;
+    auto inst = std::make_unique<TrackerEngine::Instrument>();
+    inst->kind = TrackerEngine::Instrument::Kind::Synth;
+    inst->name = sidName (*inst);
+    engine.setInstrument (slot, std::move (inst));
+}
+
+bool RetroTraxProcessor::isSid (int slot) const
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    const juce::ScopedLock sl (engine.lock);
+    const auto& p = engine.instruments[slot];
+    return p != nullptr && p->kind == TrackerEngine::Instrument::Kind::Synth;
+}
+
+bool RetroTraxProcessor::getSid (int slot, TrackerEngine::Instrument& out) const
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    const juce::ScopedLock sl (engine.lock);
+    const auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Synth)
+        return false;
+    out.wave       = p->wave;
+    out.pulseWidth = p->pulseWidth;
+    out.attack     = p->attack;
+    out.decay      = p->decay;
+    out.sustain    = p->sustain;
+    out.release    = p->release;
+    return true;
+}
+
+void RetroTraxProcessor::editSid (int slot, std::function<void (TrackerEngine::Instrument&)> fn)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return;
+    const juce::ScopedLock sl (engine.lock); // Audio-Thread haelt dieselbe Sperre
+    auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Synth)
+        return;
+    fn (*p);
+    p->name = sidName (*p);
+}
+
 std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
 {
     auto xml = std::make_unique<juce::XmlElement> ("RETROTRAX");
@@ -97,12 +159,29 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
     {
         const juce::ScopedLock sl (engine.lock);
-        if (engine.instruments[i] != nullptr && engine.instruments[i]->filePath.isNotEmpty())
+        const auto& ip = engine.instruments[i];
+        if (ip == nullptr)
+            continue;
+
+        if (ip->kind == TrackerEngine::Instrument::Kind::Synth)
         {
             auto* e = xml->createNewChildElement ("INSTRUMENT");
             e->setAttribute ("slot", i);
-            e->setAttribute ("name", engine.instruments[i]->name);
-            e->setAttribute ("path", engine.instruments[i]->filePath);
+            e->setAttribute ("kind", "synth");
+            e->setAttribute ("name", ip->name);
+            e->setAttribute ("wave", (int) ip->wave);
+            e->setAttribute ("pw",  ip->pulseWidth);
+            e->setAttribute ("a",   ip->attack);
+            e->setAttribute ("d",   ip->decay);
+            e->setAttribute ("s",   ip->sustain);
+            e->setAttribute ("rel", ip->release);
+        }
+        else if (ip->filePath.isNotEmpty())
+        {
+            auto* e = xml->createNewChildElement ("INSTRUMENT");
+            e->setAttribute ("slot", i);
+            e->setAttribute ("name", ip->name);
+            e->setAttribute ("path", ip->filePath);
         }
     }
 
@@ -153,6 +232,25 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
         if (e->hasTagName ("INSTRUMENT"))
         {
             const int slot = e->getIntAttribute ("slot", -1);
+            if (slot < 0 || slot >= TrackerEngine::kInstruments)
+                continue;
+
+            if (e->getStringAttribute ("kind") == "synth")
+            {
+                auto inst = std::make_unique<TrackerEngine::Instrument>();
+                inst->kind       = TrackerEngine::Instrument::Kind::Synth;
+                inst->wave       = (TrackerEngine::Instrument::Wave)
+                                       juce::jlimit (0, 3, e->getIntAttribute ("wave", 2));
+                inst->pulseWidth = (float) e->getDoubleAttribute ("pw",  0.5);
+                inst->attack     = (float) e->getDoubleAttribute ("a",   0.004);
+                inst->decay      = (float) e->getDoubleAttribute ("d",   0.18);
+                inst->sustain    = (float) e->getDoubleAttribute ("s",   0.65);
+                inst->release    = (float) e->getDoubleAttribute ("rel", 0.25);
+                inst->name       = e->getStringAttribute ("name", "SID");
+                engine.setInstrument (slot, std::move (inst));
+                continue;
+            }
+
             const juce::File f (e->getStringAttribute ("path"));
             if (f.existsAsFile())
             {

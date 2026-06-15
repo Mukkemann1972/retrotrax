@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MukkemannRetroTrax VERSION 0.6.0 LANGUAGES C CXX)
+project(MukkemannRetroTrax VERSION 0.11.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,6 +29,7 @@ target_sources(RetroTrax PRIVATE
     src/PatternGrid.cpp
     src/SampleDiskBrowser.cpp
     src/HelpPanel.cpp
+    src/SidPanel.cpp
 )
 
 target_include_directories(RetroTrax PRIVATE src)

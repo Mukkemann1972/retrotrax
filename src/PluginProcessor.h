@@ -39,6 +39,16 @@ public:
     // Spielt eine Audiodatei sofort an, ohne einen Slot zu belegen (Vorschau).
     bool previewFile (const juce::File& file);
 
+    // --- SID-Synth-Instrumente ------------------------------------------------
+    // Macht aus dem Slot ein frisches SID-Synth-Instrument (ersetzt den Inhalt).
+    void makeSidInstrument (int slot);
+    // true, wenn der Slot ein SID-Synth ist.
+    bool isSid (int slot) const;
+    // Liest die SID-Parameter eines Slots; false, wenn der Slot kein Synth ist.
+    bool getSid (int slot, TrackerEngine::Instrument& out) const;
+    // Veraendert die SID-Parameter eines Slots in-place (legt nichts neu an).
+    void editSid (int slot, std::function<void (TrackerEngine::Instrument&)> fn);
+
     // Song als .retrotrax-Datei speichern bzw. oeffnen. loadSong sammelt in
     // 'missingSamples' die Namen der Samples, deren Datei nicht (mehr) da ist.
     bool saveSong (const juce::File& file);
