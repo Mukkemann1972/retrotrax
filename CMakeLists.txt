@@ -7,6 +7,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(libs/JUCE)
 
+# --- reSIDfp: echter MOS-6581/8581-SID-Emulator (Dag Lem / Leandro Nini, GPL-2.0+) ---
+# Liegt vendored in libs/residfp. POSITION_INDEPENDENT_CODE, weil es ins VST3
+# (shared module) gelinkt wird; Threads fuer die std::call_once-Caches.
+find_package(Threads REQUIRED)
+file(GLOB RESIDFP_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/residfp/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/residfp/*.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/residfp/resample/*.cpp)
+add_library(residfp STATIC ${RESIDFP_SOURCES})
+target_include_directories(residfp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libs/residfp)
+target_compile_definitions(residfp PUBLIC HAVE_CXX17)
+target_compile_features(residfp PUBLIC cxx_std_17)
+target_link_libraries(residfp PUBLIC Threads::Threads)
+set_target_properties(residfp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 juce_add_plugin(RetroTrax
     PRODUCT_NAME "Mukkemann RetroTrax"
     VERSION ${PROJECT_VERSION}
@@ -45,6 +60,7 @@ target_compile_definitions(RetroTrax PUBLIC
 
 target_link_libraries(RetroTrax
     PRIVATE
+        residfp
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
