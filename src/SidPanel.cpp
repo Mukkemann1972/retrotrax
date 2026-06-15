@@ -108,6 +108,7 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     setupSlider (cutoffSlider,  cutoffLabel,  0.0, 100.0, 1.0,  " %", 0);
     setupSlider (resoSlider,    resoLabel,    0.0, 100.0, 1.0,  " %", 0);
     setupSlider (modTuneSlider, modTuneLabel, 0.0,  36.0, 1.0,  " HT", 0);
+    setupSlider (detuneSlider,  detuneLabel,  0.0, 100.0, 1.0,  " %", 0);
     setupSlider (pwmRateSlider, pwmRateLabel, 0.0,  12.0, 0.1,  " Hz", 1);
     setupSlider (pwmDepthSlider,pwmDepthLabel,0.0, 100.0, 1.0,  " %", 0);
     setupSlider (attackSlider,  attackLabel,  0.0,  1.50, 0.005, " s", 3);
@@ -132,6 +133,16 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     addAndMakeVisible (syncButton);
     ringButton.onClick = [this] { toggleRing(); };
     syncButton.onClick = [this] { toggleSync(); };
+
+    // Unisono-Stack: STIMMEN-Knoepfe + VERSTIMMUNG-Regler.
+    stackLabel.setFont (rt::mono (12.0f, true));
+    stackLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (stackLabel);
+    for (auto* b : { &stack1, &stack2, &stack3 })
+        addAndMakeVisible (*b);
+    stack1.onClick = [this] { selectStack (1); };
+    stack2.onClick = [this] { selectStack (2); };
+    stack3.onClick = [this] { selectStack (3); };
 
     hintLabel.setFont (rt::mono (12.0f));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -196,6 +207,12 @@ void SidPanel::applyLanguage()
                                    "Hard sync: tearing, screaming leads"));
     modTuneLabel.setText (loc::t ("MOD-TONHOEHE", "MOD PITCH"), juce::dontSendNotification);
 
+    stackLabel.setText  (loc::t ("STIMMEN (UNISONO)", "VOICES (UNISON)"), juce::dontSendNotification);
+    detuneLabel.setText (loc::t ("VERSTIMMUNG", "DETUNE"), juce::dontSendNotification);
+    stack1.setTooltip (loc::t ("Eine Stimme - schlank", "One voice - thin"));
+    stack2.setTooltip (loc::t ("Zwei verstimmte Stimmen - breiter", "Two detuned voices - wider"));
+    stack3.setTooltip (loc::t ("Drei verstimmte Stimmen - fetter Stack", "Three detuned voices - fat stack"));
+
     pwLabel.setText      (loc::t ("PULSWEITE", "PULSE WIDTH"), juce::dontSendNotification);
     pwmRateLabel.setText (loc::t ("PWM-TEMPO", "PWM RATE"), juce::dontSendNotification);
     pwmDepthLabel.setText(loc::t ("PWM-TIEFE", "PWM DEPTH"), juce::dontSendNotification);
@@ -231,6 +248,7 @@ void SidPanel::refresh()
     cutoffSlider.setValue  (s.cutoff * 100.0,  juce::dontSendNotification);
     resoSlider.setValue    (s.resonance * 100.0, juce::dontSendNotification);
     modTuneSlider.setValue (s.modTune, juce::dontSendNotification);
+    detuneSlider.setValue  (s.detune * 100.0, juce::dontSendNotification);
     attackSlider.setValue  (s.attack,  juce::dontSendNotification);
     decaySlider.setValue   (s.decay,   juce::dontSendNotification);
     sustainSlider.setValue (s.sustain * 100.0, juce::dontSendNotification);
@@ -241,6 +259,7 @@ void SidPanel::refresh()
     updateFilterButtons();
     updateModButtons();
     updateEngineButtons();
+    updateStackButtons();
     refreshMineList();
 }
 
@@ -346,6 +365,8 @@ void SidPanel::writeMine (const juce::String& name)
     xml.setAttribute ("mtune",s.modTune);
     xml.setAttribute ("pwmr", s.pwmRate);
     xml.setAttribute ("pwmd", s.pwmDepth);
+    xml.setAttribute ("uni",  s.unison);
+    xml.setAttribute ("det",  s.detune);
 
     auto dir = mySidDir();
     dir.createDirectory();
@@ -387,6 +408,8 @@ void SidPanel::loadMine()
         i.modTune    = (float) xml->getDoubleAttribute ("mtune", 12.0);
         i.pwmRate    = (float) xml->getDoubleAttribute ("pwmr", 0.0);
         i.pwmDepth   = (float) xml->getDoubleAttribute ("pwmd", 0.0);
+        i.unison     = juce::jlimit (1, 3, xml->getIntAttribute ("uni", 1));
+        i.detune     = (float) xml->getDoubleAttribute ("det", 0.25);
     });
 
     // Regler/Knoepfe nachziehen - aber NICHT die Liste neu aufbauen (sonst Callback-
@@ -401,6 +424,7 @@ void SidPanel::loadMine()
         cutoffSlider.setValue  (s.cutoff * 100.0, juce::dontSendNotification);
         resoSlider.setValue    (s.resonance * 100.0, juce::dontSendNotification);
         modTuneSlider.setValue (s.modTune, juce::dontSendNotification);
+        detuneSlider.setValue  (s.detune * 100.0, juce::dontSendNotification);
         attackSlider.setValue  (s.attack, juce::dontSendNotification);
         decaySlider.setValue   (s.decay, juce::dontSendNotification);
         sustainSlider.setValue (s.sustain * 100.0, juce::dontSendNotification);
@@ -410,6 +434,7 @@ void SidPanel::loadMine()
         updateFilterButtons();
         updateModButtons();
         updateEngineButtons();
+        updateStackButtons();
     }
     if (onChanged) onChanged();
     previewNote();
@@ -520,6 +545,26 @@ void SidPanel::updateModButtons()
     modTuneSlider.setEnabled (ring || sync);
 }
 
+void SidPanel::selectStack (int voices)
+{
+    proc.editSid (slot, [voices] (TrackerEngine::Instrument& i) { i.unison = voices; });
+    updateStackButtons();
+    if (onChanged) onChanged();
+    previewNote(); // neuen Stack gleich hoeren
+}
+
+void SidPanel::updateStackButtons()
+{
+    TrackerEngine::Instrument s;
+    const int n = proc.getSid (slot, s) ? juce::jlimit (1, 3, s.unison) : 1;
+    stack1.setToggleState (n == 1, juce::dontSendNotification);
+    stack2.setToggleState (n == 2, juce::dontSendNotification);
+    stack3.setToggleState (n == 3, juce::dontSendNotification);
+
+    // Verstimmung nur sinnvoll, wenn mehr als eine Stimme gestapelt wird.
+    detuneSlider.setEnabled (n >= 2);
+}
+
 void SidPanel::writeParams()
 {
     if (loading)
@@ -531,6 +576,7 @@ void SidPanel::writeParams()
     const float cut = (float) (cutoffSlider.getValue()  / 100.0);
     const float res = (float) (resoSlider.getValue()    / 100.0);
     const float mt  = (float)  modTuneSlider.getValue();
+    const float det = (float) (detuneSlider.getValue() / 100.0);
     const float a   = (float)  attackSlider.getValue();
     const float d   = (float)  decaySlider.getValue();
     const float sus = (float) (sustainSlider.getValue() / 100.0);
@@ -544,6 +590,7 @@ void SidPanel::writeParams()
         i.cutoff     = cut;
         i.resonance  = res;
         i.modTune    = mt;
+        i.detune     = det;
         i.attack     = a;
         i.decay      = d;
         i.sustain    = sus;
@@ -673,6 +720,9 @@ void SidPanel::resized()
     left.removeFromTop (6);
     buttonRow (left, modLabel, { &ringButton, &syncButton });
     sliderRow (left, modTuneLabel, modTuneSlider);
+    left.removeFromTop (6);
+    buttonRow (left, stackLabel, { &stack1, &stack2, &stack3 });
+    sliderRow (left, detuneLabel, detuneSlider);
 
     // Rechte Spalte: Filter und Huellkurve.
     buttonRow (right, filterLabel, { &filtOff, &filtLow, &filtHigh, &filtBand });

@@ -70,6 +70,11 @@ public:
         // Pulsweiten-Modulation: ein langsamer LFO laesst die Pulsweite wabern.
         float  pwmRate    = 0.0f;        // LFO-Tempo in Hz (0 = aus)
         float  pwmDepth   = 0.0f;        // Tiefe 0..1 (nur bei der Puls-Welle wirksam)
+
+        // Unisono-Stack: mehrere leicht verstimmte Stimmen pro Note -> fetter,
+        // breiter Klang. Standard 1 (aus), damit bestehende Songs unveraendert klingen.
+        int    unison     = 1;           // Anzahl gestapelter Stimmen 1..3
+        float  detune     = 0.25f;       // Verstimmung 0..1 (0 = sauber, 1 = max ~25 Cent)
     };
 
     void prepare (double newSampleRate)
@@ -101,6 +106,8 @@ public:
         p.modTune    = inst.modTune;
         p.pwmRate    = inst.pwmRate;
         p.pwmDepth   = inst.pwmDepth;
+        p.unison     = inst.unison;
+        p.detune     = inst.detune;
         return p;
     }
 
@@ -277,6 +284,7 @@ private:
         float        fic1 = 0.0f, fic2 = 0.0f; // Filter-Speicher (State-Variable-Filter)
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
+        double       uniPhase[2] = { 0.0, 0.0 }; // Phasen der gestapelten Unisono-Stimmen
         // --- Effekt-Status der laufenden Zeile ---
         int    effect = -1;
         int    effectParam = 0;
@@ -425,6 +433,8 @@ private:
                 v.fic2     = 0.0f;
                 v.modPhase = 0.0;
                 v.pwmPhase = 0.0;
+                v.uniPhase[0] = 0.33; // leicht versetzte Startphasen -> sofort breit
+                v.uniPhase[1] = 0.66;
             }
             v.fadeIn = 0;
         }
@@ -655,6 +665,31 @@ private:
         const float  pwmInc = inst->pwmRate / sr;
         double       pwmPh  = v.pwmPhase;
 
+        // Unisono-Stack: bis zu 3 leicht verstimmte Stimmen fuer einen fetten,
+        // breiten Klang. Bei Ring/Sync bleibt es einstimmig - der zweite Oszillator
+        // ist dort schon belegt. Eine Stimme laeuft hoeher, eine tiefer (Cent-Spreizung).
+        const int    uni      = (ring || sync) ? 1 : juce::jlimit (1, 3, inst->unison);
+        const double detCents = juce::jlimit (0.0f, 1.0f, inst->detune) * 25.0;
+        const double upRatio  = std::pow (2.0, detCents / 1200.0);
+        const double uniStep0 = mainStep * upRatio; // 2. Stimme einen Tick hoeher
+        const double uniStep1 = mainStep / upRatio; // 3. Stimme einen Tick tiefer
+        double uph0 = v.uniPhase[0];
+        double uph1 = v.uniPhase[1];
+        const float  uniNorm  = 1.0f / std::sqrt ((float) uni); // Pegel halten
+
+        // Eine Wellenform an einer beliebigen Phase auslesen (fuer die Stack-Stimmen).
+        auto waveAt = [&] (double p, float pwc) -> float
+        {
+            switch (inst->wave)
+            {
+                case Instrument::Wave::Triangle: return p < 0.5 ? (float) (4.0 * p - 1.0) : (float) (3.0 - 4.0 * p);
+                case Instrument::Wave::Saw:      return (float) (2.0 * p - 1.0);
+                case Instrument::Wave::Noise:    return v.noiseVal;
+                case Instrument::Wave::Pulse:
+                default:                         return p < pwc ? 1.0f : -1.0f;
+            }
+        };
+
         // Filter-Koeffizienten einmal pro Block (TPT-State-Variable-Filter).
         const auto ftype = inst->filter;
         float fg = 0.0f, fk = 0.0f, fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
@@ -693,15 +728,7 @@ private:
                     pwmPh -= 1.0;
             }
 
-            float osc;
-            switch (inst->wave)
-            {
-                case Instrument::Wave::Triangle: osc = ph < 0.5 ? (float) (4.0 * ph - 1.0) : (float) (3.0 - 4.0 * ph); break;
-                case Instrument::Wave::Saw:      osc = (float) (2.0 * ph - 1.0); break;
-                case Instrument::Wave::Noise:    osc = v.noiseVal; break;
-                case Instrument::Wave::Pulse:
-                default:                         osc = ph < pwNow ? 1.0f : -1.0f; break;
-            }
+            float osc = waveAt (ph, pwNow);
 
             // Ring-Modulation: hoerbare Welle mal Dreieck des zweiten Oszillators.
             if (ring)
@@ -709,6 +736,11 @@ private:
                 const float modTri = mph < 0.5 ? (float) (4.0 * mph - 1.0) : (float) (3.0 - 4.0 * mph);
                 osc *= modTri;
             }
+
+            // Unisono-Stack dazumischen (verstimmte Kopien) und Pegel normieren.
+            if (uni >= 2) osc += waveAt (uph0, pwNow);
+            if (uni >= 3) osc += waveAt (uph1, pwNow);
+            osc *= uniNorm;
 
             // Filter (TPT-SVF): erst die Wellenform filtern, dann die Huellkurve
             // formt die Lautstaerke - klassische Synth-Reihenfolge OSC -> Filter -> Pegel.
@@ -741,6 +773,10 @@ private:
                 v.noiseVal = (float) ((v.noiseReg >> 11) & 0xFFFu) / 2048.0f - 1.0f;
             }
 
+            // Die gestapelten Unisono-Stimmen mit ihrer eigenen (verstimmten) Tonhoehe.
+            if (uni >= 2) { uph0 += uniStep0; if (uph0 >= 1.0) uph0 -= 1.0; }
+            if (uni >= 3) { uph1 += uniStep1; if (uph1 >= 1.0) uph1 -= 1.0; }
+
             // Zweiten Oszillator weiterdrehen; bei Hard-Sync setzt sein Ueberlauf
             // die hoerbare Phase auf 0 zurueck (das "Zerreissen").
             if (ring || sync)
@@ -760,6 +796,8 @@ private:
         v.pos = ph;
         v.modPhase = mph;
         v.pwmPhase = pwmPh;
+        v.uniPhase[0] = uph0;
+        v.uniPhase[1] = uph1;
     }
 
     // ECHTER CHIP: laeuft ueber die reSIDfp-Emulation dieser Stimme. Die Tonhoehe

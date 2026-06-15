@@ -30,6 +30,8 @@ private:
     using Engine = TrackerEngine::Instrument::Engine;
 
     void selectWave (Wave w);
+    void selectStack (int voices);    // Anzahl Unisono-Stimmen 1/2/3
+    void updateStackButtons();
     void selectFilter (Filter f);
     void selectEngine (Engine e); // Klangmotor umschalten (Klassisch / Echter Chip)
     void applyPreset (int index); // Werks-Preset auf den aktuellen Slot legen
@@ -96,6 +98,11 @@ private:
     juce::TextButton ringButton { "RING-MOD" };
     juce::TextButton syncButton { "HARD-SYNC" };
     juce::Slider modTuneSlider;
+
+    // Unisono-Stack: STIMMEN (1/2/3) + VERSTIMMUNG.
+    juce::Label      stackLabel, detuneLabel;
+    juce::TextButton stack1 { "1" }, stack2 { "2" }, stack3 { "3" };
+    juce::Slider     detuneSlider;
 
     juce::Label      hintLabel;
     juce::TextButton testButton  { "TEST" }; // aktuellen Klang anspielen (mit Ausklang)

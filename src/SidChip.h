@@ -17,6 +17,8 @@ struct SidParams
     float cutoff     = 0.7f, resonance = 0.12f;
     bool  ringMod    = false, sync = false;
     float modTune    = 12.0f, pwmRate = 0.0f, pwmDepth = 0.0f;
+    int   unison     = 1;        // gestapelte Stimmen 1..3 (fetter Klang)
+    float detune     = 0.25f;    // Verstimmung 0..1 der Stack-Stimmen
 };
 
 // Kapselt EINEN echten reSIDfp-Chip und spielt damit genau eine Tracker-Stimme.
@@ -49,6 +51,8 @@ public:
         silentCount = 0;
         cycleRemainder = 0.0;
         pendingCount = pendingPos = 0;
+        nStack = 1;
+        outGain = 1.0f;
     }
 
     // Neue Note: Register frisch setzen und Huellkurve ausloesen (Gate 0 -> 1 = Attack).
@@ -61,27 +65,49 @@ public:
         pwmInc  = p.pwmRate / (float) sr;
         pwmPhase = 0.0;
 
-        writeAdsr (p);
-        writeFilter (p);
-        setFrequency (freqHz);
-        setPulseWidth (pwBase);
+        // Unisono-Stack: hoerbare Stimmen auf die echten Hardware-Stimmen 0,1,2
+        // verteilen. Bei Ring/Sync ist Stimme 2 der Modulator -> dann max 2 hoerbar.
+        const bool useMod = p.ringMod || p.sync;
+        nStack  = useMod ? juce::jmin (juce::jlimit (1, 3, p.unison), 2)
+                         : juce::jlimit (1, 3, p.unison);
+        outGain = 1.0f / std::sqrt ((float) nStack); // Pegel halten beim Stapeln
 
-        // Gate sauber neu ausloesen, auch wenn die Stimme schon klang.
-        sid.write (0 * 7 + 4, controlByte (false)); // Gate aus
-        sid.write (0 * 7 + 4, controlByte (true));  // Gate an -> Attack
-        if (p.ringMod || p.sync)
-            sid.write (2 * 7 + 4, 0x10);            // Modulator-Stimme: Dreieck, kein Gate
+        writeFilter (p);
+
+        for (int s = 0; s < nStack; ++s)   // Klang auf jede hoerbare Stimme schreiben
+        {
+            writeAdsr (s, p);
+            setPulseWidth (s, pwBase);
+        }
+        setFrequency (freqHz);
+
+        // Gate sauber neu ausloesen (auch wenn die Stimme schon klang) - nur die
+        // Hauptstimme (s==0) traegt Ring/Sync.
+        for (int s = 0; s < nStack; ++s)
+        {
+            const bool withMod = (s == 0);
+            sid.write (s * 7 + 4, controlByte (false, withMod)); // Gate aus
+            sid.write (s * 7 + 4, controlByte (true,  withMod)); // Gate an -> Attack
+        }
+        if (useMod)
+            sid.write (2 * 7 + 4, 0x10);   // Modulator-Stimme: Dreieck, kein Gate
+
+        // Nicht genutzte Hardware-Stimmen stilllegen (ausser dem Modulator).
+        for (int s = nStack; s < 3; ++s)
+            if (! (useMod && s == 2))
+                sid.write (s * 7 + 4, 0x00);
 
         released = false;
         silentCount = 0;
         pendingCount = pendingPos = 0; // Rest der vorigen Note verwerfen
     }
 
-    // Note loslassen: Gate aus -> die Huellkurve geht ins Release.
+    // Note loslassen: Gate aller hoerbaren Stimmen aus -> Huellkurven ins Release.
     void noteOff()
     {
         if (! ready) return;
-        sid.write (0 * 7 + 4, controlByte (false));
+        for (int s = 0; s < nStack; ++s)
+            sid.write (s * 7 + 4, controlByte (false, s == 0));
         released = true;
     }
 
@@ -102,7 +128,9 @@ public:
             if (pwmOn)
             {
                 const float lfo = std::sin (pwmPhase * juce::MathConstants<double>::twoPi);
-                setPulseWidth (juce::jlimit (0.05f, 0.95f, pwBase + params.pwmDepth * 0.45f * lfo));
+                const float pwNow = juce::jlimit (0.05f, 0.95f, pwBase + params.pwmDepth * 0.45f * lfo);
+                for (int s = 0; s < nStack; ++s)
+                    setPulseWidth (s, pwNow);
                 pwmPhase += pwmInc * (float) chunk;
                 if (pwmPhase >= 1.0) pwmPhase -= 1.0;
             }
@@ -122,7 +150,7 @@ private:
     void emit (juce::AudioBuffer<float>& buffer, int idx, short raw,
                float gainL, float gainR, int outCh)
     {
-        const float s = (float) raw * (kSidGain / 32768.0f);
+        const float s = (float) raw * (kSidGain / 32768.0f) * outGain;
         if (std::abs (s) > 0.0008f) silentCount = 0; else ++silentCount;
         for (int ch = 0; ch < outCh; ++ch)
         {
@@ -159,11 +187,13 @@ private:
         }
     }
 
-    unsigned char controlByte (bool gate) const
+    // withMod: nur die Hauptstimme (0) traegt die Ring/Sync-Bits - die gestapelten
+    // Unisono-Stimmen sollen sauber klingen, ohne den Modulator zu lesen.
+    unsigned char controlByte (bool gate, bool withMod) const
     {
         unsigned char b = gate ? 0x01 : 0x00;
-        if (params.sync)    b |= 0x02;
-        if (params.ringMod) b |= 0x04;
+        if (withMod && params.sync)    b |= 0x02;
+        if (withMod && params.ringMod) b |= 0x04;
         switch (params.wave)
         {
             case 0:  b |= 0x10; break; // Dreieck
@@ -175,42 +205,45 @@ private:
         return b;
     }
 
+    // Eine Hardware-Stimme auf eine Frequenz stellen (16-Bit-Frequenzregister).
+    void writeFreq (int voice, double hz)
+    {
+        const int fn = juce::jlimit (0, 65535, (int) std::lround (hz * 16777216.0 / kClock));
+        sid.write (voice * 7 + 0, fn & 0xFF);
+        sid.write (voice * 7 + 1, (fn >> 8) & 0xFF);
+    }
+
     void setFrequency (double freqHz)
     {
-        const auto reg = [] (double hz) -> int
-        {
-            const int fn = (int) std::lround (hz * 16777216.0 / kClock);
-            return juce::jlimit (0, 65535, fn);
-        };
         // Bei Sync klingt die Stimme hoeher, der Master haelt die Note; bei Ring
         // klingt die Note und der Modulator liegt um modTune daneben.
-        const double r = std::pow (2.0, params.modTune / 12.0);
-        const int fnMain = reg (params.sync ? freqHz * r : freqHz);
-        sid.write (0, fnMain & 0xFF);
-        sid.write (1, (fnMain >> 8) & 0xFF);
-        if (params.ringMod || params.sync)
-        {
-            const int fnMod = reg (params.sync ? freqHz : freqHz * r);
-            sid.write (2 * 7 + 0, fnMod & 0xFF);
-            sid.write (2 * 7 + 1, (fnMod >> 8) & 0xFF);
-        }
+        const double r    = std::pow (2.0, params.modTune / 12.0);
+        const double base = params.sync ? freqHz * r : freqHz; // Tonhoehe der Hauptstimme
+        const double up   = std::pow (2.0, juce::jlimit (0.0f, 1.0f, params.detune) * 25.0 / 1200.0);
+        const double ratio[3] = { 1.0, up, 1.0 / up }; // Stimme 0 mittig, 1 hoch, 2 tief
+
+        for (int s = 0; s < nStack; ++s)   // alle hoerbaren Stimmen (verstimmt)
+            writeFreq (s, base * ratio[s]);
+
+        if (params.ringMod || params.sync) // Modulator auf Stimme 2
+            writeFreq (2, params.sync ? freqHz : freqHz * r);
     }
 
-    void setPulseWidth (float pw01)
+    void setPulseWidth (int voice, float pw01)
     {
         const int pw = juce::jlimit (0, 4095, (int) std::lround (pw01 * 4095.0f));
-        sid.write (2, pw & 0xFF);
-        sid.write (3, (pw >> 8) & 0x0F);
+        sid.write (voice * 7 + 2, pw & 0xFF);
+        sid.write (voice * 7 + 3, (pw >> 8) & 0x0F);
     }
 
-    void writeAdsr (const SidParams& p)
+    void writeAdsr (int voice, const SidParams& p)
     {
         const int a  = nearestRate (kAttackMs, p.attack);
         const int d  = nearestRate (kDecRelMs, p.decay);
         const int rl = nearestRate (kDecRelMs, p.release);
         const int s  = juce::jlimit (0, 15, (int) std::lround (p.sustain * 15.0f));
-        sid.write (5, (unsigned char) ((a << 4) | d));
-        sid.write (6, (unsigned char) ((s << 4) | rl));
+        sid.write (voice * 7 + 5, (unsigned char) ((a << 4) | d));
+        sid.write (voice * 7 + 6, (unsigned char) ((s << 4) | rl));
     }
 
     void writeFilter (const SidParams& p)
@@ -225,7 +258,8 @@ private:
         sid.write (21, fc & 0x07);
         sid.write (22, (fc >> 3) & 0xFF);
         const int res = juce::jlimit (0, 15, (int) std::lround (p.resonance * 15.0f));
-        sid.write (23, (unsigned char) ((res << 4) | 0x01)); // Resonanz + Stimme 1 in den Filter
+        const int route = (1 << juce::jlimit (1, 3, nStack)) - 1; // alle hoerbaren Stimmen in den Filter
+        sid.write (23, (unsigned char) ((res << 4) | route));     // Resonanz + Routing
         unsigned char mode = 0x0F;                            // Lautstaerke voll
         mode |= (p.filter == 1) ? 0x10   // Tiefpass
               : (p.filter == 2) ? 0x40   // Hochpass
@@ -261,6 +295,8 @@ private:
     bool   ready = false;
 
     SidParams params;
+    int    nStack = 1;       // Anzahl hoerbarer Hardware-Stimmen (Unisono-Stack)
+    float  outGain = 1.0f;   // Pegelausgleich beim Stapeln (1/sqrt(nStack))
     float  pwBase = 0.5f;
     bool   pwmOn = false;
     float  pwmInc = 0.0f;
