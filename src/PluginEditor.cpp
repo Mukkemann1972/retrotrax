@@ -472,8 +472,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.15 | SID: Klang-Motor umschaltbar - Klassisch / Echter Chip",
-                        "v0.15 | SID: switchable engine - Classic / Real Chip"),
+    g.drawText (loc::t ("v0.16 | SID-Werks-Presets: fertige Startklaenge zum Anklicken",
+                        "v0.16 | SID factory presets: ready-made sounds to click"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }

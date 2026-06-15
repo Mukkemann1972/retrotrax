@@ -1,5 +1,38 @@
 #include "SidPanel.h"
 
+// --- Werks-Presets ----------------------------------------------------------
+// Ein Preset ist nur ein Satz SID-Reglerwerte mit Namen - eine gute Auswahl an
+// Startklaengen zum Anklicken. Der Klangmotor (Klassisch/Echter Chip) bleibt
+// unangetastet, damit jeder Preset mit dem gewaehlten Motor klingt.
+namespace
+{
+    using Wave   = TrackerEngine::Instrument::Wave;
+    using Filter = TrackerEngine::Instrument::Filter;
+
+    struct SidPreset
+    {
+        const char* nameDe;  const char* nameEn;
+        Wave  wave;   float pw;                    // Wellenform + Pulsweite
+        float a, d, s, r;                          // Huellkurve (S als Pegel 0..1)
+        Filter filter; float cutoff, reso;         // Filter
+        bool  ring, sync; float modTune;           // 2. Oszillator
+        float pwmRate, pwmDepth;                    // Pulsweiten-LFO
+    };
+
+    const SidPreset kSidPresets[] =
+    {
+        // Name           Welle           pw     A      D     S     R     Filter            cut   res   ring   sync  mTun  pwmR pwmD
+        { "BASS","BASS",   Wave::Pulse,    0.50f, 0.002f,0.12f,0.55f,0.12f, Filter::LowPass,  0.32f,0.25f, false, false, 12,  0.0f,0.0f },
+        { "LEAD","LEAD",   Wave::Saw,      0.50f, 0.004f,0.15f,0.80f,0.20f, Filter::LowPass,  0.72f,0.15f, false, false, 12,  0.0f,0.0f },
+        { "GLOCKE","BELL", Wave::Triangle, 0.50f, 0.001f,0.50f,0.15f,0.60f, Filter::Off,      0.70f,0.12f, true,  false,  7,  0.0f,0.0f },
+        { "DRUMS","DRUMS", Wave::Noise,    0.50f, 0.000f,0.10f,0.00f,0.08f, Filter::BandPass, 0.55f,0.30f, false, false, 12,  0.0f,0.0f },
+        { "PAD","PAD",     Wave::Pulse,    0.50f, 0.250f,0.40f,0.80f,0.50f, Filter::LowPass,  0.50f,0.10f, false, false, 12,  0.6f,0.50f },
+        { "SYNC-LEAD","SYNC LEAD", Wave::Saw, 0.50f, 0.004f,0.20f,0.85f,0.20f, Filter::Off,   0.70f,0.12f, false, true,  19,  0.0f,0.0f },
+        { "BLIP","BLIP",   Wave::Pulse,    0.50f, 0.000f,0.06f,0.00f,0.05f, Filter::Off,      0.70f,0.12f, false, false, 12,  0.0f,0.0f },
+    };
+    constexpr int kNumPresets = (int) (sizeof (kSidPresets) / sizeof (kSidPresets[0]));
+}
+
 SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
 {
     setWantsKeyboardFocus (true);
@@ -19,6 +52,17 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     addAndMakeVisible (engineChip);
     engineClassic.onClick = [this] { selectEngine (Engine::Classic); };
     engineChip.onClick    = [this] { selectEngine (Engine::RealChip); };
+
+    // Werks-Presets: eine Reihe Startklaenge. Knoepfe aus der Tabelle erzeugen.
+    presetLabel.setFont (rt::mono (12.0f, true));
+    presetLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (presetLabel);
+    for (int i = 0; i < kNumPresets; ++i)
+    {
+        auto* b = presetButtons.add (new juce::TextButton());
+        b->onClick = [this, i] { applyPreset (i); };
+        addAndMakeVisible (*b);
+    }
 
     waveLabel.setFont (rt::mono (12.0f, true));
     waveLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -102,6 +146,14 @@ void SidPanel::applyLanguage()
                                       "Self-built synth - the familiar RetroTrax sound"));
     engineChip.setTooltip (loc::t ("Echte reSIDfp-Emulation des MOS-6581-Chips (originaler C64-Sound)",
                                    "Real reSIDfp emulation of the MOS 6581 chip (authentic C64 sound)"));
+    presetLabel.setText (loc::t ("WERKS-PRESETS", "FACTORY PRESETS"), juce::dontSendNotification);
+    for (int i = 0; i < presetButtons.size() && i < kNumPresets; ++i)
+    {
+        presetButtons[i]->setButtonText (loc::t (kSidPresets[i].nameDe, kSidPresets[i].nameEn));
+        presetButtons[i]->setTooltip (loc::t ("Fertigen Startklang laden - danach frei weiterregeln",
+                                              "Load a ready-made starting sound - then tweak freely"));
+    }
+
     waveLabel.setText  (loc::t ("WELLENFORM", "WAVEFORM"), juce::dontSendNotification);
     waveTri.setButtonText   (loc::t ("DREIECK", "TRIANGLE"));
     waveSaw.setButtonText   (loc::t ("SAEGE", "SAW"));
@@ -170,6 +222,28 @@ void SidPanel::refresh()
     updateFilterButtons();
     updateModButtons();
     updateEngineButtons();
+}
+
+void SidPanel::applyPreset (int index)
+{
+    if (index < 0 || index >= kNumPresets || ! proc.isSid (slot))
+        return;
+
+    const auto& p = kSidPresets[index];
+    proc.editSid (slot, [&p] (TrackerEngine::Instrument& i)
+    {
+        // Klangmotor (i.engine) und Name bleiben, wie sie sind - nur der Klang wechselt.
+        i.wave       = p.wave;   i.pulseWidth = p.pw;
+        i.attack     = p.a;      i.decay      = p.d;
+        i.sustain    = p.s;      i.release    = p.r;
+        i.filter     = p.filter; i.cutoff     = p.cutoff; i.resonance = p.reso;
+        i.ringMod    = p.ring;   i.sync       = p.sync;   i.modTune   = p.modTune;
+        i.pwmRate    = p.pwmRate; i.pwmDepth  = p.pwmDepth;
+    });
+
+    refresh();              // alle Regler und Knoepfe auf die Preset-Werte ziehen
+    if (onChanged) onChanged();
+    previewNote();          // Preset gleich anspielen
 }
 
 void SidPanel::selectEngine (Engine e)
@@ -347,6 +421,23 @@ void SidPanel::resized()
     top.removeFromRight (10);
     engineLabel.setBounds   (top.removeFromRight (juce::jmax (0, juce::jmin (120, top.getWidth()))));
     area.removeFromTop (10);
+
+    // Werks-Presets: eine Reihe gleich breiter Knoepfe quer ueber die Breite.
+    presetLabel.setBounds (area.removeFromTop (16));
+    {
+        auto row = area.removeFromTop (28);
+        const int n = presetButtons.size();
+        if (n > 0)
+        {
+            const int bw = (row.getWidth() - (n - 1) * 6) / n;
+            for (auto* b : presetButtons)
+            {
+                b->setBounds (row.removeFromLeft (bw));
+                row.removeFromLeft (6);
+            }
+        }
+    }
+    area.removeFromTop (12);
 
     // Platz fuer die untere Zeile (TEST/SCHLIESSEN/Hinweis) reservieren.
     area.removeFromBottom (36);

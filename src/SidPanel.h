@@ -32,6 +32,7 @@ private:
     void selectWave (Wave w);
     void selectFilter (Filter f);
     void selectEngine (Engine e); // Klangmotor umschalten (Klassisch / Echter Chip)
+    void applyPreset (int index); // Werks-Preset auf den aktuellen Slot legen
     void toggleRing();
     void toggleSync();
     void writeParams();  // Reglerwerte ins Instrument schreiben (live, ohne Ton)
@@ -51,6 +52,10 @@ private:
     juce::Label      engineLabel;
     juce::TextButton engineClassic { "KLASSISCH" };
     juce::TextButton engineChip    { "ECHTER CHIP" };
+
+    // Werks-Presets: eine Handvoll fertiger Startklaenge zum Anklicken.
+    juce::Label                        presetLabel;
+    juce::OwnedArray<juce::TextButton> presetButtons;
 
     juce::Label  waveLabel;
     juce::TextButton waveTri   { "DREIECK" };
