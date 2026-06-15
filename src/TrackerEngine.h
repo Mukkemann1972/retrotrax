@@ -60,6 +60,10 @@ public:
         bool   ringMod    = false;
         bool   sync       = false;
         float  modTune    = 12.0f;       // Tonhoehe des zweiten Oszillators in Halbtoenen (rel. zur Note)
+
+        // Pulsweiten-Modulation: ein langsamer LFO laesst die Pulsweite wabern.
+        float  pwmRate    = 0.0f;        // LFO-Tempo in Hz (0 = aus)
+        float  pwmDepth   = 0.0f;        // Tiefe 0..1 (nur bei der Puls-Welle wirksam)
     };
 
     void prepare (double newSampleRate)
@@ -243,6 +247,7 @@ private:
         juce::uint32 noiseReg = 0x7FFFF8u;  // 23-Bit-Schieberegister wie im echten SID
         float        fic1 = 0.0f, fic2 = 0.0f; // Filter-Speicher (State-Variable-Filter)
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
+        double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
         // --- Effekt-Status der laufenden Zeile ---
         int    effect = -1;
         int    effectParam = 0;
@@ -381,6 +386,7 @@ private:
             v.fic1     = 0.0f;
             v.fic2     = 0.0f;
             v.modPhase = 0.0;
+            v.pwmPhase = 0.0;
             v.fadeIn   = 0;
         }
         else
@@ -593,6 +599,12 @@ private:
         const double mainStep = sync ? v.step * r : v.step;
         const double modStep  = sync ? v.step     : v.step * r;
 
+        // Pulsweiten-Modulation (nur Puls-Welle): LFO laesst die Pulsweite wabern.
+        const bool   pwmOn  = (inst->wave == Instrument::Wave::Pulse
+                                && inst->pwmDepth > 0.0f && inst->pwmRate > 0.0f);
+        const float  pwmInc = inst->pwmRate / sr;
+        double       pwmPh  = v.pwmPhase;
+
         // Filter-Koeffizienten einmal pro Block (TPT-State-Variable-Filter).
         const auto ftype = inst->filter;
         float fg = 0.0f, fk = 0.0f, fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
@@ -620,6 +632,17 @@ private:
                 default: break;
             }
 
+            // Aktuelle Pulsweite (ggf. vom LFO moduliert).
+            float pwNow = pw;
+            if (pwmOn)
+            {
+                const float lfo = std::sin (pwmPh * juce::MathConstants<double>::twoPi);
+                pwNow = juce::jlimit (0.05f, 0.95f, pw + inst->pwmDepth * 0.45f * lfo);
+                pwmPh += pwmInc;
+                if (pwmPh >= 1.0)
+                    pwmPh -= 1.0;
+            }
+
             float osc;
             switch (inst->wave)
             {
@@ -627,7 +650,7 @@ private:
                 case Instrument::Wave::Saw:      osc = (float) (2.0 * ph - 1.0); break;
                 case Instrument::Wave::Noise:    osc = v.noiseVal; break;
                 case Instrument::Wave::Pulse:
-                default:                         osc = ph < pw ? 1.0f : -1.0f; break;
+                default:                         osc = ph < pwNow ? 1.0f : -1.0f; break;
             }
 
             // Ring-Modulation: hoerbare Welle mal Dreieck des zweiten Oszillators.
@@ -686,6 +709,7 @@ private:
         }
         v.pos = ph;
         v.modPhase = mph;
+        v.pwmPhase = pwmPh;
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme

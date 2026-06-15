@@ -45,6 +45,8 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     setupSlider (cutoffSlider,  cutoffLabel,  0.0, 100.0, 1.0,  " %", 0);
     setupSlider (resoSlider,    resoLabel,    0.0, 100.0, 1.0,  " %", 0);
     setupSlider (modTuneSlider, modTuneLabel, 0.0,  36.0, 1.0,  " HT", 0);
+    setupSlider (pwmRateSlider, pwmRateLabel, 0.0,  12.0, 0.1,  " Hz", 1);
+    setupSlider (pwmDepthSlider,pwmDepthLabel,0.0, 100.0, 1.0,  " %", 0);
     setupSlider (attackSlider,  attackLabel,  0.0,  1.50, 0.005, " s", 3);
     setupSlider (decaySlider,   decayLabel,   0.0,  2.00, 0.005, " s", 3);
     setupSlider (sustainSlider, sustainLabel, 0.0, 100.0, 1.0,  " %", 0);
@@ -109,6 +111,8 @@ void SidPanel::applyLanguage()
     modTuneLabel.setText (loc::t ("MOD-TONHOEHE", "MOD PITCH"), juce::dontSendNotification);
 
     pwLabel.setText      (loc::t ("PULSWEITE", "PULSE WIDTH"), juce::dontSendNotification);
+    pwmRateLabel.setText (loc::t ("PWM-TEMPO", "PWM RATE"), juce::dontSendNotification);
+    pwmDepthLabel.setText(loc::t ("PWM-TIEFE", "PWM DEPTH"), juce::dontSendNotification);
     attackLabel.setText  (loc::t ("ANSTIEG (A)", "ATTACK (A)"), juce::dontSendNotification);
     decayLabel.setText   (loc::t ("ABFALL (D)", "DECAY (D)"), juce::dontSendNotification);
     sustainLabel.setText (loc::t ("HALTEN (S)", "SUSTAIN (S)"), juce::dontSendNotification);
@@ -136,6 +140,8 @@ void SidPanel::refresh()
 
     loading = true; // Regler setzen, ohne dass die Callbacks zurueckschreiben
     pwSlider.setValue      (s.pulseWidth * 100.0, juce::dontSendNotification);
+    pwmRateSlider.setValue (s.pwmRate, juce::dontSendNotification);
+    pwmDepthSlider.setValue(s.pwmDepth * 100.0, juce::dontSendNotification);
     cutoffSlider.setValue  (s.cutoff * 100.0,  juce::dontSendNotification);
     resoSlider.setValue    (s.resonance * 100.0, juce::dontSendNotification);
     modTuneSlider.setValue (s.modTune, juce::dontSendNotification);
@@ -167,8 +173,11 @@ void SidPanel::updateWaveButtons()
     wavePulse.setToggleState (w == Wave::Pulse,    juce::dontSendNotification);
     waveNoise.setToggleState (w == Wave::Noise,    juce::dontSendNotification);
 
-    // Pulsweite ist nur bei der Puls-Welle wirksam.
-    pwSlider.setEnabled (w == Wave::Pulse);
+    // Pulsweite und PWM sind nur bei der Puls-Welle wirksam.
+    const bool pulse = (w == Wave::Pulse);
+    pwSlider.setEnabled (pulse);
+    pwmRateSlider.setEnabled (pulse);
+    pwmDepthSlider.setEnabled (pulse);
 }
 
 void SidPanel::selectFilter (Filter f)
@@ -231,6 +240,8 @@ void SidPanel::writeParams()
         return;
 
     const float pw  = (float) (pwSlider.getValue()      / 100.0);
+    const float pwmR= (float)  pwmRateSlider.getValue();
+    const float pwmD= (float) (pwmDepthSlider.getValue()/ 100.0);
     const float cut = (float) (cutoffSlider.getValue()  / 100.0);
     const float res = (float) (resoSlider.getValue()    / 100.0);
     const float mt  = (float)  modTuneSlider.getValue();
@@ -242,6 +253,8 @@ void SidPanel::writeParams()
     proc.editSid (slot, [=] (TrackerEngine::Instrument& i)
     {
         i.pulseWidth = pw;
+        i.pwmRate    = pwmR;
+        i.pwmDepth   = pwmD;
         i.cutoff     = cut;
         i.resonance  = res;
         i.modTune    = mt;
@@ -333,7 +346,9 @@ void SidPanel::resized()
 
     // Linke Spalte: Klangerzeugung.
     buttonRow (left, waveLabel, { &waveTri, &waveSaw, &wavePulse, &waveNoise });
-    sliderRow (left, pwLabel, pwSlider);
+    sliderRow (left, pwLabel,       pwSlider);
+    sliderRow (left, pwmRateLabel,  pwmRateSlider);
+    sliderRow (left, pwmDepthLabel, pwmDepthSlider);
     left.removeFromTop (6);
     buttonRow (left, modLabel, { &ringButton, &syncButton });
     sliderRow (left, modTuneLabel, modTuneSlider);

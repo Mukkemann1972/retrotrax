@@ -52,6 +52,9 @@ private:
     juce::Label  pwLabel,  attackLabel, decayLabel, sustainLabel, releaseLabel;
     juce::Slider pwSlider, attackSlider, decaySlider, sustainSlider, releaseSlider;
 
+    juce::Label  pwmRateLabel, pwmDepthLabel;
+    juce::Slider pwmRateSlider, pwmDepthSlider;
+
     juce::Label  filterLabel;
     juce::TextButton filtOff  { "AUS" };
     juce::TextButton filtLow  { "TIEFPASS" };
