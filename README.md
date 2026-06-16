@@ -10,7 +10,7 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.20 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.21 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -39,6 +39,9 @@ A project from the Mukkemann universe.
 - **Note off (key 1):** lets SID voices fade out cleanly
 - 16 tracks, 64-row patterns — they don't all fit at once, so the grid
   scrolls sideways with the cursor (a ‹/› arrow in the header means more tracks)
+- **MOD import:** load classic Amiga `.mod` songs (LOAD MOD button) — samples go
+  into the slots (up to 31), patterns + order are taken over. Play it right away,
+  keep building and save as `.retrotrax`
 - **Amiga-style stereo:** tracks are spread across the stereo field automatically
   (LRRL like ProTracker) — your beat sounds wide and lively on its own; every
   note gets a tiny fade in/out so nothing clicks
@@ -79,8 +82,8 @@ A project from the Mukkemann universe.
 - **Done in stage 2:** real C64 SID emulation (reSIDfp) alongside the built-in
   synth, ring modulation, hard sync, PWM, factory presets, your own SID sounds,
   the unison stack ✅, the **chord from one note** ✅ and **16 tracks with
-  side-scrolling** ✅ (was 8)
-- **Next:** MOD/XM import (with sample harvesting), **CLAP format**
+  side-scrolling** ✅ (was 8) and **MOD import** ✅
+- **Next:** XM import (more effects/loops), **CLAP format**
   (in addition to VST3, via clap-juce-extensions)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
 - **Later:** filters of the classic samplers (Akai S900/S950/S1000 incl. 12-bit

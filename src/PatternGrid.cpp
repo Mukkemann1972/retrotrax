@@ -105,15 +105,25 @@ bool PatternGrid::handleNoteKey (juce::juce_wchar c)
     if (offset < 0)
         return false;
 
-    pushUndo();
     const int note = juce::jlimit (0, TrackerEngine::kMaxNote,
                                    proc.currentOctave.load() * 12 + offset);
+
+    // Waehrend der Song laeuft: nur LIVE mitspielen (wie ein Klavier) - die Note
+    // wird NICHT ins Raster geschrieben und der Cursor bleibt stehen. Erst im
+    // Stopp tippt eine Taste die Note an die Cursor-Stelle (zum Bauen).
+    if (engine.playing.load())
+    {
+        engine.audition (note, proc.currentInstrument.load());
+        return true;
+    }
+
+    pushUndo();
     auto& cell = engine.cells[cursorRow][cursorTrack];
     cell.note = note;
     cell.instrument = proc.currentInstrument.load();
 
     engine.audition (note, cell.instrument);
-    moveCursor (1, 0); // wie damals: nach der Eingabe eine Zeile weiter
+    moveCursor (1, 0); // im Stopp: nach der Eingabe eine Zeile weiter
     return true;
 }
 
@@ -561,6 +571,8 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
         // Taste 1 = Note-Aus: laesst eine SID-Stimme ausklingen (oder stoppt ein Sample).
         if (c == '1')
         {
+            if (engine.playing.load())
+                return true; // waehrend des Abspielens nichts ins Raster schreiben
             pushUndo();
             auto& cell = engine.cells[cursorRow][cursorTrack];
             cell.note = TrackerEngine::kNoteOff;

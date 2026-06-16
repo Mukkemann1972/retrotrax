@@ -477,7 +477,14 @@ void HelpPanel::rebuild()
             "Hinweis: Es werden die WEGE zu den Samples gemerkt, nicht die Klaenge\n"
             "selbst. Solange die Sample-Dateien an ihrem Platz bleiben, klingt\n"
             "dein Song beim Oeffnen wieder genau gleich. Fehlt mal ein Sample,\n"
-            "sagt dir RetroTrax beim Oeffnen Bescheid, welches.",
+            "sagt dir RetroTrax beim Oeffnen Bescheid, welches.\n\n"
+            "MOD LADEN: importiert ein klassisches Amiga-MOD (.mod). Die Samples\n"
+            "landen in den Instrument-Slots (bis zu 31), die Patterns und die\n"
+            "Reihenfolge werden uebernommen - du kannst den Song gleich abspielen,\n"
+            "weiterbauen und als .retrotrax sichern. Die Samples stecken dann fest\n"
+            "im Song. (Tausende alte MODs gibt es frei auf modarchive.org.) Hinweis:\n"
+            "MODs mit Loop-Samples (z.B. lange Flaechen) klingen evtl. etwas anders,\n"
+            "weil noch ohne Sample-Schleife importiert wird.",
             "Top right: SAVE SONG and OPEN SONG.\n\n"
             "Your songs are stored as a .retrotrax file (in the Music/RetroTrax\n"
             "folder). Saved are the tempo, all notes and which samples sit in the\n"
@@ -485,7 +492,13 @@ void HelpPanel::rebuild()
             "Note: the PATHS to the samples are remembered, not the sounds\n"
             "themselves. As long as the sample files stay in place, your song\n"
             "sounds exactly the same when reopened. If a sample is missing,\n"
-            "RetroTrax tells you which one on opening.") });
+            "RetroTrax tells you which one on opening.\n\n"
+            "LOAD MOD: imports a classic Amiga MOD (.mod). Its samples go into the\n"
+            "instrument slots (up to 31), the patterns and the order are taken over\n"
+            "- you can play it right away, keep building and save it as .retrotrax\n"
+            "(the samples are then baked into the song). Thousands of old MODs are\n"
+            "free on modarchive.org. Note: MODs with looped samples (e.g. long pads)\n"
+            "may sound a bit different, as import is still without sample looping.") });
 
     topics.add ({ loc::t ("Sprache", "Language"),
         loc::t (

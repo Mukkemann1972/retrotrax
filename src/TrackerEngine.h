@@ -13,7 +13,7 @@ class TrackerEngine
 public:
     static constexpr int kTracks      = 16;
     static constexpr int kRows        = 64;
-    static constexpr int kInstruments = 16;
+    static constexpr int kInstruments = 31;  // 31 wie im Amiga-MOD (frei mischbar Sample/SID)
     static constexpr int kMaxNote     = 119; // bis Oktave 9
     static constexpr int kMaxPatterns = 64;  // so viele eigene Patterns kann ein Song haben
     static constexpr int kMaxOrder    = 128; // so lang darf die Abspiel-Reihenfolge sein

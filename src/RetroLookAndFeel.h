@@ -35,7 +35,8 @@ namespace rt
 
     inline juce::Colour instColour (int idx)
     {
-        return (idx >= 0 && idx < 16) ? instPalette[idx] : noteCol;
+        // Palette hat 16 Farben; bei mehr Slots (bis 31) laufen sie um.
+        return idx >= 0 ? instPalette[idx % 16] : noteCol;
     }
 
     inline juce::Font mono (float height, bool bold = false)

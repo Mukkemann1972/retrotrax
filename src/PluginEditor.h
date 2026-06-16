@@ -24,6 +24,7 @@ private:
     void loadSampleClicked();
     void saveSongClicked();
     void loadSongClicked();
+    void loadModClicked();
     void syncUiFromState();
     void applyLanguage();
     void setDefaultHint(); // Standard-Tastenkuerzel-Zeile unten
@@ -38,6 +39,7 @@ private:
     juce::TextButton loadButton { "SAMPLE LADEN" };
     juce::TextButton stDisksButton { "SAMPLES" };
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
+    juce::TextButton modButton { "MOD" };  // klassisches Amiga-.mod importieren
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::TextButton helpButton { "?" };

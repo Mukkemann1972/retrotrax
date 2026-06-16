@@ -54,6 +54,11 @@ public:
     bool saveSong (const juce::File& file);
     bool loadSong (const juce::File& file, juce::StringArray& missingSamples);
 
+    // Klassisches Amiga-MOD (.mod) importieren: Samples -> Instrument-Slots,
+    // Pattern-Daten -> Patterns, Reihenfolge -> Order. 'message' bekommt eine
+    // kurze Zusammenfassung (oder den Fehlergrund).
+    bool loadMod (const juce::File& file, juce::String& message);
+
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };

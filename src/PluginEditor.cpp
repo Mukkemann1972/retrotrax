@@ -16,6 +16,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (loadButton);
     addAndMakeVisible (stDisksButton);
     addAndMakeVisible (sidButton);
+    addAndMakeVisible (modButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
@@ -42,6 +43,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     loadButton.onClick = [this] { loadSampleClicked(); };
     saveSongButton.onClick = [this] { saveSongClicked(); };
     loadSongButton.onClick = [this] { loadSongClicked(); };
+    modButton.onClick = [this] { loadModClicked(); };
 
     helpButton.onClick = [this]
     {
@@ -372,6 +374,37 @@ void RetroTraxEditor::loadSongClicked()
         });
 }
 
+void RetroTraxEditor::loadModClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Amiga-MOD importieren", "Import Amiga MOD"), start, "*.mod;*.MOD");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return; // abgebrochen
+
+            juce::String message;
+            if (! proc.loadMod (file, message))
+            {
+                hintLabel.setText (loc::t ("MOD-Import fehlgeschlagen: ", "MOD import failed: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+
+            currentSongFile = juce::File(); // ein importiertes MOD ist (noch) keine .retrotrax-Datei
+            syncUiFromState();
+            hintLabel.setText (loc::t ("MOD importiert - ", "MOD imported - ") + message,
+                               juce::dontSendNotification);
+        });
+}
+
 void RetroTraxEditor::syncUiFromState()
 {
     bpmSlider.setValue ((double) proc.engine.bpm.load(), juce::dontSendNotification);
@@ -421,6 +454,9 @@ void RetroTraxEditor::applyLanguage()
     loadButton.setButtonText     (loc::t ("SAMPLE LADEN", "LOAD SAMPLE"));
     saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
     loadSongButton.setButtonText (loc::t ("SONG OEFFNEN", "OPEN SONG"));
+    modButton.setButtonText      (loc::t ("MOD LADEN", "LOAD MOD"));
+    modButton.setTooltip (loc::t ("Klassisches Amiga-MOD (.mod) importieren - Samples, Patterns und Reihenfolge",
+                                  "Import a classic Amiga MOD (.mod) - samples, patterns and order"));
     instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
@@ -472,8 +508,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.20 | 16 Spuren mit Seiten-Scrollen (vorher 8)",
-                        "v0.20 | 16 tracks with side-scrolling (was 8)"),
+    g.drawText (loc::t ("v0.21 | MOD-Import: lade klassische Amiga-.mod-Songs",
+                        "v0.21 | MOD import: load classic Amiga .mod songs"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -517,6 +553,8 @@ void RetroTraxEditor::resized()
     stDisksButton.setBounds (controls.removeFromLeft (84));
     controls.removeFromLeft (6);
     sidButton.setBounds (controls.removeFromLeft (64));
+    controls.removeFromLeft (6);
+    modButton.setBounds (controls.removeFromLeft (96));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
