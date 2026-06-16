@@ -28,6 +28,14 @@ private:
     void timerCallback() override;
     void togglePlay();
     void moveCursor (int rowDelta, int colDelta);
+
+    // Seitliches Scrollen: bei 16 Spuren passen nicht alle nebeneinander ins
+    // Fenster. Das Grid zeigt einen Ausschnitt ab firstVisTrack und schiebt ihn
+    // mit, sobald der Cursor an den Rand laeuft - so bleiben die Spalten breit
+    // und gut lesbar.
+    int  visibleTracks() const;   // wie viele Spuren gerade nebeneinander passen
+    void ensureTrackVisible();    // Ausschnitt so schieben, dass der Cursor zu sehen ist
+    int  firstVisTrack = 0;       // erste angezeigte Spur (linke Kante des Ausschnitts)
     bool handleNoteKey (juce::juce_wchar c);
     bool handleDigitKey (juce::juce_wchar c);
     bool handleEffectKey (juce::juce_wchar c); // Hex-Eingabe in der Effekt-Spalte (cursorCol 3)

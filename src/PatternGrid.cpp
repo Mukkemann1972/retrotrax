@@ -41,8 +41,30 @@ void PatternGrid::moveCursor (int rowDelta, int colDelta)
         cursorTrack = flat / kCols;
         cursorCol   = flat % kCols;
     }
+    ensureTrackVisible();
     repaint();
     emitCursorInfo();
+}
+
+// Wie viele Spuren passen bei der aktuellen Fensterbreite nebeneinander? Wir
+// peilen eine angenehme, gut lesbare Spaltenbreite an; auf einem breiten Fenster
+// werden mehr gezeigt, auf einem schmalen weniger (mindestens eine).
+int PatternGrid::visibleTracks() const
+{
+    constexpr int kTargetTrackW = 150; // Wunsch-Spaltenbreite (gut lesbar)
+    const int fit = (getWidth() - kLeftW) / kTargetTrackW;
+    return juce::jlimit (1, TrackerEngine::kTracks, fit);
+}
+
+// Den sichtbaren Ausschnitt so verschieben, dass die Cursor-Spur drin liegt.
+void PatternGrid::ensureTrackVisible()
+{
+    const int nVis = visibleTracks();
+    if (cursorTrack < firstVisTrack)
+        firstVisTrack = cursorTrack;
+    else if (cursorTrack >= firstVisTrack + nVis)
+        firstVisTrack = cursorTrack - nVis + 1;
+    firstVisTrack = juce::jlimit (0, juce::jmax (0, TrackerEngine::kTracks - nVis), firstVisTrack);
 }
 
 // Tastatur als Klavier, fuer deutsches QWERTZ-Layout:
@@ -330,6 +352,7 @@ void PatternGrid::extendSelection (int rowDelta, int trackDelta)
     // Bei Auswahl NICHT umwickeln - sonst springt das Rechteck quer durchs Pattern.
     cursorRow   = juce::jlimit (0, TrackerEngine::kRows   - 1, cursorRow   + rowDelta);
     cursorTrack = juce::jlimit (0, TrackerEngine::kTracks - 1, cursorTrack + trackDelta);
+    ensureTrackVisible();
     repaint();
     emitCursorInfo();
 }
@@ -438,6 +461,7 @@ void PatternGrid::nudgeBlock (int rowDelta, int trackDelta)
         selAnchorRow   += rowDelta;
         selAnchorTrack += trackDelta;
     }
+    ensureTrackVisible();
 
     // "Nudgen und hoeren": im Stopp die Note unterm Cursor gleich anspielen.
     if (! engine.playing.load())
@@ -512,6 +536,7 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
         const int delta = key.getModifiers().isShiftDown() ? -1 : 1;
         cursorTrack = (cursorTrack + delta + TrackerEngine::kTracks) % TrackerEngine::kTracks;
         cursorCol = 0;
+        ensureTrackVisible();
         repaint();
         return true;
     }
@@ -565,7 +590,8 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
 {
     grabKeyboardFocus();
 
-    const int trackW = (getWidth() - kLeftW) / TrackerEngine::kTracks;
+    const int nVis = visibleTracks();
+    const int trackW = (getWidth() - kLeftW) / nVis;
     if (trackW <= 0)
         return;
 
@@ -575,7 +601,8 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
 
     if (e.x > kLeftW)
     {
-        const int t = juce::jmin (TrackerEngine::kTracks - 1, (e.x - kLeftW) / trackW);
+        const int vi  = juce::jmin (nVis - 1, (e.x - kLeftW) / trackW);
+        const int t   = juce::jmin (TrackerEngine::kTracks - 1, firstVisTrack + vi);
         const int xin = (e.x - kLeftW) % trackW;
         cursorTrack = t;
         cursorCol = xin < trackW * 34 / 100 ? 0
@@ -599,7 +626,12 @@ void PatternGrid::paint (juce::Graphics& g)
     const int h = getHeight();
     g.fillAll (rt::bg);
 
-    const int trackW = (w - kLeftW) / TrackerEngine::kTracks;
+    // Nur den sichtbaren Spuren-Ausschnitt zeichnen (16 Spuren passen nicht alle
+    // nebeneinander). Die sichtbaren Spuren fuellen die Breite voll aus.
+    ensureTrackVisible();
+    const int nVis = visibleTracks();
+    const int firstT = firstVisTrack;
+    const int trackW = (w - kLeftW) / nVis;
     // Zellen-Schrift waechst/schrumpft mit der Spurbreite, damit die zweistelligen
     // Instrument-/Lautstaerke-Zahlen in der schmalen Spalte (14 % der Spur) immer
     // ganz reinpassen - egal wie klein das Fenster gezogen ist.
@@ -641,10 +673,13 @@ void PatternGrid::paint (juce::Graphics& g)
         g.drawText (juce::String::formatted ("%02d", row),
                     4, y, kLeftW - 10, kRowH, juce::Justification::centredRight);
 
-        for (int t = 0; t < TrackerEngine::kTracks; ++t)
+        for (int vi = 0; vi < nVis; ++vi)
         {
+            const int t = firstT + vi;
+            if (t >= TrackerEngine::kTracks)
+                break;
             const auto& cell = engine.patterns[dispPat][row][t];
-            const int tx = kLeftW + t * trackW;
+            const int tx = kLeftW + vi * trackW;
 
             // Markierter Block: zarte Fuellung hinter den Zellen.
             if (hasSelection && ! playing
@@ -720,18 +755,29 @@ void PatternGrid::paint (juce::Graphics& g)
     g.setFont (rt::mono (14.0f, true));
     g.setColour (rt::text);
     g.drawText ("##", 0, 0, kLeftW - 6, kHeaderH, juce::Justification::centredRight);
-    for (int t = 0; t < TrackerEngine::kTracks; ++t)
+    for (int vi = 0; vi < nVis; ++vi)
     {
+        const int t = firstT + vi;
+        if (t >= TrackerEngine::kTracks)
+            break;
         const bool isCur = t == cursorTrack;
         g.setColour (isCur ? rt::cursor : rt::text);
         g.drawText ("SPUR " + juce::String (t + 1),
-                    kLeftW + t * trackW, 0, trackW, kHeaderH, juce::Justification::centred);
+                    kLeftW + vi * trackW, 0, trackW, kHeaderH, juce::Justification::centred);
     }
 
     // Spur-Trennlinien
     g.setColour (juce::Colour (0xff262c3a));
-    for (int t = 0; t <= TrackerEngine::kTracks; ++t)
-        g.drawVerticalLine (kLeftW + t * trackW, 0.0f, (float) h);
+    for (int vi = 0; vi <= nVis; ++vi)
+        g.drawVerticalLine (kLeftW + vi * trackW, 0.0f, (float) h);
+
+    // Scroll-Pfeile im Kopf: zeigen an, dass links/rechts noch mehr Spuren liegen.
+    g.setColour (rt::cursor);
+    g.setFont (rt::mono (16.0f, true));
+    if (firstT > 0)
+        g.drawText ("<", kLeftW + 2, 0, 16, kHeaderH, juce::Justification::centredLeft);
+    if (firstT + nVis < TrackerEngine::kTracks)
+        g.drawText (">", w - 18, 0, 16, kHeaderH, juce::Justification::centredRight);
 
     // Fokus-Hinweis
     if (! hasKeyboardFocus (false))

@@ -110,15 +110,25 @@ void HelpPanel::rebuild()
 
     topics.add ({ loc::t ("Pattern & Spuren", "Pattern & tracks"),
         loc::t (
-            "Das Raster hat 8 Spuren und 64 Zeilen. Die Cursor-Zeile bleibt in\n"
+            "Das Raster hat 16 Spuren und 64 Zeilen. Die Cursor-Zeile bleibt in\n"
             "der Mitte, das Pattern scrollt daran vorbei - wie beim alten\n"
             "ProTracker.\n\n"
+            "Es passen nicht alle 16 Spuren nebeneinander ins Fenster - das Grid\n"
+            "zeigt einen Ausschnitt und scrollt seitlich mit, sobald der Cursor an\n"
+            "den Rand laeuft (Pfeil < bzw. > im Kopf = da liegen noch mehr Spuren).\n"
+            "Mit TAB springst du eine Spur weiter, Pfeil links/rechts Spalte fuer\n"
+            "Spalte. Ein breiteres Fenster zeigt mehr Spuren auf einmal.\n\n"
             "Jede Spur spielt zur gleichen Zeit eine Note ab. So baust du\n"
             "Schlagzeug, Bass und Melodie uebereinander.\n\n"
             "(Mehrere Patterns ergeben einen ganzen Song - siehe \"Song-Modus\".)",
-            "The grid has 8 tracks and 64 rows. The cursor row stays in the\n"
+            "The grid has 16 tracks and 64 rows. The cursor row stays in the\n"
             "centre and the pattern scrolls past it - just like the old\n"
             "ProTracker.\n\n"
+            "Not all 16 tracks fit side by side - the grid shows a slice and\n"
+            "scrolls sideways as the cursor reaches the edge (a < or > arrow in the\n"
+            "header means there are more tracks that way). TAB jumps a whole track,\n"
+            "left/right arrows move column by column. A wider window shows more\n"
+            "tracks at once.\n\n"
             "Each track plays one note at the same moment. That's how you stack\n"
             "drums, bass and melody.\n\n"
             "(Several patterns become a whole song - see \"Song mode\".)") });
@@ -364,7 +374,7 @@ void HelpPanel::rebuild()
 
     topics.add ({ loc::t ("Klang & Stereo", "Sound & stereo"),
         loc::t (
-            "RetroTrax verteilt die 8 Spuren automatisch im Stereobild - leicht\n"
+            "RetroTrax verteilt die 16 Spuren automatisch im Stereobild - leicht\n"
             "nach links und rechts, abwechselnd (das LRRL-Muster der Amiga-Tracker).\n"
             "So klingt dein Beat von allein breit und lebendig, ohne dass du etwas\n"
             "einstellen musst. Das Vorhoeren beim Tippen bleibt mittig.\n\n"
@@ -373,7 +383,7 @@ void HelpPanel::rebuild()
             "viele Noten dicht hintereinander setzt.\n\n"
             "Die Lautstaerke-Spalte (00-64) regelt einzelne Noten leiser: 64 ist\n"
             "voll, 32 etwa halb so laut, 00 still.",
-            "RetroTrax spreads the 8 tracks across the stereo field automatically -\n"
+            "RetroTrax spreads the 16 tracks across the stereo field automatically -\n"
             "slightly left and right, alternating (the LRRL pattern of the Amiga\n"
             "trackers). Your beat sounds wide and lively on its own, with nothing\n"
             "to set up. Previewing while typing stays centred.\n\n"

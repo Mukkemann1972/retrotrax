@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.19 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.20 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -39,7 +39,8 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **Block-Bearbeitung:** Bereiche markieren, kopieren/ausschneiden und per
   Alt+Pfeil direkt verschieben (gehörgenaues Nudgen)
 - **Note-Aus (Taste 1):** lässt SID-Stimmen sauber ausklingen
-- 8 Spuren, 64 Zeilen Pattern (Spuren-Anzahl wird später frei)
+- 16 Spuren, 64 Zeilen Pattern — passt nicht alles ins Fenster, das Grid scrollt
+  seitlich mit dem Cursor mit (Pfeil ‹/› im Kopf = mehr Spuren da)
 - **Stereo-Klang im Amiga-Stil:** die Spuren werden automatisch im Stereobild
   verteilt (LRRL wie ProTracker) — der Beat klingt von allein breit und lebendig;
   jede Note wird kurz ein-/ausgeblendet, damit nichts knackt
@@ -79,8 +80,9 @@ Ein Projekt aus dem Mukkemann-Universum.
 
 - **In Etappe 2 erledigt:** echte C64-SID-Emulation (reSIDfp) neben dem
   eingebauten Synth, Ring-Modulation, Hard-Sync, PWM, Werks-Presets, eigene
-  SID-Sounds, der Unisono-Stack ✅ und der **Akkord aus einer Note** ✅
-- **Als Nächstes:** mehr Spuren, MOD/XM-Import (mit Sample-Ernte), **CLAP-Format**
+  SID-Sounds, der Unisono-Stack ✅, der **Akkord aus einer Note** ✅ und **16 Spuren
+  mit Seiten-Scrollen** ✅ (vorher 8)
+- **Als Nächstes:** MOD/XM-Import (mit Sample-Ernte), **CLAP-Format**
   (zusätzlich zu VST3, via clap-juce-extensions)
 - **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
 - **Später:** die Filter der alten Sampler (Akai S900/S950/S1000 inkl.

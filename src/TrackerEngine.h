@@ -11,7 +11,7 @@
 class TrackerEngine
 {
 public:
-    static constexpr int kTracks      = 8;
+    static constexpr int kTracks      = 16;
     static constexpr int kRows        = 64;
     static constexpr int kInstruments = 16;
     static constexpr int kMaxNote     = 119; // bis Oktave 9
