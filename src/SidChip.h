@@ -19,6 +19,8 @@ struct SidParams
     float modTune    = 12.0f, pwmRate = 0.0f, pwmDepth = 0.0f;
     int   unison     = 1;        // gestapelte Stimmen 1..3 (fetter Klang)
     float detune     = 0.25f;    // Verstimmung 0..1 der Stack-Stimmen
+    int   chordVoices = 0;       // zusaetzliche Akkord-Stimmen 0..2 (0 = Aus -> Unisono)
+    float chordSemi[2] = { 0.0f, 0.0f }; // Halbton-Abstaende der Akkord-Stimmen
 };
 
 // Kapselt EINEN echten reSIDfp-Chip und spielt damit genau eine Tracker-Stimme.
@@ -68,8 +70,13 @@ public:
         // Unisono-Stack: hoerbare Stimmen auf die echten Hardware-Stimmen 0,1,2
         // verteilen. Bei Ring/Sync ist Stimme 2 der Modulator -> dann max 2 hoerbar.
         const bool useMod = p.ringMod || p.sync;
-        nStack  = useMod ? juce::jmin (juce::jlimit (1, 3, p.unison), 2)
-                         : juce::jlimit (1, 3, p.unison);
+        int chExtra = p.chordVoices;
+        if (useMod && chExtra > 1) chExtra = 1; // Hardware-Stimme 2 ist der Modulator
+        if (chExtra > 0)
+            nStack = 1 + chExtra;               // Akkord besetzt die Stapel-Stimmen
+        else
+            nStack = useMod ? juce::jmin (juce::jlimit (1, 3, p.unison), 2)
+                            : juce::jlimit (1, 3, p.unison);
         outGain = 1.0f / std::sqrt ((float) nStack); // Pegel halten beim Stapeln
 
         writeFilter (p);
@@ -220,10 +227,14 @@ private:
         const double r    = std::pow (2.0, params.modTune / 12.0);
         const double base = params.sync ? freqHz * r : freqHz; // Tonhoehe der Hauptstimme
         const double up   = std::pow (2.0, juce::jlimit (0.0f, 1.0f, params.detune) * 25.0 / 1200.0);
-        const double ratio[3] = { 1.0, up, 1.0 / up }; // Stimme 0 mittig, 1 hoch, 2 tief
+        const double det[3] = { 1.0, up, 1.0 / up }; // leichte Verstimmung fuer Breite
+        // Akkord: Stapel-Stimmen auf feste Halbton-Abstaende heben (0 = aus -> 1.0).
+        const double ch[3] = { 1.0,
+                               params.chordVoices > 0 ? std::pow (2.0, params.chordSemi[0] / 12.0) : 1.0,
+                               params.chordVoices > 1 ? std::pow (2.0, params.chordSemi[1] / 12.0) : 1.0 };
 
-        for (int s = 0; s < nStack; ++s)   // alle hoerbaren Stimmen (verstimmt)
-            writeFreq (s, base * ratio[s]);
+        for (int s = 0; s < nStack; ++s)   // alle hoerbaren Stimmen (Akkord-Ton + verstimmt)
+            writeFreq (s, base * det[s] * ch[s]);
 
         if (params.ringMod || params.sync) // Modulator auf Stimme 2
             writeFreq (2, params.sync ? freqHz : freqHz * r);

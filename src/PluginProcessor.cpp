@@ -120,6 +120,7 @@ bool RetroTraxProcessor::getSid (int slot, TrackerEngine::Instrument& out) const
     out.engine     = p->engine;
     out.unison     = p->unison;
     out.detune     = p->detune;
+    out.chord      = p->chord;
     out.wave       = p->wave;
     out.pulseWidth = p->pulseWidth;
     out.attack     = p->attack;
@@ -197,6 +198,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("pwmd", ip->pwmDepth);
             e->setAttribute ("uni", ip->unison);
             e->setAttribute ("det", ip->detune);
+            e->setAttribute ("chord", ip->chord);
         }
         else if (ip->filePath.isNotEmpty())
         {
@@ -281,6 +283,8 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                 inst->pwmDepth   = (float) e->getDoubleAttribute ("pwmd", 0.0);
                 inst->unison     = juce::jlimit (1, 3, e->getIntAttribute ("uni", 1)); // alt -> 1 (aus)
                 inst->detune     = (float) e->getDoubleAttribute ("det", 0.25);
+                inst->chord      = juce::jlimit (0, TrackerEngine::Instrument::kNumChords - 1,
+                                                 e->getIntAttribute ("chord", 0)); // alt -> 0 (aus)
                 inst->name       = e->getStringAttribute ("name", "SID");
                 engine.setInstrument (slot, std::move (inst));
                 continue;

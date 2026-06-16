@@ -75,6 +75,29 @@ public:
         // breiter Klang. Standard 1 (aus), damit bestehende Songs unveraendert klingen.
         int    unison     = 1;           // Anzahl gestapelter Stimmen 1..3
         float  detune     = 0.25f;       // Verstimmung 0..1 (0 = sauber, 1 = max ~25 Cent)
+
+        // Akkord aus EINER Note: die Stapel-Stimmen liegen dann auf festen
+        // Halbton-Abstaenden (Dreiklang u.ae.) statt nur leicht verstimmt -> aus
+        // einem einzigen Tastendruck klingt ein ganzer Akkord. 0 = Aus (dann gilt
+        // der Unisono-Stack). Nutzt dieselben Stapel-Stimmen wie Unisono.
+        int    chord      = 0;           // 0 Aus, 1 Dur, 2 Moll, 3 Sus4, 4 Quinte, 5 Oktave
+        static constexpr int kNumChords = 6; // inkl. "Aus"
+
+        // Der gemeinsame Akkord-"Bauplan": Halbton-Abstaende der zusaetzlichen
+        // Stapel-Stimmen. Rueckgabe = Anzahl Extra-Stimmen (0..2), semi[] gefuellt.
+        // Eine einzige Quelle, damit Classic- und Echter-Chip-Motor identisch bauen.
+        static int chordSemis (int chord, float semi[2])
+        {
+            switch (chord)
+            {
+                case 1: semi[0] =  4.0f; semi[1] = 7.0f; return 2; // Dur (gross)
+                case 2: semi[0] =  3.0f; semi[1] = 7.0f; return 2; // Moll (klein)
+                case 3: semi[0] =  5.0f; semi[1] = 7.0f; return 2; // Sus4 (Vorhalt)
+                case 4: semi[0] =  7.0f; semi[1] = 0.0f; return 1; // Quinte (Powerchord)
+                case 5: semi[0] = 12.0f; semi[1] = 0.0f; return 1; // Oktave
+                default: semi[0] = 0.0f; semi[1] = 0.0f; return 0; // Aus
+            }
+        }
     };
 
     void prepare (double newSampleRate)
@@ -108,6 +131,11 @@ public:
         p.pwmDepth   = inst.pwmDepth;
         p.unison     = inst.unison;
         p.detune     = inst.detune;
+        // Akkord-Bauplan mitgeben (Anzahl Zusatzstimmen + Halbton-Abstaende).
+        float chSemi[2];
+        p.chordVoices = Instrument::chordSemis (inst.chord, chSemi);
+        p.chordSemi[0] = chSemi[0];
+        p.chordSemi[1] = chSemi[1];
         return p;
     }
 
@@ -668,11 +696,21 @@ private:
         // Unisono-Stack: bis zu 3 leicht verstimmte Stimmen fuer einen fetten,
         // breiten Klang. Bei Ring/Sync bleibt es einstimmig - der zweite Oszillator
         // ist dort schon belegt. Eine Stimme laeuft hoeher, eine tiefer (Cent-Spreizung).
-        const int    uni      = (ring || sync) ? 1 : juce::jlimit (1, 3, inst->unison);
+        // Akkord aus einer Note: die Stapel-Stimmen liegen dann auf festen Halbton-
+        // Abstaenden (Dreiklang u.ae.). Mit Ring/Sync ist der zweite Oszillator schon
+        // belegt -> hoechstens eine Akkord-Zusatzstimme. Akkord schlaegt Unisono.
+        float chSemi[2];
+        int chExtra = Instrument::chordSemis (inst->chord, chSemi);
+        if ((ring || sync) && chExtra > 1) chExtra = 1;
+
+        const int    uni      = (chExtra > 0) ? (1 + chExtra)
+                                              : ((ring || sync) ? 1 : juce::jlimit (1, 3, inst->unison));
         const double detCents = juce::jlimit (0.0f, 1.0f, inst->detune) * 25.0;
         const double upRatio  = std::pow (2.0, detCents / 1200.0);
-        const double uniStep0 = mainStep * upRatio; // 2. Stimme einen Tick hoeher
-        const double uniStep1 = mainStep / upRatio; // 3. Stimme einen Tick tiefer
+        // Akkord-Ton (Halbton-Abstand) plus leichte Verstimmung fuer Breite; ohne
+        // Akkord ist chSemi 0 -> exakt das alte Unisono-Verhalten.
+        const double uniStep0 = mainStep * std::pow (2.0, chSemi[0] / 12.0) * upRatio; // 2. Stimme
+        const double uniStep1 = mainStep * std::pow (2.0, chSemi[1] / 12.0) / upRatio; // 3. Stimme
         double uph0 = v.uniPhase[0];
         double uph1 = v.uniPhase[1];
         const float  uniNorm  = 1.0f / std::sqrt ((float) uni); // Pegel halten

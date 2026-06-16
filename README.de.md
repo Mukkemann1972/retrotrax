@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.18 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.19 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -26,6 +26,10 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **Unisono-Stack:** 1–3 leicht verstimmte Stimmen pro Note stapeln für einen
   fetten, breiten Klang (Super-Saw / Multi-SID) — beim echten Chip nutzt das die
   3 echten SID-Hardware-Stimmen
+- **Akkord aus einer Note:** ein einziger Tastendruck spielt einen ganzen
+  Akkord — **Dur**, **Moll**, **Sus4**, **Quinte** (Powerchord) oder **Oktave**.
+  Nutzt dieselben Stapel-Stimmen wie Unisono, die Verstimmung verbreitert den
+  Akkord zusätzlich
 - **Werks-Presets & eigene Sounds:** ein Klick lädt einen fertigen SID-Klang
   (Bass, Lead, Glocke, Drums, Pad, Sync-Lead, Blip); **MERKEN** speichert deine
   eigenen Klänge in eine persönliche SID-Liste, die in jedem Song bereitsteht
@@ -75,10 +79,9 @@ Ein Projekt aus dem Mukkemann-Universum.
 
 - **In Etappe 2 erledigt:** echte C64-SID-Emulation (reSIDfp) neben dem
   eingebauten Synth, Ring-Modulation, Hard-Sync, PWM, Werks-Presets, eigene
-  SID-Sounds und der Unisono-Stack ✅
-- **Als Nächstes:** Akkord-Modus (eine Note spielt einen ganzen Akkord), mehr
-  Spuren, MOD/XM-Import (mit Sample-Ernte), **CLAP-Format** (zusätzlich zu VST3,
-  via clap-juce-extensions)
+  SID-Sounds, der Unisono-Stack ✅ und der **Akkord aus einer Note** ✅
+- **Als Nächstes:** mehr Spuren, MOD/XM-Import (mit Sample-Ernte), **CLAP-Format**
+  (zusätzlich zu VST3, via clap-juce-extensions)
 - **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
 - **Später:** die Filter der alten Sampler (Akai S900/S950/S1000 inkl.
   12-Bit-Charakter, Emulator, Ensoniq …), 16er-Drumpad, **Fairlight-Zeichentool**

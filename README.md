@@ -10,7 +10,7 @@ A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.18 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.19 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -25,6 +25,9 @@ A project from the Mukkemann universe.
 - **Unison stack:** stack 1–3 slightly detuned voices per note for a fat, wide
   sound (super-saw / multi-SID idea) — on the real chip this drives the 3 actual
   hardware SID voices
+- **Chord from one note:** a single key press plays a whole chord — **major**,
+  **minor**, **sus4**, **fifth** (power chord) or **octave**. Uses the same stack
+  voices as unison, and detune widens the chord further
 - **Factory presets & your own sounds:** one click loads a ready-made SID sound
   (bass, lead, bell, drums, pad, sync lead, blip); **REMEMBER** saves your own
   creations into a personal SID list that's ready in every song
@@ -74,10 +77,9 @@ A project from the Mukkemann universe.
 
 - **Done in stage 2:** real C64 SID emulation (reSIDfp) alongside the built-in
   synth, ring modulation, hard sync, PWM, factory presets, your own SID sounds,
-  and the unison stack ✅
-- **Next:** chord mode (one note plays a whole chord), more tracks, MOD/XM import
-  (with sample harvesting), **CLAP format** (in addition to VST3, via
-  clap-juce-extensions)
+  the unison stack ✅ and the **chord from one note** ✅
+- **Next:** more tracks, MOD/XM import (with sample harvesting), **CLAP format**
+  (in addition to VST3, via clap-juce-extensions)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
 - **Later:** filters of the classic samplers (Akai S900/S950/S1000 incl. 12-bit
   character, Emulator, Ensoniq …), 16-pad drum grid, **Fairlight-style drawing

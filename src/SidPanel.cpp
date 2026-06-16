@@ -144,6 +144,13 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     stack2.onClick = [this] { selectStack (2); };
     stack3.onClick = [this] { selectStack (3); };
 
+    // Akkord aus einer Note: Auswahlbox. ItemId = chord + 1 (1 = Aus).
+    chordLabel.setFont (rt::mono (12.0f, true));
+    chordLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (chordLabel);
+    addAndMakeVisible (chordBox);
+    chordBox.onChange = [this] { selectChord (chordBox.getSelectedId() - 1); };
+
     hintLabel.setFont (rt::mono (12.0f));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centredLeft);
@@ -212,6 +219,21 @@ void SidPanel::applyLanguage()
     stack1.setTooltip (loc::t ("Eine Stimme - schlank", "One voice - thin"));
     stack2.setTooltip (loc::t ("Zwei verstimmte Stimmen - breiter", "Two detuned voices - wider"));
     stack3.setTooltip (loc::t ("Drei verstimmte Stimmen - fetter Stack", "Three detuned voices - fat stack"));
+
+    chordLabel.setText (loc::t ("AKKORD (AUS 1 NOTE)", "CHORD (FROM 1 NOTE)"), juce::dontSendNotification);
+    {
+        const int sel = chordBox.getSelectedId(); // Auswahl ueber den Sprachwechsel halten
+        chordBox.clear (juce::dontSendNotification);
+        chordBox.addItem (loc::t ("AUS", "OFF"),              1);
+        chordBox.addItem (loc::t ("DUR", "MAJOR"),           2);
+        chordBox.addItem (loc::t ("MOLL", "MINOR"),          3);
+        chordBox.addItem ("SUS4",                            4);
+        chordBox.addItem (loc::t ("QUINTE (POWER)", "FIFTH (POWER)"), 5);
+        chordBox.addItem (loc::t ("OKTAVE", "OCTAVE"),       6);
+        chordBox.setSelectedId (sel > 0 ? sel : 1, juce::dontSendNotification);
+    }
+    chordBox.setTooltip (loc::t ("Spielt aus einer einzigen Note einen ganzen Akkord (nutzt die Stapel-Stimmen)",
+                                 "Plays a whole chord from a single note (uses the stack voices)"));
 
     pwLabel.setText      (loc::t ("PULSWEITE", "PULSE WIDTH"), juce::dontSendNotification);
     pwmRateLabel.setText (loc::t ("PWM-TEMPO", "PWM RATE"), juce::dontSendNotification);
@@ -367,6 +389,7 @@ void SidPanel::writeMine (const juce::String& name)
     xml.setAttribute ("pwmd", s.pwmDepth);
     xml.setAttribute ("uni",  s.unison);
     xml.setAttribute ("det",  s.detune);
+    xml.setAttribute ("chord", s.chord);
 
     auto dir = mySidDir();
     dir.createDirectory();
@@ -410,6 +433,8 @@ void SidPanel::loadMine()
         i.pwmDepth   = (float) xml->getDoubleAttribute ("pwmd", 0.0);
         i.unison     = juce::jlimit (1, 3, xml->getIntAttribute ("uni", 1));
         i.detune     = (float) xml->getDoubleAttribute ("det", 0.25);
+        i.chord      = juce::jlimit (0, TrackerEngine::Instrument::kNumChords - 1,
+                                     xml->getIntAttribute ("chord", 0));
     });
 
     // Regler/Knoepfe nachziehen - aber NICHT die Liste neu aufbauen (sonst Callback-
@@ -553,16 +578,34 @@ void SidPanel::selectStack (int voices)
     previewNote(); // neuen Stack gleich hoeren
 }
 
+void SidPanel::selectChord (int chord)
+{
+    proc.editSid (slot, [chord] (TrackerEngine::Instrument& i) { i.chord = chord; });
+    updateStackButtons();
+    if (onChanged) onChanged();
+    previewNote(); // den Akkord gleich hoeren
+}
+
 void SidPanel::updateStackButtons()
 {
     TrackerEngine::Instrument s;
-    const int n = proc.getSid (slot, s) ? juce::jlimit (1, 3, s.unison) : 1;
+    const bool ok    = proc.getSid (slot, s);
+    const int  n     = ok ? juce::jlimit (1, 3, s.unison) : 1;
+    const int  chord = ok ? s.chord : 0;
+    const bool chordOn = chord > 0;
+
     stack1.setToggleState (n == 1, juce::dontSendNotification);
     stack2.setToggleState (n == 2, juce::dontSendNotification);
     stack3.setToggleState (n == 3, juce::dontSendNotification);
 
-    // Verstimmung nur sinnvoll, wenn mehr als eine Stimme gestapelt wird.
-    detuneSlider.setEnabled (n >= 2);
+    // Bei aktivem Akkord bestimmt der Akkord die Stimmen -> Unisono-Knoepfe ruhen.
+    for (auto* b : { &stack1, &stack2, &stack3 })
+        b->setEnabled (! chordOn);
+
+    // Verstimmung verbreitert mehrere Stimmen - auch die Akkord-Stimmen.
+    detuneSlider.setEnabled (chordOn || n >= 2);
+
+    chordBox.setSelectedId (chord + 1, juce::dontSendNotification);
 }
 
 void SidPanel::writeParams()
@@ -712,6 +755,16 @@ void SidPanel::resized()
         col.removeFromTop (8);
     };
 
+    // Eine Auswahlbox je Zeile (gleiches Schema wie sliderRow).
+    auto comboRow = [] (juce::Rectangle<int>& col, juce::Label& lab, juce::ComboBox& cb)
+    {
+        auto row = col.removeFromTop (26);
+        lab.setBounds (row.removeFromLeft (juce::jmin (140, row.getWidth() / 2)));
+        row.removeFromLeft (6);
+        cb.setBounds (row);
+        col.removeFromTop (8);
+    };
+
     // Linke Spalte: Klangerzeugung.
     buttonRow (left, waveLabel, { &waveTri, &waveSaw, &wavePulse, &waveNoise });
     sliderRow (left, pwLabel,       pwSlider);
@@ -733,6 +786,8 @@ void SidPanel::resized()
     sliderRow (right, decayLabel,   decaySlider);
     sliderRow (right, sustainLabel, sustainSlider);
     sliderRow (right, releaseLabel, releaseSlider);
+    right.removeFromTop (6);
+    comboRow (right, chordLabel, chordBox);
 
     auto bottom = getLocalBounds().reduced (14).removeFromBottom (30);
     closeButton.setBounds (bottom.removeFromRight (120).reduced (0, 2));
