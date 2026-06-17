@@ -1,4 +1,5 @@
 build/
 libs/JUCE/
+libs/clap-juce-extensions/
 .cache/
 *.user

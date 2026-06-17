@@ -1,11 +1,22 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MukkemannRetroTrax VERSION 0.22.0 LANGUAGES C CXX)
+project(MukkemannRetroTrax VERSION 0.24.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(libs/JUCE)
+
+# --- CLAP-Format (optional) -------------------------------------------------
+# clap-juce-extensions umhuellt das JUCE-Plugin und erzeugt zusaetzlich eine
+# .clap-Datei (modernes, offenes Plugin-Format). Wird - wie JUCE - zur Build-Zeit
+# geklont (siehe .github/workflows/build.yml). Fehlt der Ordner lokal, baut alles
+# ganz normal ohne CLAP weiter.
+set(RETROTRAX_CLAP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/clap-juce-extensions)
+if(EXISTS ${RETROTRAX_CLAP_DIR}/CMakeLists.txt)
+    add_subdirectory(${RETROTRAX_CLAP_DIR} EXCLUDE_FROM_ALL)
+    set(RETROTRAX_HAVE_CLAP TRUE)
+endif()
 
 # --- reSIDfp: echter MOS-6581/8581-SID-Emulator (Dag Lem / Leandro Nini, GPL-2.0+) ---
 # Liegt vendored in libs/residfp. POSITION_INDEPENDENT_CODE, weil es ins VST3
@@ -66,3 +77,14 @@ target_link_libraries(RetroTrax
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags
 )
+
+# CLAP-Ziel an dasselbe Plugin haengen (nur wenn clap-juce-extensions da ist).
+if(RETROTRAX_HAVE_CLAP)
+    clap_juce_extensions_plugin(TARGET RetroTrax
+        CLAP_ID "de.mukkemann.retrotrax"
+        CLAP_FEATURES instrument synthesizer)
+    target_link_libraries(RetroTrax PRIVATE clap_juce_extensions)
+    message(STATUS "RetroTrax: CLAP-Format aktiviert")
+else()
+    message(STATUS "RetroTrax: clap-juce-extensions nicht gefunden - CLAP wird uebersprungen")
+endif()

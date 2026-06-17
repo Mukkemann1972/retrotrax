@@ -41,6 +41,9 @@ jobs:
       - name: JUCE holen
         run: git clone --depth 1 --branch 8.0.8 https://github.com/juce-framework/JUCE.git libs/JUCE
 
+      - name: clap-juce-extensions holen (fuer das CLAP-Format)
+        run: git clone --depth 1 --recurse-submodules --shallow-submodules https://github.com/free-audio/clap-juce-extensions.git libs/clap-juce-extensions
+
       - name: Konfigurieren
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
@@ -55,7 +58,7 @@ jobs:
         run: |
           $ver = "${{ github.ref_name }}" -replace '^v',''
           $dest = "RetroTrax-Windows-$ver.zip"
-          Compress-Archive -Path "build/RetroTrax_artefacts/Release/Standalone/*","build/RetroTrax_artefacts/Release/VST3/*" -DestinationPath $dest
+          Compress-Archive -Path "build/RetroTrax_artefacts/Release/Standalone/*","build/RetroTrax_artefacts/Release/VST3/*","build/RetroTrax_artefacts/Release/CLAP/*" -DestinationPath $dest
           echo "ASSET=$dest" >> $env:GITHUB_ENV
 
       - name: Paket schnueren (Unix)
@@ -64,7 +67,7 @@ jobs:
         run: |
           ver="${GITHUB_REF_NAME#v}"
           dest="RetroTrax-${{ matrix.name }}-${ver}.zip"
-          ( cd build/RetroTrax_artefacts/Release && zip -ry "$OLDPWD/$dest" Standalone VST3 )
+          ( cd build/RetroTrax_artefacts/Release && zip -ry "$OLDPWD/$dest" Standalone VST3 CLAP )
           echo "ASSET=$dest" >> "$GITHUB_ENV"
 
       - name: Ergebnis hochladen

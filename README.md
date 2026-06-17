@@ -6,7 +6,7 @@
 
 **[⬇ Download (Windows / macOS / Linux)](https://github.com/Mukkemann1972/retrotrax/releases/latest)**
 
-A VST3 plugin and standalone app in the spirit of ProTracker, FastTracker II and
+A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
@@ -78,17 +78,16 @@ A project from the Mukkemann universe.
 - Pattern grid in classic ProTracker style: the cursor row stays centered, the pattern scrolls
 - Computer keyboard as piano
 - MIDI input for previewing notes
-- Runs as a VST3 inside any DAW **and** as a standalone program
+- Runs as a VST3 **and** CLAP inside any DAW **and** as a standalone program
 
 ## Roadmap
 
 - **Done in stage 2:** real C64 SID emulation (reSIDfp) alongside the built-in
   synth, ring modulation, hard sync, PWM, factory presets, your own SID sounds,
   the unison stack ✅, the **chord from one note** ✅ and **16 tracks with
-  side-scrolling** ✅ (was 8), **MOD import** ✅ and **XM import** ✅
-  (FastTracker 2: more channels, 16-bit samples, finetune)
-- **Next:** **CLAP format**
-  (in addition to VST3, via clap-juce-extensions)
+  side-scrolling** ✅ (was 8), **MOD import** ✅, **XM import** ✅
+  (FastTracker 2: more channels, 16-bit samples, finetune) and the
+  **CLAP format** ✅ (in addition to VST3, via clap-juce-extensions)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
 - **Later:** filters of the classic samplers (Akai S900/S950/S1000 incl. 12-bit
   character, Emulator, Ensoniq …), 16-pad drum grid, **Fairlight-style drawing
@@ -116,12 +115,14 @@ audio/X11 development packages (`libasound2-dev`, `libx11-dev`, `libfreetype-dev
 
 ```bash
 git clone --depth 1 --branch 8.0.8 https://github.com/juce-framework/JUCE.git libs/JUCE
+# Optional for the CLAP format (otherwise it is simply skipped):
+git clone --depth 1 --recurse-submodules --shallow-submodules https://github.com/free-audio/clap-juce-extensions.git libs/clap-juce-extensions
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j2
 ```
 
 Results end up in `build/RetroTrax_artefacts/Release/`:
-`Standalone/` (app) and `VST3/` (plugin for your DAW).
+`Standalone/` (app), `VST3/` and `CLAP/` (plugins for your DAW).
 
 ## Support ❤️
 
