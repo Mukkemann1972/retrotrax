@@ -87,8 +87,9 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **In Etappe 2 erledigt:** echte C64-SID-Emulation (reSIDfp) neben dem
   eingebauten Synth, Ring-Modulation, Hard-Sync, PWM, Werks-Presets, eigene
   SID-Sounds, der Unisono-Stack ✅, der **Akkord aus einer Note** ✅ und **16 Spuren
-  mit Seiten-Scrollen** ✅ (vorher 8) und **MOD-Import** ✅
-- **Als Nächstes:** XM-Import (mehr Effekte/Loops), **CLAP-Format**
+  mit Seiten-Scrollen** ✅ (vorher 8), **MOD-Import** ✅ und **XM-Import** ✅
+  (FastTracker 2: mehr Kanäle, 16-Bit-Samples, Finetune)
+- **Als Nächstes:** **CLAP-Format**
   (zusätzlich zu VST3, via clap-juce-extensions)
 - **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
 - **Später:** die Filter der alten Sampler (Akai S900/S950/S1000 inkl.

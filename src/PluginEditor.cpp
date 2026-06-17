@@ -17,6 +17,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (stDisksButton);
     addAndMakeVisible (sidButton);
     addAndMakeVisible (modButton);
+    addAndMakeVisible (xmButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
@@ -44,6 +45,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     saveSongButton.onClick = [this] { saveSongClicked(); };
     loadSongButton.onClick = [this] { loadSongClicked(); };
     modButton.onClick = [this] { loadModClicked(); };
+    xmButton.onClick = [this] { loadXmClicked(); };
 
     helpButton.onClick = [this]
     {
@@ -405,6 +407,37 @@ void RetroTraxEditor::loadModClicked()
         });
 }
 
+void RetroTraxEditor::loadXmClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("FastTracker-XM importieren", "Import FastTracker XM"), start, "*.xm;*.XM");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return; // abgebrochen
+
+            juce::String message;
+            if (! proc.loadXm (file, message))
+            {
+                hintLabel.setText (loc::t ("XM-Import fehlgeschlagen: ", "XM import failed: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+
+            currentSongFile = juce::File(); // ein importiertes XM ist (noch) keine .retrotrax-Datei
+            syncUiFromState();
+            hintLabel.setText (loc::t ("XM importiert - ", "XM imported - ") + message,
+                               juce::dontSendNotification);
+        });
+}
+
 void RetroTraxEditor::syncUiFromState()
 {
     bpmSlider.setValue ((double) proc.engine.bpm.load(), juce::dontSendNotification);
@@ -457,6 +490,9 @@ void RetroTraxEditor::applyLanguage()
     modButton.setButtonText      (loc::t ("MOD LADEN", "LOAD MOD"));
     modButton.setTooltip (loc::t ("Klassisches Amiga-MOD (.mod) importieren - Samples, Patterns und Reihenfolge",
                                   "Import a classic Amiga MOD (.mod) - samples, patterns and order"));
+    xmButton.setButtonText       (loc::t ("XM LADEN", "LOAD XM"));
+    xmButton.setTooltip (loc::t ("FastTracker-2-Modul (.xm) importieren - Samples, Patterns und Reihenfolge",
+                                 "Import a FastTracker 2 module (.xm) - samples, patterns and order"));
     instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
@@ -555,6 +591,8 @@ void RetroTraxEditor::resized()
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
     modButton.setBounds (controls.removeFromLeft (96));
+    controls.removeFromLeft (6);
+    xmButton.setBounds (controls.removeFromLeft (84));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);

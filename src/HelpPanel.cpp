@@ -494,7 +494,12 @@ void HelpPanel::rebuild()
             "weiterbauen und als .retrotrax sichern. Die Samples stecken dann fest\n"
             "im Song. (Tausende alte MODs gibt es frei auf modarchive.org.) Hinweis:\n"
             "MODs mit Loop-Samples (z.B. lange Flaechen) klingen evtl. etwas anders,\n"
-            "weil noch ohne Sample-Schleife importiert wird.",
+            "weil noch ohne Sample-Schleife importiert wird.\n\n"
+            "XM LADEN: importiert ein FastTracker-2-Modul (.xm) - den groesseren\n"
+            "Bruder des MOD. Mehr Kanaele, 16-Bit-Samples und Feinstimmung werden\n"
+            "verstanden; pro Instrument wird das erste Sample geladen. Patterns mit\n"
+            "mehr als 64 Zeilen werden auf 64 gekuerzt, Huellkurven/Loops bleiben\n"
+            "(noch) aussen vor. (Tausende XMs gibt es frei auf modarchive.org.)",
             "Top right: SAVE SONG and OPEN SONG.\n\n"
             "Your songs are stored as a .retrotrax file (in the Music/RetroTrax\n"
             "folder). Saved are the tempo, all notes and which samples sit in the\n"
@@ -508,7 +513,12 @@ void HelpPanel::rebuild()
             "- you can play it right away, keep building and save it as .retrotrax\n"
             "(the samples are then baked into the song). Thousands of old MODs are\n"
             "free on modarchive.org. Note: MODs with looped samples (e.g. long pads)\n"
-            "may sound a bit different, as import is still without sample looping.") });
+            "may sound a bit different, as import is still without sample looping.\n\n"
+            "LOAD XM: imports a FastTracker 2 module (.xm) - the bigger brother of\n"
+            "the MOD. More channels, 16-bit samples and finetuning are understood;\n"
+            "the first sample of each instrument is loaded. Patterns longer than 64\n"
+            "rows are clipped to 64, envelopes/loops are not handled yet. (Thousands\n"
+            "of XMs are free on modarchive.org.)") });
 
     topics.add ({ loc::t ("Sprache", "Language"),
         loc::t (

@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "IFF8SVXFormat.h"
 #include "ModImport.h"
+#include "XmImport.h"
 
 RetroTraxProcessor::RetroTraxProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
@@ -430,6 +431,98 @@ bool RetroTraxProcessor::loadMod (const juce::File& file, juce::String& message)
         warn << " (nur " << TrackerEngine::kTracks << " von " << song.channels << " Kanaelen)";
     if (song.numPatterns > TrackerEngine::kMaxPatterns)
         warn << " (auf " << TrackerEngine::kMaxPatterns << " Patterns gekuerzt)";
+
+    message = "\"" + song.title + "\": " + juce::String (loaded) + " Samples, "
+            + juce::String (juce::jmin (song.numPatterns, TrackerEngine::kMaxPatterns)) + " Patterns, "
+            + juce::String (song.channels) + " Kanaele." + warn;
+    return true;
+}
+
+bool RetroTraxProcessor::loadXm (const juce::File& file, juce::String& message)
+{
+    auto song = XmImport::parse (file);
+    if (! song.ok)
+    {
+        message = song.message;
+        return false;
+    }
+
+    engine.stop(); // nie mitten im Abspielen umbauen
+
+    // 1) Alle Patterns leeren, damit nichts vom alten Song stehen bleibt.
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (auto& pat : engine.patterns)
+            for (auto& row : pat)
+                for (auto& cl : row)
+                    cl = TrackerEngine::Cell();
+    }
+
+    // 2) Samples in die Instrument-Slots (je XM-Instrument das erste Sample).
+    int loaded = 0;
+    const int nInst = (int) song.samples.size();
+    for (int i = 0; i < TrackerEngine::kInstruments; ++i)
+    {
+        if (i < nInst && song.samples[(size_t) i].data.getNumSamples() > 1)
+        {
+            auto inst = std::make_unique<TrackerEngine::Instrument>();
+            inst->kind       = TrackerEngine::Instrument::Kind::Sample;
+            inst->data       = std::move (song.samples[(size_t) i].data);
+            inst->sourceRate = song.samples[(size_t) i].sourceRate;
+            inst->name       = song.samples[(size_t) i].name.isNotEmpty()
+                                 ? song.samples[(size_t) i].name
+                                 : juce::String ("Sample ") + juce::String (i + 1);
+            engine.setInstrument (i, std::move (inst));
+            ++loaded;
+        }
+        else
+        {
+            engine.setInstrument (i, nullptr); // leeren Slot freiraeumen
+        }
+    }
+
+    // 3) Pattern-Zellen + Reihenfolge uebernehmen.
+    {
+        const juce::ScopedLock sl (engine.lock);
+        const int nch  = juce::jmin (song.channels,    TrackerEngine::kTracks);
+        const int npat = juce::jmin (song.numPatterns,  TrackerEngine::kMaxPatterns);
+        for (int p = 0; p < npat; ++p)
+        {
+            const int prows = (int) song.patterns[(size_t) p].size();
+            for (int r = 0; r < prows && r < TrackerEngine::kRows; ++r)
+                for (int c = 0; c < nch; ++c)
+                {
+                    const auto& mc = song.patterns[(size_t) p][(size_t) r][(size_t) c];
+                    auto& cell = engine.patterns[p][r][c];
+                    cell.note        = mc.note;
+                    cell.instrument  = mc.instrument;
+                    cell.volume      = mc.volume;
+                    cell.effect      = mc.effect;
+                    cell.effectParam = mc.effectParam;
+                }
+        }
+
+        int nn = 0;
+        for (int i = 0; i < song.songLength && nn < TrackerEngine::kMaxOrder; ++i)
+            engine.order[nn++] = juce::jlimit (0, TrackerEngine::kMaxPatterns - 1, song.order[i]);
+        engine.orderLen = juce::jmax (1, nn);
+        engine.songMode = true; // ein XM ist ein ganzer Song -> Song-Modus an
+        engine.setEditPattern (engine.order[0]);
+    }
+
+    // 4) Kurze Zusammenfassung (mit Hinweis, falls etwas gekuerzt wurde).
+    juce::String warn;
+    if (song.channels > TrackerEngine::kTracks)
+        warn << " (nur " << TrackerEngine::kTracks << " von " << song.channels << " Kanaelen)";
+    if (song.numPatterns > TrackerEngine::kMaxPatterns)
+        warn << " (auf " << TrackerEngine::kMaxPatterns << " Patterns gekuerzt)";
+    {
+        bool longPat = false;
+        for (const auto& pat : song.patterns)
+            if ((int) pat.size() > TrackerEngine::kRows) { longPat = true; break; }
+        if (longPat)
+            warn << " (Patterns auf " << TrackerEngine::kRows << " Zeilen gekuerzt)";
+    }
 
     message = "\"" + song.title + "\": " + juce::String (loaded) + " Samples, "
             + juce::String (juce::jmin (song.numPatterns, TrackerEngine::kMaxPatterns)) + " Patterns, "

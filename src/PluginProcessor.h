@@ -59,6 +59,10 @@ public:
     // kurze Zusammenfassung (oder den Fehlergrund).
     bool loadMod (const juce::File& file, juce::String& message);
 
+    // FastTracker-2-Modul (.xm) importieren - wie loadMod, nur fuer das groessere
+    // XM-Format (mehr Kanaele, 16-Bit-Samples, Finetune/relative Note).
+    bool loadXm (const juce::File& file, juce::String& message);
+
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
