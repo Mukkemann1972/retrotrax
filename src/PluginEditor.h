@@ -47,6 +47,7 @@ private:
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::TextButton helpButton { "?" };
+    juce::TextButton fullButton { "VOLLBILD" }; // Vollbild an/aus (oben rechts)
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton langButton { "DE" };
 

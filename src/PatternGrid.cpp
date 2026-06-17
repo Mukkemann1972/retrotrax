@@ -734,8 +734,10 @@ void PatternGrid::paint (juce::Graphics& g)
             const int fxX   = tx + trackW * 65 / 100;
             const int fxW   = trackW * 33 / 100;
 
-            // Cursor-Markierung (nur sichtbar, wenn die Cursor-Zeile gerade angezeigt wird)
-            if (row == cursorRow && t == cursorTrack && ! playing)
+            // Cursor-Markierung - jetzt auch waehrend des Abspielens sichtbar, damit
+            // man sieht, wo man in der Spur steht (das Grid scrollt dann mit der
+            // Abspielzeile, der orange Cursor bleibt an seiner Stelle).
+            if (row == cursorRow && t == cursorTrack)
             {
                 const int cx = cursorCol == 0 ? noteX - 3 : (cursorCol == 1 ? instX - 3
                              : cursorCol == 2 ? volX  - 3 : fxX - 3);
