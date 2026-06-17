@@ -86,12 +86,15 @@ A project from the Mukkemann universe.
   synth, ring modulation, hard sync, PWM, factory presets, your own SID sounds,
   the unison stack ✅, the **chord from one note** ✅ and **16 tracks with
   side-scrolling** ✅ (was 8), **MOD import** ✅, **XM import** ✅
-  (FastTracker 2: more channels, 16-bit samples, finetune) and the
-  **CLAP format** ✅ (in addition to VST3, via clap-juce-extensions)
+  (FastTracker 2: more channels, 16-bit samples, finetune), the
+  **CLAP format** ✅ (in addition to VST3, via clap-juce-extensions) and the
+  **Akai sampler filter** ✅ (resonant low-pass in S900/S950/S1000 style +
+  12-bit crunch, per sample)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
-- **Later:** filters of the classic samplers (Akai S900/S950/S1000 incl. 12-bit
-  character, Emulator, Ensoniq …), 16-pad drum grid, **Fairlight-style drawing
-  tool** (paint waveforms with the mouse, light-pen style), beginner mode
+- **Later:** 16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms
+  with the mouse, light-pen style), more sampler effects (reverse, ping-pong
+  loop, sample-rate reduction, time-stretch), .sid player + .retrotrax replayer
+  for your own demos, beginner mode
 
 ## Controls
 

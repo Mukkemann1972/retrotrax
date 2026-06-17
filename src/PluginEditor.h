@@ -7,6 +7,7 @@
 #include "SampleDiskBrowser.h"
 #include "HelpPanel.h"
 #include "SidPanel.h"
+#include "AkaiPanel.h"
 #include "Localisation.h"
 
 class RetroTraxEditor : public juce::AudioProcessorEditor
@@ -40,6 +41,7 @@ private:
     juce::TextButton loadButton { "SAMPLE LADEN" };
     juce::TextButton stDisksButton { "SAMPLES" };
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
+    juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
     juce::TextButton modButton { "MOD" };  // klassisches Amiga-.mod importieren
     juce::TextButton xmButton { "XM" };    // FastTracker-2-.xm importieren
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
@@ -82,6 +84,7 @@ private:
     SampleDiskBrowser diskBrowser;
     HelpPanel helpPanel;
     SidPanel sidPanel;
+    AkaiPanel akaiPanel;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;
     juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song

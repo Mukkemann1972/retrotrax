@@ -152,6 +152,43 @@ void RetroTraxProcessor::editSid (int slot, std::function<void (TrackerEngine::I
     p->name = sidName (*p);
 }
 
+bool RetroTraxProcessor::isSampleSlot (int slot) const
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    const juce::ScopedLock sl (engine.lock);
+    const auto& p = engine.instruments[slot];
+    return p != nullptr && p->kind == TrackerEngine::Instrument::Kind::Sample
+        && p->data.getNumSamples() > 1;
+}
+
+bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) const
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    const juce::ScopedLock sl (engine.lock);
+    const auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Sample)
+        return false;
+    out.name          = p->name;
+    out.akaiOn        = p->akaiOn;
+    out.akaiCutoff    = p->akaiCutoff;
+    out.akaiResonance = p->akaiResonance;
+    out.akai12bit     = p->akai12bit;
+    return true;
+}
+
+void RetroTraxProcessor::editSample (int slot, std::function<void (TrackerEngine::Instrument&)> fn)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return;
+    const juce::ScopedLock sl (engine.lock); // Audio-Thread haelt dieselbe Sperre
+    auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Sample)
+        return;
+    fn (*p);
+}
+
 std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
 {
     auto xml = std::make_unique<juce::XmlElement> ("RETROTRAX");
@@ -208,6 +245,15 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("slot", i);
             e->setAttribute ("name", ip->name);
             e->setAttribute ("path", ip->filePath);
+            // Akai-Filter nur sichern, wenn er ueberhaupt benutzt wird -> normale
+            // Sample-Slots bleiben in der Datei unveraendert (alte Songs laden weiter).
+            if (ip->akaiOn || ip->akai12bit)
+            {
+                e->setAttribute ("akon", ip->akaiOn ? 1 : 0);
+                e->setAttribute ("akcut", ip->akaiCutoff);
+                e->setAttribute ("akres", ip->akaiResonance);
+                e->setAttribute ("ak12", ip->akai12bit ? 1 : 0);
+            }
         }
     }
 
@@ -296,6 +342,16 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
             if (f.existsAsFile())
             {
                 loadInstrument (slot, f);
+                // Akai-Filter-Einstellungen auf das frisch geladene Sample legen
+                // (fehlen sie in der Datei -> Standard AUS, Klang unveraendert).
+                const juce::ScopedLock sl (engine.lock);
+                if (auto& ip = engine.instruments[slot])
+                {
+                    ip->akaiOn        = e->getIntAttribute ("akon", 0) != 0;
+                    ip->akaiCutoff    = (float) e->getDoubleAttribute ("akcut", 1.0);
+                    ip->akaiResonance = (float) e->getDoubleAttribute ("akres", 0.12);
+                    ip->akai12bit     = e->getIntAttribute ("ak12", 0) != 0;
+                }
             }
             else if (missingSamples != nullptr)
             {

@@ -49,6 +49,14 @@ public:
     // Veraendert die SID-Parameter eines Slots in-place (legt nichts neu an).
     void editSid (int slot, std::function<void (TrackerEngine::Instrument&)> fn);
 
+    // --- Akai-Sampler-Filter (Sample-Instrumente) -----------------------------
+    // true, wenn der Slot ein Sample mit Klangdaten ist (also filterbar).
+    bool isSampleSlot (int slot) const;
+    // Liest die Parameter eines Sample-Slots (Akai-Filter + Name); false sonst.
+    bool getSample (int slot, TrackerEngine::Instrument& out) const;
+    // Veraendert die Parameter eines Sample-Slots in-place (legt nichts neu an).
+    void editSample (int slot, std::function<void (TrackerEngine::Instrument&)> fn);
+
     // Song als .retrotrax-Datei speichern bzw. oeffnen. loadSong sammelt in
     // 'missingSamples' die Namen der Samples, deren Datei nicht (mehr) da ist.
     bool saveSong (const juce::File& file);

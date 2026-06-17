@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p)
+    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -11,11 +11,13 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (diskBrowser); // unsichtbar, bis SAMPLES gedrueckt wird
     addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
     addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
+    addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadButton);
     addAndMakeVisible (stDisksButton);
     addAndMakeVisible (sidButton);
+    addAndMakeVisible (akaiButton);
     addAndMakeVisible (modButton);
     addAndMakeVisible (xmButton);
     addAndMakeVisible (saveSongButton);
@@ -164,6 +166,30 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         instDot.repaint();
     };
 
+    akaiButton.onClick = [this]
+    {
+        const int slot = proc.currentInstrument.load();
+        if (! proc.isSampleSlot (slot))
+        {
+            // Kein Sample im Slot -> kurz erklaeren statt ein leeres Panel zu zeigen.
+            hintLabel.setText (loc::t ("AKAI-Filter braucht ein Sample im Slot - erst ein Sample laden.",
+                                       "Akai filter needs a sample in the slot - load a sample first."),
+                               juce::dontSendNotification);
+            return;
+        }
+        akaiPanel.refresh();
+        akaiPanel.setVisible (true);
+        akaiButton.setToggleState (true, juce::dontSendNotification);
+        akaiPanel.toFront (false);
+        akaiPanel.grabKeyboardFocus();
+    };
+    akaiPanel.onClose = [this]
+    {
+        akaiPanel.setVisible (false);
+        akaiButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+
     bpmSlider.setSliderStyle (juce::Slider::LinearBar);
     bpmSlider.setRange (60.0, 220.0, 1.0);
     bpmSlider.setValue ((double) proc.engine.bpm.load(), juce::dontSendNotification);
@@ -216,7 +242,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     setResizable (true, true);
     setResizeLimits (960, 520, 1920, 1200);
-    setSize (1160, 720); // etwas groesser: die Spur-Spalten sind gleich gut lesbar
+    setSize (1240, 720); // etwas breiter: Platz fuer den AKAI-Knopf, Spalten gleich lesbar
 
     juce::MessageManager::callAsync ([sp = juce::Component::SafePointer<PatternGrid> (&grid)]
     {
@@ -516,11 +542,15 @@ void RetroTraxEditor::applyLanguage()
 
     sidButton.setTooltip (loc::t ("Aktuellen Slot zu einem SID-Synth machen (Wellenform + Huellkurve)",
                                   "Turn the current slot into a SID synth (waveform + envelope)"));
+    akaiButton.setButtonText (loc::t ("AKAI", "AKAI"));
+    akaiButton.setTooltip (loc::t ("Akai-Sampler-Filter fuer das aktuelle Sample (resonanter Tiefpass + 12-Bit-Crunch)",
+                                   "Akai sampler filter for the current sample (resonant low-pass + 12-bit crunch)"));
 
     refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen
     diskBrowser.applyLanguage();
     helpPanel.applyLanguage();
     sidPanel.applyLanguage();
+    akaiPanel.applyLanguage();
     repaint();
 }
 
@@ -544,8 +574,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.22 | Live-Aufnahme: Noten beim Abspielen direkt einspielen",
-                        "v0.22 | Live record: play notes straight in while it plays"),
+    g.drawText (loc::t ("v0.25 | Akai-Sampler-Filter: warmer Tiefpass + 12-Bit-Crunch",
+                        "v0.25 | Akai sampler filter: warm low-pass + 12-bit crunch"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -590,6 +620,8 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (6);
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
+    akaiButton.setBounds (controls.removeFromLeft (70));
+    controls.removeFromLeft (6);
     modButton.setBounds (controls.removeFromLeft (96));
     controls.removeFromLeft (6);
     xmButton.setBounds (controls.removeFromLeft (84));
@@ -616,4 +648,5 @@ void RetroTraxEditor::resized()
     diskBrowser.setBounds (gridArea); // liegt als Overlay genau ueber dem Grid
     helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
+    akaiPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
 }

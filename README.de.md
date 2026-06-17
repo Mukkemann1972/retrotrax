@@ -88,12 +88,15 @@ Ein Projekt aus dem Mukkemann-Universum.
   eingebauten Synth, Ring-Modulation, Hard-Sync, PWM, Werks-Presets, eigene
   SID-Sounds, der Unisono-Stack ✅, der **Akkord aus einer Note** ✅ und **16 Spuren
   mit Seiten-Scrollen** ✅ (vorher 8), **MOD-Import** ✅, **XM-Import** ✅
-  (FastTracker 2: mehr Kanäle, 16-Bit-Samples, Finetune) und das
-  **CLAP-Format** ✅ (zusätzlich zu VST3, via clap-juce-extensions)
+  (FastTracker 2: mehr Kanäle, 16-Bit-Samples, Finetune), das
+  **CLAP-Format** ✅ (zusätzlich zu VST3, via clap-juce-extensions) und der
+  **Akai-Sampler-Filter** ✅ (resonanter Tiefpass im Stil S900/S950/S1000 +
+  12-Bit-Crunch, pro Sample)
 - **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
-- **Später:** die Filter der alten Sampler (Akai S900/S950/S1000 inkl.
-  12-Bit-Charakter, Emulator, Ensoniq …), 16er-Drumpad, **Fairlight-Zeichentool**
-  (Wellenformen mit der Maus malen wie mit dem Lichtgriffel), Anfänger-Modus
+- **Später:** 16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus
+  malen wie mit dem Lichtgriffel), weitere Sampler-Effekte (Reverse, Ping-Pong-
+  Loop, Sample-Rate-Reduktion, Time-Stretch), .sid-Player + .retrotrax-Replayer
+  für eigene Demos, Anfänger-Modus
 
 ## Bedienung
 

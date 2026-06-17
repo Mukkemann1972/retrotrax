@@ -49,6 +49,16 @@ public:
         juce::String name;
         juce::String filePath;
 
+        // --- Akai-Sampler-Filter (nur bei kind == Sample) ---
+        // Resonanter Tiefpass im Stil der Akai S900/S950/S1000 (2 kaskadierte
+        // SVF-Stufen = 24 dB/Okt, waermer/steiler als der SID-Filter) plus ein
+        // optionaler 12-Bit-Crunch (der lo-fi-Charakter der alten 12-Bit-Sampler).
+        // Standard AUS bzw. ganz offen -> bestehende Songs klingen unveraendert.
+        bool  akaiOn        = false;
+        float akaiCutoff    = 1.0f;   // 0..1 (1 = ganz offen, praktisch unhoerbar)
+        float akaiResonance = 0.12f;  // 0..1 (0 zahm .. 1 klingelt)
+        bool  akai12bit     = false;  // 12-Bit-Quantisierung (Crunch)
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
@@ -310,6 +320,7 @@ private:
         float        noiseVal = 0.0f;       // gehaltener Rauschwert (-1..1)
         juce::uint32 noiseReg = 0x7FFFF8u;  // 23-Bit-Schieberegister wie im echten SID
         float        fic1 = 0.0f, fic2 = 0.0f; // Filter-Speicher (State-Variable-Filter)
+        float        akaiLp[2][4] = {};        // Akai-Filter-Speicher: [Kanal][2 Stufen x c1,c2]
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
         double       uniPhase[2] = { 0.0, 0.0 }; // Phasen der gestapelten Unisono-Stimmen
@@ -470,6 +481,8 @@ private:
         {
             v.envStage = 0;
             v.fadeIn   = kFade;
+            for (auto& chState : v.akaiLp) // Akai-Filter-Speicher leeren -> kein Knack
+                for (auto& x : chState) x = 0.0f;
         }
         v.active = true;
     }
@@ -607,10 +620,38 @@ private:
 
     void renderSample (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
     {
-        const auto& d  = v.inst->data;
+        const auto* inst = v.inst;
+        const auto& d  = inst->data;
         const int len  = d.getNumSamples();
-        const int srcCh = d.getNumChannels();
+        const int srcCh = juce::jmin (d.getNumChannels(), 2); // Filter-Speicher fasst 2 Kanaele
         double pos = v.pos;
+
+        // Akai-Filter: Koeffizienten einmal pro Block (TPT-SVF, identische Mathe
+        // wie der SID-Filter, hier aber in 2 Stufen kaskadiert = 24 dB/Okt).
+        const bool  akaiOn = inst->akaiOn;
+        const bool  crunch = inst->akai12bit;
+        const float sr = (float) sampleRate;
+        float fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
+        if (akaiOn)
+        {
+            float fc = 30.0f * std::pow (380.0f, juce::jlimit (0.0f, 1.0f, inst->akaiCutoff));
+            fc = juce::jlimit (20.0f, sr * 0.45f, fc);
+            const float fg = std::tan (juce::MathConstants<float>::pi * fc / sr);
+            const float fk = 2.0f - 1.9f * juce::jlimit (0.0f, 1.0f, inst->akaiResonance);
+            fa1 = 1.0f / (1.0f + fg * (fg + fk));
+            fa2 = fg * fa1;
+            fa3 = fg * fa2;
+        }
+        // Eine Tiefpass-Stufe (TPT-SVF); c1/c2 = Speicher dieser Stufe.
+        auto lpStage = [fa1, fa2, fa3] (float in, float& c1, float& c2)
+        {
+            const float n3 = in - c2;
+            const float n1 = fa1 * c1 + fa2 * n3;
+            const float n2 = c2 + fa2 * c1 + fa3 * n3;
+            c1 = 2.0f * n1 - c1;
+            c2 = 2.0f * n2 - c2;
+            return n2;
+        };
 
         for (int i = 0; i < num; ++i)
         {
@@ -643,10 +684,25 @@ private:
                     finish = true;
             }
 
+            // Quellsample je Kanal holen, dann (optional) 12-Bit-Crunch + Akai-Tiefpass.
+            float fs[2] = { 0.0f, 0.0f };
+            for (int sc = 0; sc < srcCh; ++sc)
+            {
+                const float* src = d.getReadPointer (sc);
+                float s = src[i0] + (src[i0 + 1] - src[i0]) * frac;
+                if (crunch)
+                    s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 2047.0f) / 2047.0f; // 12 Bit
+                if (akaiOn)
+                {
+                    s = lpStage (s, v.akaiLp[sc][0], v.akaiLp[sc][1]); // Stufe 1
+                    s = lpStage (s, v.akaiLp[sc][2], v.akaiLp[sc][3]); // Stufe 2 -> 24 dB/Okt
+                }
+                fs[sc] = s;
+            }
+
             for (int ch = 0; ch < outCh; ++ch)
             {
-                const float* src = d.getReadPointer (juce::jmin (ch, srcCh - 1));
-                const float  s   = src[i0] + (src[i0 + 1] - src[i0]) * frac;
+                const float  s   = fs[juce::jmin (ch, srcCh - 1)];
                 const float  g   = (ch == 0 ? v.gainL
                                   : ch == 1 ? v.gainR
                                             : 0.5f * (v.gainL + v.gainR));

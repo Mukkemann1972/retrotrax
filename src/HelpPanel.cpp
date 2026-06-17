@@ -425,6 +425,33 @@ void HelpPanel::rebuild()
             "after a restart). REMOVE takes one out again - your files are left\n"
             "untouched.") });
 
+    topics.add ({ loc::t ("Akai-Sampler-Filter", "Akai sampler filter"),
+        loc::t (
+            "Der AKAI-Knopf oeffnet den Sampler-Filter fuer das Sample im aktuellen\n"
+            "Slot - der warme, druckvolle Klang der alten Akai-Sampler\n"
+            "(S900 / S950 / S1000).\n\n"
+            "- FILTER AN schaltet einen resonanten Tiefpass dazu (24 dB/Okt).\n"
+            "- GRENZE bestimmt, ab wo die Hoehen weggenommen werden.\n"
+            "- RESONANZ betont die Grenzfrequenz - hoeher = es faengt an zu pfeifen.\n"
+            "- 12-BIT schaltet den koernigen lo-fi-Crunch der 12-Bit-Sampler dazu\n"
+            "  (geht auch ohne Filter).\n"
+            "- MODELL: fertige Startklaenge - S900/S950 koerniger, S1000 sanfter.\n\n"
+            "Standard ist AUS, dein Sample bleibt also unveraendert, bis du den\n"
+            "Filter einschaltest. Die Einstellung wird im Song (.retrotrax)\n"
+            "mitgespeichert. TEST spielt ein C-5 mit dem aktuellen Klang.",
+            "The AKAI button opens the sampler filter for the sample in the current\n"
+            "slot - the warm, punchy sound of the old Akai samplers\n"
+            "(S900 / S950 / S1000).\n\n"
+            "- FILTER ON adds a resonant low-pass (24 dB/oct).\n"
+            "- CUTOFF sets where the highs start to be removed.\n"
+            "- RESONANCE emphasises the cutoff - higher = it starts to whistle.\n"
+            "- 12-BIT adds the gritty lo-fi crunch of the 12-bit samplers\n"
+            "  (works without the filter too).\n"
+            "- MODEL: ready-made starting points - S900/S950 grittier, S1000 smoother.\n\n"
+            "Off by default, so your sample stays unchanged until you switch the\n"
+            "filter on. The setting is saved with the song (.retrotrax). TEST plays\n"
+            "a C-5 with the current sound.") });
+
     topics.add ({ loc::t ("SoundFonts (SF2)", "SoundFonts (SF2)"),
         loc::t (
             "Eine SF2-Datei (SoundFont) ist eine ganze Klang-Bibliothek in einer\n"
