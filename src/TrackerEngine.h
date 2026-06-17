@@ -59,6 +59,14 @@ public:
         float akaiResonance = 0.12f;  // 0..1 (0 zahm .. 1 klingelt)
         bool  akai12bit     = false;  // 12-Bit-Quantisierung (Crunch)
 
+        // --- Sampler-Effekte (nur bei kind == Sample) ---
+        // Reverse spielt das Sample rueckwaerts; SR-Reduktion (Decimator) haelt
+        // jeden Quellwert ueber mehrere Ausgabe-Samples -> koerniger lo-fi-Klang
+        // mit Aliasing, wie ein heruntergetakteter alter Sampler. Beide Standard
+        // AUS -> bestehende Songs klingen unveraendert.
+        bool  reverse       = false;
+        float srReduction   = 0.0f;   // 0 = aus .. 1 = extrem grob
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
@@ -321,6 +329,8 @@ private:
         juce::uint32 noiseReg = 0x7FFFF8u;  // 23-Bit-Schieberegister wie im echten SID
         float        fic1 = 0.0f, fic2 = 0.0f; // Filter-Speicher (State-Variable-Filter)
         float        akaiLp[2][4] = {};        // Akai-Filter-Speicher: [Kanal][2 Stufen x c1,c2]
+        float        srHold[2] = { 0.0f, 0.0f }; // Sample-and-Hold-Wert je Kanal (SR-Reduktion)
+        int          srCount = 0;               // verbleibende Halte-Samples
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
         double       uniPhase[2] = { 0.0, 0.0 }; // Phasen der gestapelten Unisono-Stimmen
@@ -483,6 +493,8 @@ private:
             v.fadeIn   = kFade;
             for (auto& chState : v.akaiLp) // Akai-Filter-Speicher leeren -> kein Knack
                 for (auto& x : chState) x = 0.0f;
+            v.srHold[0] = v.srHold[1] = 0.0f;
+            v.srCount = 0;
         }
         v.active = true;
     }
@@ -630,6 +642,11 @@ private:
         // wie der SID-Filter, hier aber in 2 Stufen kaskadiert = 24 dB/Okt).
         const bool  akaiOn = inst->akaiOn;
         const bool  crunch = inst->akai12bit;
+        const bool  rev    = inst->reverse;
+        // SR-Reduktion: jeden Quellwert ueber holdLen Ausgabe-Samples halten.
+        // Quadratisch gestaffelt -> feines Steuern im unteren Bereich, bis ~48x.
+        const float srAmt   = juce::jlimit (0.0f, 1.0f, inst->srReduction);
+        const int   holdLen = srAmt > 0.0f ? 1 + (int) std::round (srAmt * srAmt * 47.0f) : 1;
         const float sr = (float) sampleRate;
         float fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
         if (akaiOn)
@@ -684,14 +701,38 @@ private:
                     finish = true;
             }
 
-            // Quellsample je Kanal holen, dann (optional) 12-Bit-Crunch + Akai-Tiefpass.
+            // Lesezeiger: bei Reverse vom Ende her. j0..j0+1 sind immer aufsteigend,
+            // 'fr' ist der passende Bruchteil dazwischen.
+            int   j0 = i0;
+            float fr = frac;
+            if (rev)
+            {
+                j0 = len - 2 - i0;          // Spiegelung; j0+1 bleibt im Puffer
+                fr = 1.0f - frac;
+                if (j0 < 0) { v.active = false; break; }
+            }
+
+            // SR-Reduktion: nur alle holdLen Samples einen frischen Quellwert holen,
+            // sonst den gehaltenen weiterreichen (Sample-and-Hold -> Decimator).
+            const bool fresh = (v.srCount <= 0);
+
+            // Quellsample je Kanal: lesen -> 12-Bit-Crunch -> Sample-and-Hold -> Akai-Tiefpass.
             float fs[2] = { 0.0f, 0.0f };
             for (int sc = 0; sc < srcCh; ++sc)
             {
-                const float* src = d.getReadPointer (sc);
-                float s = src[i0] + (src[i0 + 1] - src[i0]) * frac;
-                if (crunch)
-                    s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 2047.0f) / 2047.0f; // 12 Bit
+                float s;
+                if (fresh)
+                {
+                    const float* src = d.getReadPointer (sc);
+                    s = src[j0] + (src[j0 + 1] - src[j0]) * fr;
+                    if (crunch)
+                        s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 2047.0f) / 2047.0f; // 12 Bit
+                    v.srHold[sc] = s;
+                }
+                else
+                {
+                    s = v.srHold[sc]; // gehaltener Wert (Treppenstufe)
+                }
                 if (akaiOn)
                 {
                     s = lpStage (s, v.akaiLp[sc][0], v.akaiLp[sc][1]); // Stufe 1
@@ -699,6 +740,7 @@ private:
                 }
                 fs[sc] = s;
             }
+            v.srCount = fresh ? holdLen - 1 : v.srCount - 1;
 
             for (int ch = 0; ch < outCh; ++ch)
             {

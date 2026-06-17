@@ -63,6 +63,15 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     };
     addAndMakeVisible (bitButton);
 
+    revButton.setClickingTogglesState (true);
+    revButton.onClick = [this]
+    {
+        const bool on = revButton.getToggleState();
+        proc.editSample (slot, [on] (TrackerEngine::Instrument& i) { i.reverse = on; });
+        previewNote();
+    };
+    addAndMakeVisible (revButton);
+
     // Grenze (Cutoff) + Resonanz als gut ablesbare Balken-Regler.
     auto setupSlider = [this] (juce::Slider& s, juce::Label& lab)
     {
@@ -80,6 +89,7 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     };
     setupSlider (cutoffSlider, cutoffLabel);
     setupSlider (resoSlider,   resoLabel);
+    setupSlider (grainSlider,  grainLabel);
 
     hintLabel.setFont (rt::mono (12.0f, false));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -97,7 +107,7 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
 
 void AkaiPanel::applyLanguage()
 {
-    titleLabel.setText (loc::t ("AKAI-SAMPLER-FILTER", "AKAI SAMPLER FILTER"),
+    titleLabel.setText (loc::t ("AKAI-SAMPLER", "AKAI SAMPLER"),
                         juce::dontSendNotification);
     presetLabel.setText (loc::t ("MODELL", "MODEL"), juce::dontSendNotification);
     for (int i = 0; i < presetButtons.size() && i < kNumAkaiPresets; ++i)
@@ -107,10 +117,16 @@ void AkaiPanel::applyLanguage()
     bitButton.setButtonText (loc::t ("12-BIT", "12-BIT"));
     bitButton.setTooltip (loc::t ("12-Bit-Crunch: der koernige lo-fi-Klang der alten Sampler",
                                   "12-bit crunch: the gritty lo-fi sound of the old samplers"));
+    revButton.setButtonText (loc::t ("REVERSE", "REVERSE"));
+    revButton.setTooltip (loc::t ("Sample rueckwaerts abspielen",
+                                  "Play the sample backwards"));
     cutoffLabel.setText (loc::t ("GRENZE", "CUTOFF"), juce::dontSendNotification);
     resoLabel.setText   (loc::t ("RESONANZ", "RESONANCE"), juce::dontSendNotification);
-    hintLabel.setText (loc::t ("Resonanter Tiefpass (24 dB/Okt) im Akai-Stil. Standard AUS - dein Sample bleibt unveraendert.",
-                              "Resonant low-pass (24 dB/oct) in Akai style. Off by default - your sample stays unchanged."),
+    grainLabel.setText  (loc::t ("KOERNUNG", "GRAIN"), juce::dontSendNotification);
+    grainSlider.setTooltip (loc::t ("Sample-Rate-Reduktion: rauer, koerniger lo-fi-Klang (Decimator)",
+                                    "Sample-rate reduction: rough, gritty lo-fi sound (decimator)"));
+    hintLabel.setText (loc::t ("Resonanter Tiefpass + 12-Bit + Reverse + Koernung (Decimator). Standard AUS - dein Sample bleibt unveraendert.",
+                              "Resonant low-pass + 12-bit + reverse + grain (decimator). Off by default - your sample stays unchanged."),
                        juce::dontSendNotification);
     testButton.setButtonText  (loc::t ("TEST", "TEST"));
     closeButton.setButtonText (loc::t ("SCHLIESSEN", "CLOSE"));
@@ -130,8 +146,10 @@ void AkaiPanel::refresh()
     loading = true;
     cutoffSlider.setValue (have ? s.akaiCutoff    * 100.0 : 100.0, juce::dontSendNotification);
     resoSlider.setValue   (have ? s.akaiResonance * 100.0 :  12.0, juce::dontSendNotification);
+    grainSlider.setValue  (have ? s.srReduction   * 100.0 :   0.0, juce::dontSendNotification);
     onButton.setToggleState  (have && s.akaiOn,    juce::dontSendNotification);
     bitButton.setToggleState (have && s.akai12bit, juce::dontSendNotification);
+    revButton.setToggleState (have && s.reverse,   juce::dontSendNotification);
     loading = false;
 
     updateButtons();
@@ -165,12 +183,14 @@ void AkaiPanel::writeParams()
 {
     if (loading)
         return;
-    const float cut = (float) (cutoffSlider.getValue() / 100.0);
-    const float res = (float) (resoSlider.getValue()   / 100.0);
+    const float cut   = (float) (cutoffSlider.getValue() / 100.0);
+    const float res   = (float) (resoSlider.getValue()   / 100.0);
+    const float grain = (float) (grainSlider.getValue()  / 100.0);
     proc.editSample (slot, [=] (TrackerEngine::Instrument& i)
     {
         i.akaiCutoff    = cut;
         i.akaiResonance = res;
+        i.srReduction   = grain;
     });
 }
 
@@ -227,16 +247,18 @@ void AkaiPanel::resized()
     }
     area.removeFromTop (16);
 
-    // AN/AUS + 12-Bit nebeneinander.
+    // FILTER AN + 12-BIT + REVERSE nebeneinander.
     {
         auto row = area.removeFromTop (32);
-        onButton.setBounds  (row.removeFromLeft (160));
+        onButton.setBounds  (row.removeFromLeft (150));
         row.removeFromLeft (10);
-        bitButton.setBounds (row.removeFromLeft (140));
+        bitButton.setBounds (row.removeFromLeft (120));
+        row.removeFromLeft (10);
+        revButton.setBounds (row.removeFromLeft (130));
     }
     area.removeFromTop (14);
 
-    // Grenze + Resonanz mit Beschriftung links.
+    // Grenze + Resonanz + Koernung mit Beschriftung links.
     auto sliderRow = [&area] (juce::Label& lab, juce::Slider& s)
     {
         auto row = area.removeFromTop (28);
@@ -246,6 +268,8 @@ void AkaiPanel::resized()
     sliderRow (cutoffLabel, cutoffSlider);
     area.removeFromTop (8);
     sliderRow (resoLabel, resoSlider);
+    area.removeFromTop (8);
+    sliderRow (grainLabel, grainSlider);
     area.removeFromTop (14);
 
     hintLabel.setBounds (area.removeFromTop (40));

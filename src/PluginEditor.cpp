@@ -574,8 +574,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.25 | Akai-Sampler-Filter: warmer Tiefpass + 12-Bit-Crunch",
-                        "v0.25 | Akai sampler filter: warm low-pass + 12-bit crunch"),
+    g.drawText (loc::t ("v0.26 | Sampler-Effekte: Reverse + Koernung (Decimator)",
+                        "v0.26 | Sampler effects: reverse + grain (decimator)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }

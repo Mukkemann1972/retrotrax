@@ -175,6 +175,8 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.akaiCutoff    = p->akaiCutoff;
     out.akaiResonance = p->akaiResonance;
     out.akai12bit     = p->akai12bit;
+    out.reverse       = p->reverse;
+    out.srReduction   = p->srReduction;
     return true;
 }
 
@@ -247,12 +249,14 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("path", ip->filePath);
             // Akai-Filter nur sichern, wenn er ueberhaupt benutzt wird -> normale
             // Sample-Slots bleiben in der Datei unveraendert (alte Songs laden weiter).
-            if (ip->akaiOn || ip->akai12bit)
+            if (ip->akaiOn || ip->akai12bit || ip->reverse || ip->srReduction > 0.0f)
             {
                 e->setAttribute ("akon", ip->akaiOn ? 1 : 0);
                 e->setAttribute ("akcut", ip->akaiCutoff);
                 e->setAttribute ("akres", ip->akaiResonance);
                 e->setAttribute ("ak12", ip->akai12bit ? 1 : 0);
+                e->setAttribute ("rev", ip->reverse ? 1 : 0);
+                e->setAttribute ("srr", ip->srReduction);
             }
         }
     }
@@ -351,6 +355,8 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->akaiCutoff    = (float) e->getDoubleAttribute ("akcut", 1.0);
                     ip->akaiResonance = (float) e->getDoubleAttribute ("akres", 0.12);
                     ip->akai12bit     = e->getIntAttribute ("ak12", 0) != 0;
+                    ip->reverse       = e->getIntAttribute ("rev", 0) != 0;
+                    ip->srReduction   = (float) e->getDoubleAttribute ("srr", 0.0);
                 }
             }
             else if (missingSamples != nullptr)
