@@ -10,7 +10,7 @@ Ein VST3-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II u
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.21 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.22 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -44,6 +44,9 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **MOD-Import:** klassische Amiga-`.mod`-Songs laden (Knopf MOD LADEN) — Samples
   wandern in die Slots (bis zu 31), Patterns + Reihenfolge werden übernommen.
   Sofort abspielbar, weiterbaubar und als `.retrotrax` sicherbar
+- **Live-Aufnahme:** Play drücken und auf der Tastatur mitspielen — die Noten
+  werden direkt an der laufenden Stelle aufgenommen (in der Cursor-Spur), wie ein
+  mitgeschnittenes Klavierspiel. Im Stopp tippst du wie gewohnt Schritt für Schritt
 - **Stereo-Klang im Amiga-Stil:** die Spuren werden automatisch im Stereobild
   verteilt (LRRL wie ProTracker) — der Beat klingt von allein breit und lebendig;
   jede Note wird kurz ein-/ausgeblendet, damit nichts knackt

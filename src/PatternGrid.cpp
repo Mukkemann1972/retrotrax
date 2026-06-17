@@ -108,12 +108,23 @@ bool PatternGrid::handleNoteKey (juce::juce_wchar c)
     const int note = juce::jlimit (0, TrackerEngine::kMaxNote,
                                    proc.currentOctave.load() * 12 + offset);
 
-    // Waehrend der Song laeuft: nur LIVE mitspielen (wie ein Klavier) - die Note
-    // wird NICHT ins Raster geschrieben und der Cursor bleibt stehen. Erst im
-    // Stopp tippt eine Taste die Note an die Cursor-Stelle (zum Bauen).
+    // Waehrend der Song laeuft: LIVE mitspielen UND die Note an der gerade
+    // laufenden Stelle aufnehmen (wie ein mitgeschnittenes Klavierspiel). Sie
+    // landet im klingenden Pattern auf der gerade abspielenden Zeile, in der
+    // Spur des Cursors. Der Cursor bleibt stehen - der Abspielkopf wandert selbst.
     if (engine.playing.load())
     {
         engine.audition (note, proc.currentInstrument.load());
+        const int rrow = engine.currentRow.load();
+        const int ppat = engine.displayPattern();
+        if (rrow >= 0 && rrow < TrackerEngine::kRows
+            && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+        {
+            auto& cell = engine.patterns[ppat][rrow][cursorTrack];
+            cell.note       = note;
+            cell.instrument = proc.currentInstrument.load();
+        }
+        repaint();
         return true;
     }
 
@@ -572,7 +583,20 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
         if (c == '1')
         {
             if (engine.playing.load())
-                return true; // waehrend des Abspielens nichts ins Raster schreiben
+            {
+                // Live-Aufnahme: Note-Aus an der gerade laufenden Stelle setzen.
+                const int rrow = engine.currentRow.load();
+                const int ppat = engine.displayPattern();
+                if (rrow >= 0 && rrow < TrackerEngine::kRows
+                    && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+                {
+                    auto& cell = engine.patterns[ppat][rrow][cursorTrack];
+                    cell.note = TrackerEngine::kNoteOff;
+                    cell.instrument = -1;
+                }
+                repaint();
+                return true;
+            }
             pushUndo();
             auto& cell = engine.cells[cursorRow][cursorTrack];
             cell.note = TrackerEngine::kNoteOff;

@@ -90,7 +90,12 @@ void HelpPanel::rebuild()
             "  Strg+C / V / X       Spur kopieren / einfuegen / ausschneiden\n\n"
             "Vertippt? Kein Problem - Strg+Z nimmt jeden Schritt zurueck (bis zu\n"
             "64). Mit Strg+C/V kopierst du eine ganze Spur z.B. von Spur 1 nach 5:\n"
-            "Cursor in die Quellspur, Strg+C, dann in die Zielspur und Strg+V.",
+            "Cursor in die Quellspur, Strg+C, dann in die Zielspur und Strg+V.\n\n"
+            "LIVE EINSPIELEN: Druecke Play und spiel auf der Tastatur mit - die\n"
+            "Noten werden direkt an der gerade laufenden Stelle aufgenommen, in der\n"
+            "Spur, in der dein Cursor steht (wie ein mitgeschnittenes Klavierspiel).\n"
+            "Im Stopp dagegen tippst du die Noten Schritt fuer Schritt an die\n"
+            "Cursor-Zeile (der Cursor springt dann von selbst weiter).",
             "Your keyboard is the piano (German QWERTZ layout):\n\n"
             "  Y X C V B N M        notes in the current octave\n"
             "  S D   G H J          the black keys (semitones)\n"
@@ -106,7 +111,12 @@ void HelpPanel::rebuild()
             "  Ctrl+C / V / X       copy / paste / cut track\n\n"
             "Typo? No problem - Ctrl+Z takes back every step (up to 64). With\n"
             "Ctrl+C/V you copy a whole track, e.g. from track 1 to 5: cursor into\n"
-            "the source track, Ctrl+C, then into the target track and Ctrl+V.") });
+            "the source track, Ctrl+C, then into the target track and Ctrl+V.\n\n"
+            "LIVE RECORDING: press play and play along on the keyboard - the notes\n"
+            "are recorded straight onto the row that's currently playing, in the\n"
+            "track your cursor is on (like a captured piano performance). When\n"
+            "stopped you instead type notes step by step at the cursor row (the\n"
+            "cursor then advances on its own).") });
 
     topics.add ({ loc::t ("Pattern & Spuren", "Pattern & tracks"),
         loc::t (

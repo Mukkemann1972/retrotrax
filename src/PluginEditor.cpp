@@ -508,8 +508,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.21 | MOD-Import: lade klassische Amiga-.mod-Songs",
-                        "v0.21 | MOD import: load classic Amiga .mod songs"),
+    g.drawText (loc::t ("v0.22 | Live-Aufnahme: Noten beim Abspielen direkt einspielen",
+                        "v0.22 | Live record: play notes straight in while it plays"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
