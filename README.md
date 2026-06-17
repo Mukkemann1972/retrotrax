@@ -90,7 +90,8 @@ A project from the Mukkemann universe.
   **CLAP format** ✅ (in addition to VST3, via clap-juce-extensions) and the
   **Akai sampler filter** ✅ (resonant low-pass in S900/S950/S1000 style +
   12-bit crunch, per sample), **sampler effects** ✅ (reverse +
-  grain/sample-rate reduction) and **loop** ✅ (forward + ping-pong)
+  grain/sample-rate reduction), **loop** ✅ (forward + ping-pong) and
+  **analog warmth** ✅ (drive saturation + vintage pitch like the old samplers)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
 - **Later:** 16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms
   with the mouse, light-pen style), more sampler effects (time-stretch),

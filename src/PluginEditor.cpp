@@ -574,8 +574,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.27 | Loop: Vorwaerts + Ping-Pong (knackfrei) fuer Flaechen",
-                        "v0.27 | Loop: forward + ping-pong (click-free) for pads"),
+    g.drawText (loc::t ("v0.28 | Analoge Waerme: Drive-Saettigung + Vintage-Pitch",
+                        "v0.28 | Analog warmth: drive saturation + vintage pitch"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }

@@ -73,6 +73,16 @@ public:
         enum class Loop { Off, Forward, PingPong };
         Loop  loopMode      = Loop::Off;
 
+        // --- Analoge Waerme (nur bei kind == Sample) ---
+        // Drive: weiche tanh-Saettigung wie die analogen Filter/Wandler alter
+        // Sampler - hohe Resonanz/heisse Signale saettigen musikalisch statt
+        // digital zu clippen, bringt Druck + natuerliche Kompression (Punch).
+        // VintagePitch: ohne Interpolation lesen (rohe Wandlung) -> crunchy,
+        // aliasing-reicher Klang beim Pitchen wie bei Fairlight/Emulator.
+        // Beide Standard AUS -> bestehende Songs klingen unveraendert.
+        float drive         = 0.0f;   // 0 = clean .. 1 = stark gesaettigt
+        bool  vintagePitch  = false;
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
@@ -652,6 +662,12 @@ private:
         const bool  crunch = inst->akai12bit;
         const bool  rev    = inst->reverse;
         const auto  loop   = inst->loopMode;
+        const bool  vintage = inst->vintagePitch;
+        // Drive: Eingangs-Gain in die tanh-Saettigung; dry/wet ueber 'drive'
+        // ueberblendet, damit drive=0 exakt der saubere Klang bleibt.
+        const float drive   = juce::jlimit (0.0f, 1.0f, inst->drive);
+        const float driveG  = 1.0f + drive * 8.0f;
+        const float driveNorm = std::tanh (driveG); // Vollausschlag bleibt ~unveraendert laut
         // SR-Reduktion: jeden Quellwert ueber holdLen Ausgabe-Samples halten.
         // Quadratisch gestaffelt -> feines Steuern im unteren Bereich, bis ~48x.
         const float srAmt   = juce::jlimit (0.0f, 1.0f, inst->srReduction);
@@ -737,7 +753,10 @@ private:
                 if (fresh)
                 {
                     const float* src = d.getReadPointer (sc);
-                    s = src[j0] + (src[j0 + 1] - src[j0]) * fr;
+                    // Vintage-Pitch: roh den naechsten Wert nehmen (keine Interpolation)
+                    // -> crunchy/aliasing wie bei langsamer Wandler-Clock.
+                    s = vintage ? src[j0]
+                                : src[j0] + (src[j0 + 1] - src[j0]) * fr;
                     if (crunch)
                         s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 2047.0f) / 2047.0f; // 12 Bit
                     v.srHold[sc] = s;
@@ -750,6 +769,13 @@ private:
                 {
                     s = lpStage (s, v.akaiLp[sc][0], v.akaiLp[sc][1]); // Stufe 1
                     s = lpStage (s, v.akaiLp[sc][2], v.akaiLp[sc][3]); // Stufe 2 -> 24 dB/Okt
+                }
+                // Drive: weiche Saettigung NACH dem Filter (so saettigt auch die
+                // Resonanz musikalisch). dry/wet, damit drive=0 sauber bleibt.
+                if (drive > 0.0f)
+                {
+                    const float wet = std::tanh (s * driveG) / driveNorm;
+                    s = s * (1.0f - drive) + wet * drive;
                 }
                 fs[sc] = s;
             }

@@ -43,6 +43,7 @@ private:
     juce::TextButton onButton  { "FILTER AN" }; // Akai-Filter an/aus
     juce::TextButton bitButton { "12-BIT" };    // 12-Bit-Crunch an/aus
     juce::TextButton revButton { "REVERSE" };   // Sample rueckwaerts
+    juce::TextButton vintButton { "VINTAGE" };  // Vintage-Pitch (rohe Wandlung)
 
     // Loop-Modus: AUS / VORWAERTS / PING-PONG (gegenseitig ausschliessend).
     juce::Label      loopLabel;
@@ -50,8 +51,8 @@ private:
     juce::TextButton loopFwd  { "VORWAERTS" };
     juce::TextButton loopPing { "PING-PONG" };
 
-    juce::Label  cutoffLabel, resoLabel, grainLabel;
-    juce::Slider cutoffSlider, resoSlider, grainSlider; // grain = SR-Reduktion
+    juce::Label  cutoffLabel, resoLabel, grainLabel, driveLabel;
+    juce::Slider cutoffSlider, resoSlider, grainSlider, driveSlider; // grain = SR-Reduktion
 
     juce::Label  hintLabel;
     juce::TextButton testButton  { "TEST" };

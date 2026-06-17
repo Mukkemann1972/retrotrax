@@ -92,7 +92,8 @@ Ein Projekt aus dem Mukkemann-Universum.
   **CLAP-Format** ✅ (zusätzlich zu VST3, via clap-juce-extensions) und der
   **Akai-Sampler-Filter** ✅ (resonanter Tiefpass im Stil S900/S950/S1000 +
   12-Bit-Crunch, pro Sample), **Sampler-Effekte** ✅ (Reverse +
-  Körnung/Sample-Rate-Reduktion) und **Loop** ✅ (Vorwärts + Ping-Pong)
+  Körnung/Sample-Rate-Reduktion), **Loop** ✅ (Vorwärts + Ping-Pong) und
+  **analoge Wärme** ✅ (Drive-Sättigung + Vintage-Pitch wie die alten Sampler)
 - **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
 - **Später:** 16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus
   malen wie mit dem Lichtgriffel), weitere Sampler-Effekte (Time-Stretch),

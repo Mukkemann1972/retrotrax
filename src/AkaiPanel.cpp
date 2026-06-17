@@ -72,6 +72,15 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     };
     addAndMakeVisible (revButton);
 
+    vintButton.setClickingTogglesState (true);
+    vintButton.onClick = [this]
+    {
+        const bool on = vintButton.getToggleState();
+        proc.editSample (slot, [on] (TrackerEngine::Instrument& i) { i.vintagePitch = on; });
+        previewNote();
+    };
+    addAndMakeVisible (vintButton);
+
     // Loop-Modus: drei sich ausschliessende Knoepfe.
     loopLabel.setFont (rt::mono (12.0f, true));
     loopLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -102,6 +111,7 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     setupSlider (cutoffSlider, cutoffLabel);
     setupSlider (resoSlider,   resoLabel);
     setupSlider (grainSlider,  grainLabel);
+    setupSlider (driveSlider,  driveLabel);
 
     hintLabel.setFont (rt::mono (12.0f, false));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -138,6 +148,12 @@ void AkaiPanel::applyLanguage()
     loopPing.setButtonText (loc::t ("PING-PONG", "PING-PONG"));
     loopPing.setTooltip (loc::t ("Sample laeuft vor und zurueck in der Schleife (knackfrei)",
                                  "Sample runs forward and back in a loop (click-free)"));
+    vintButton.setButtonText (loc::t ("VINTAGE", "VINTAGE"));
+    vintButton.setTooltip (loc::t ("Vintage-Pitch: rohe Wandlung ohne Glaettung - crunchy beim Pitchen (Fairlight/Emulator)",
+                                   "Vintage pitch: raw conversion without smoothing - crunchy when pitched (Fairlight/Emulator)"));
+    driveLabel.setText (loc::t ("DRIVE", "DRIVE"), juce::dontSendNotification);
+    driveSlider.setTooltip (loc::t ("Weiche Saettigung wie die analogen Sampler-Filter - Waerme + Druck/Punch",
+                                    "Soft saturation like the analog sampler filters - warmth + punch"));
     cutoffLabel.setText (loc::t ("GRENZE", "CUTOFF"), juce::dontSendNotification);
     resoLabel.setText   (loc::t ("RESONANZ", "RESONANCE"), juce::dontSendNotification);
     grainLabel.setText  (loc::t ("KOERNUNG", "GRAIN"), juce::dontSendNotification);
@@ -165,9 +181,11 @@ void AkaiPanel::refresh()
     cutoffSlider.setValue (have ? s.akaiCutoff    * 100.0 : 100.0, juce::dontSendNotification);
     resoSlider.setValue   (have ? s.akaiResonance * 100.0 :  12.0, juce::dontSendNotification);
     grainSlider.setValue  (have ? s.srReduction   * 100.0 :   0.0, juce::dontSendNotification);
-    onButton.setToggleState  (have && s.akaiOn,    juce::dontSendNotification);
-    bitButton.setToggleState (have && s.akai12bit, juce::dontSendNotification);
-    revButton.setToggleState (have && s.reverse,   juce::dontSendNotification);
+    driveSlider.setValue  (have ? s.drive         * 100.0 :   0.0, juce::dontSendNotification);
+    onButton.setToggleState  (have && s.akaiOn,       juce::dontSendNotification);
+    bitButton.setToggleState (have && s.akai12bit,    juce::dontSendNotification);
+    revButton.setToggleState (have && s.reverse,      juce::dontSendNotification);
+    vintButton.setToggleState(have && s.vintagePitch, juce::dontSendNotification);
     loading = false;
 
     updateButtons();
@@ -212,11 +230,13 @@ void AkaiPanel::writeParams()
     const float cut   = (float) (cutoffSlider.getValue() / 100.0);
     const float res   = (float) (resoSlider.getValue()   / 100.0);
     const float grain = (float) (grainSlider.getValue()  / 100.0);
+    const float drv   = (float) (driveSlider.getValue()  / 100.0);
     proc.editSample (slot, [=] (TrackerEngine::Instrument& i)
     {
         i.akaiCutoff    = cut;
         i.akaiResonance = res;
         i.srReduction   = grain;
+        i.drive         = drv;
     });
 }
 
@@ -285,9 +305,11 @@ void AkaiPanel::resized()
         auto row = area.removeFromTop (32);
         onButton.setBounds  (row.removeFromLeft (150));
         row.removeFromLeft (10);
-        bitButton.setBounds (row.removeFromLeft (120));
+        bitButton.setBounds (row.removeFromLeft (110));
         row.removeFromLeft (10);
-        revButton.setBounds (row.removeFromLeft (130));
+        revButton.setBounds (row.removeFromLeft (120));
+        row.removeFromLeft (10);
+        vintButton.setBounds (row.removeFromLeft (120));
     }
     area.removeFromTop (14);
 
@@ -303,6 +325,8 @@ void AkaiPanel::resized()
     sliderRow (resoLabel, resoSlider);
     area.removeFromTop (8);
     sliderRow (grainLabel, grainSlider);
+    area.removeFromTop (8);
+    sliderRow (driveLabel, driveSlider);
     area.removeFromTop (14);
 
     // Loop-Reihe: Label + AUS / VORWAERTS / PING-PONG.
