@@ -72,6 +72,18 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     };
     addAndMakeVisible (revButton);
 
+    // Loop-Modus: drei sich ausschliessende Knoepfe.
+    loopLabel.setFont (rt::mono (12.0f, true));
+    loopLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (loopLabel);
+    using Loop = TrackerEngine::Instrument::Loop;
+    loopOff.onClick  = [this] { selectLoop (Loop::Off); };
+    loopFwd.onClick  = [this] { selectLoop (Loop::Forward); };
+    loopPing.onClick = [this] { selectLoop (Loop::PingPong); };
+    addAndMakeVisible (loopOff);
+    addAndMakeVisible (loopFwd);
+    addAndMakeVisible (loopPing);
+
     // Grenze (Cutoff) + Resonanz als gut ablesbare Balken-Regler.
     auto setupSlider = [this] (juce::Slider& s, juce::Label& lab)
     {
@@ -120,6 +132,12 @@ void AkaiPanel::applyLanguage()
     revButton.setButtonText (loc::t ("REVERSE", "REVERSE"));
     revButton.setTooltip (loc::t ("Sample rueckwaerts abspielen",
                                   "Play the sample backwards"));
+    loopLabel.setText (loc::t ("LOOP", "LOOP"), juce::dontSendNotification);
+    loopOff.setButtonText  (loc::t ("AUS", "OFF"));
+    loopFwd.setButtonText  (loc::t ("VORWAERTS", "FORWARD"));
+    loopPing.setButtonText (loc::t ("PING-PONG", "PING-PONG"));
+    loopPing.setTooltip (loc::t ("Sample laeuft vor und zurueck in der Schleife (knackfrei)",
+                                 "Sample runs forward and back in a loop (click-free)"));
     cutoffLabel.setText (loc::t ("GRENZE", "CUTOFF"), juce::dontSendNotification);
     resoLabel.setText   (loc::t ("RESONANZ", "RESONANCE"), juce::dontSendNotification);
     grainLabel.setText  (loc::t ("KOERNUNG", "GRAIN"), juce::dontSendNotification);
@@ -161,6 +179,14 @@ void AkaiPanel::updateButtons()
     // Regler nur wirksam, wenn der Filter an ist (12-Bit geht auch ohne Filter).
     cutoffSlider.setEnabled (on);
     resoSlider.setEnabled (on);
+
+    // Loop-Knoepfe gegenseitig ausschliessend - aktiven hervorheben.
+    using Loop = TrackerEngine::Instrument::Loop;
+    TrackerEngine::Instrument s;
+    const Loop m = proc.getSample (slot, s) ? s.loopMode : Loop::Off;
+    loopOff.setToggleState  (m == Loop::Off,      juce::dontSendNotification);
+    loopFwd.setToggleState  (m == Loop::Forward,  juce::dontSendNotification);
+    loopPing.setToggleState (m == Loop::PingPong, juce::dontSendNotification);
 }
 
 void AkaiPanel::applyPreset (int index)
@@ -192,6 +218,13 @@ void AkaiPanel::writeParams()
         i.akaiResonance = res;
         i.srReduction   = grain;
     });
+}
+
+void AkaiPanel::selectLoop (TrackerEngine::Instrument::Loop m)
+{
+    proc.editSample (slot, [m] (TrackerEngine::Instrument& i) { i.loopMode = m; });
+    updateButtons();
+    previewNote();
 }
 
 void AkaiPanel::previewNote()
@@ -270,6 +303,18 @@ void AkaiPanel::resized()
     sliderRow (resoLabel, resoSlider);
     area.removeFromTop (8);
     sliderRow (grainLabel, grainSlider);
+    area.removeFromTop (14);
+
+    // Loop-Reihe: Label + AUS / VORWAERTS / PING-PONG.
+    {
+        auto row = area.removeFromTop (32);
+        loopLabel.setBounds (row.removeFromLeft (60));
+        loopOff.setBounds  (row.removeFromLeft (90));
+        row.removeFromLeft (8);
+        loopFwd.setBounds  (row.removeFromLeft (130));
+        row.removeFromLeft (8);
+        loopPing.setBounds (row.removeFromLeft (130));
+    }
     area.removeFromTop (14);
 
     hintLabel.setBounds (area.removeFromTop (40));

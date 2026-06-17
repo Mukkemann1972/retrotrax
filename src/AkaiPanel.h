@@ -25,6 +25,7 @@ public:
 
 private:
     void writeParams();   // Reglerwerte ins Instrument schreiben (live)
+    void selectLoop (TrackerEngine::Instrument::Loop m); // Loop-Modus setzen
     void applyPreset (int index); // einen der Modell-Startklaenge legen
     void previewNote();   // C-5 mit Note-Aus -> Klang inkl. Filter hoerbar
     void updateButtons(); // Knopf-Zustaende (AN/AUS, 12-Bit) nachziehen
@@ -42,6 +43,12 @@ private:
     juce::TextButton onButton  { "FILTER AN" }; // Akai-Filter an/aus
     juce::TextButton bitButton { "12-BIT" };    // 12-Bit-Crunch an/aus
     juce::TextButton revButton { "REVERSE" };   // Sample rueckwaerts
+
+    // Loop-Modus: AUS / VORWAERTS / PING-PONG (gegenseitig ausschliessend).
+    juce::Label      loopLabel;
+    juce::TextButton loopOff  { "AUS" };
+    juce::TextButton loopFwd  { "VORWAERTS" };
+    juce::TextButton loopPing { "PING-PONG" };
 
     juce::Label  cutoffLabel, resoLabel, grainLabel;
     juce::Slider cutoffSlider, resoSlider, grainSlider; // grain = SR-Reduktion

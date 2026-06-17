@@ -89,12 +89,12 @@ A project from the Mukkemann universe.
   (FastTracker 2: more channels, 16-bit samples, finetune), the
   **CLAP format** ✅ (in addition to VST3, via clap-juce-extensions) and the
   **Akai sampler filter** ✅ (resonant low-pass in S900/S950/S1000 style +
-  12-bit crunch, per sample) and **sampler effects** ✅ (reverse +
-  grain/sample-rate reduction)
+  12-bit crunch, per sample), **sampler effects** ✅ (reverse +
+  grain/sample-rate reduction) and **loop** ✅ (forward + ping-pong)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
 - **Later:** 16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms
-  with the mouse, light-pen style), more sampler effects (ping-pong loop,
-  time-stretch), .sid player + .retrotrax replayer for your own demos, beginner mode
+  with the mouse, light-pen style), more sampler effects (time-stretch),
+  .sid player + .retrotrax replayer for your own demos, beginner mode
 
 ## Controls
 

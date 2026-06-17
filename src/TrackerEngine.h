@@ -67,6 +67,12 @@ public:
         bool  reverse       = false;
         float srReduction   = 0.0f;   // 0 = aus .. 1 = extrem grob
 
+        // Loop: das Sample laeuft in der Schleife weiter, solange die Note klingt.
+        // Off = einmal abspielen (wie bisher), Forward = vorne wieder anfangen,
+        // PingPong = vor und zurueck (knackfrei, weil am Rand gespiegelt).
+        enum class Loop { Off, Forward, PingPong };
+        Loop  loopMode      = Loop::Off;
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
@@ -331,6 +337,7 @@ private:
         float        akaiLp[2][4] = {};        // Akai-Filter-Speicher: [Kanal][2 Stufen x c1,c2]
         float        srHold[2] = { 0.0f, 0.0f }; // Sample-and-Hold-Wert je Kanal (SR-Reduktion)
         int          srCount = 0;               // verbleibende Halte-Samples
+        int          loopDir = 1;               // Laufrichtung beim Ping-Pong-Loop (+1/-1)
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
         double       uniPhase[2] = { 0.0, 0.0 }; // Phasen der gestapelten Unisono-Stimmen
@@ -495,6 +502,7 @@ private:
                 for (auto& x : chState) x = 0.0f;
             v.srHold[0] = v.srHold[1] = 0.0f;
             v.srCount = 0;
+            v.loopDir = 1;
         }
         v.active = true;
     }
@@ -643,6 +651,7 @@ private:
         const bool  akaiOn = inst->akaiOn;
         const bool  crunch = inst->akai12bit;
         const bool  rev    = inst->reverse;
+        const auto  loop   = inst->loopMode;
         // SR-Reduktion: jeden Quellwert ueber holdLen Ausgabe-Samples halten.
         // Quadratisch gestaffelt -> feines Steuern im unteren Bereich, bis ~48x.
         const float srAmt   = juce::jlimit (0.0f, 1.0f, inst->srReduction);
@@ -688,9 +697,13 @@ private:
                 env = (float) (kFade - v.fadeIn) / (float) kFade;
                 --v.fadeIn;
             }
-            const double remain = (double) (len - 1) - pos;
-            if (remain < (double) kFade)
-                env *= (float) (remain / (double) kFade);
+            // End-Ausblende nur beim einmaligen Abspielen - beim Loop laeuft es weiter.
+            if (loop == Instrument::Loop::Off)
+            {
+                const double remain = (double) (len - 1) - pos;
+                if (remain < (double) kFade)
+                    env *= (float) (remain / (double) kFade);
+            }
 
             // Note-Aus: in kFade Samples sanft auf Null fahren, dann Stimme aus.
             bool finish = false;
@@ -750,7 +763,27 @@ private:
                                             : 0.5f * (v.gainL + v.gainR));
                 buffer.addSample (ch, offset + i, s * g * env * 0.5f);
             }
-            pos += v.step;
+            // Position weiterfahren - je nach Loop-Modus.
+            if (loop == Instrument::Loop::Off)
+            {
+                pos += v.step; // der Check oben faengt das Sample-Ende ab
+            }
+            else
+            {
+                const double hi = (double) (len - 1);
+                pos += v.step * v.loopDir;
+                if (loop == Instrument::Loop::PingPong)
+                {
+                    if (pos >= hi)      { pos = hi - (pos - hi); v.loopDir = -1; } // am Ende spiegeln
+                    else if (pos < 0.0) { pos = -pos;           v.loopDir =  1; } // am Anfang spiegeln
+                }
+                else // Forward: vorne wieder anfangen
+                {
+                    if (pos >= hi) pos -= hi;
+                    if (pos < 0.0) pos += hi;
+                }
+                pos = juce::jlimit (0.0, hi - 1.0e-4, pos); // robust in den Grenzen halten
+            }
 
             if (finish)
             {
