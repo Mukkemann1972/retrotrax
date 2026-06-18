@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MukkemannRetroTrax VERSION 0.33.0 LANGUAGES C CXX)
+project(MukkemannRetroTrax VERSION 0.34.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,6 +32,17 @@ target_compile_definitions(residfp PUBLIC HAVE_CXX17)
 target_compile_features(residfp PUBLIC cxx_std_17)
 target_link_libraries(residfp PUBLIC Threads::Threads)
 set_target_properties(residfp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+# --- TFMX/FC-Decoder (RetrovertApp/playback-tfmx, GPL-2.0+) ------------------
+# Bewaehrter TFMX-Replayer (Chris Huelsbeck u.a.), vendored in libs/tfmxdecoder,
+# angesprochen ueber die C-API tfmxaudiodecoder.h. Wie reSIDfp: PIC, weil es ins
+# VST3 (shared module) gelinkt wird. Quelle/Lizenz: libs/tfmxdecoder/VENDORED.txt.
+file(GLOB_RECURSE TFMXDEC_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/tfmxdecoder/*.cpp)
+add_library(tfmxdecoder STATIC ${TFMXDEC_SOURCES})
+target_include_directories(tfmxdecoder PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libs/tfmxdecoder)
+target_compile_features(tfmxdecoder PUBLIC cxx_std_17)
+set_target_properties(tfmxdecoder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 juce_add_plugin(RetroTrax
     PRODUCT_NAME "Mukkemann RetroTrax"
@@ -73,6 +84,7 @@ target_compile_definitions(RetroTrax PUBLIC
 target_link_libraries(RetroTrax
     PRIVATE
         residfp
+        tfmxdecoder
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags

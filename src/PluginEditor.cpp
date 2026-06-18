@@ -634,8 +634,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.33 | TFMX (Chris Huelsbeck): Stufe 1 - Datei lesen",
-                        "v0.33 | TFMX (Chris Huelsbeck): stage 1 - reading the file"),
+    g.drawText (loc::t ("v0.34 | TFMX spielt! Turrican/Apidya im Player hoeren",
+                        "v0.34 | TFMX plays! Hear Turrican/Apidya in the player"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

@@ -1,0 +1,19 @@
+TFMX / FC audio decoder — vendored into RetroTrax
+=================================================
+
+Source : RetrovertApp/playback-tfmx
+         https://github.com/RetrovertApp/playback-tfmx
+         (successor of mschwendt/libtfmxaudiodecoder and libfc14audiodecoder)
+
+License: GNU General Public License v2 or later (see the per-file headers).
+         RetroTrax already links the GPL reSIDfp emulator, so this is
+         license-compatible.
+
+Used by: RetroTrax for faithful TFMX playback (Chris Huelsbeck and others —
+         Turrican, Apidya, R-Type ...). RetroTrax talks to it only through the
+         C API in tfmxaudiodecoder.h (new/load/mixer_init/buffer_fill).
+
+Note   : Only the contents of the upstream `src/` tree are vendored here; the
+         RetrovertApp plugin shell and build files are not used. RetroTrax wraps
+         this decoder in src/TfmxPlayer.h; the file reader, diagnostics, UI and
+         integration are RetroTrax's own code.

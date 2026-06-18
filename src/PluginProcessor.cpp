@@ -26,6 +26,24 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 {
     juce::ScopedNoDenormals noDenormals;
 
+    // TFMX-Wiedergabe-Modus: der eigene Replayer ersetzt die Tracker-Engine.
+    // PLAY/STOP nutzen dieselbe engine.playing-Flagge; die steigende Flanke
+    // (Stop -> Play) startet den TFMX-Song von vorn.
+    if (playbackMode.load() == PlaybackMode::Tfmx)
+    {
+        midi.clear();
+        const bool playing = engine.playing.load();
+        if (playing && ! tfmxWasPlaying)
+            tfmx.restart();
+        tfmxWasPlaying = playing;
+
+        if (playing)
+            tfmx.render (buffer, 0, buffer.getNumSamples());
+        else
+            buffer.clear();
+        return;
+    }
+
     for (const auto metadata : midi)
     {
         const auto msg = metadata.getMessage();
@@ -66,6 +84,7 @@ bool RetroTraxProcessor::loadInstrument (int slot, const juce::File& file)
         return false;
 
     engine.setInstrument (slot, std::move (inst));
+    playbackMode = PlaybackMode::Tracker; // zurueck zum Tracker, falls TFMX lief
     return true;
 }
 
@@ -428,6 +447,7 @@ bool RetroTraxProcessor::loadSong (const juce::File& file, juce::StringArray& mi
         return false;
 
     engine.stop(); // beim Oeffnen nie mitten im Abspielen bleiben
+    playbackMode = PlaybackMode::Tracker; // ein .retrotrax-Song laeuft im Tracker
     applyStateXml (*xml, &missingSamples);
     return true;
 }
@@ -442,6 +462,7 @@ bool RetroTraxProcessor::loadMod (const juce::File& file, juce::String& message)
     }
 
     engine.stop(); // nie mitten im Abspielen umbauen
+    playbackMode = PlaybackMode::Tracker; // MOD/XM laeuft ueber die Tracker-Engine
 
     // 1) Alle Patterns leeren, damit nichts vom alten Song stehen bleibt.
     {
@@ -523,6 +544,7 @@ bool RetroTraxProcessor::loadXm (const juce::File& file, juce::String& message)
     }
 
     engine.stop(); // nie mitten im Abspielen umbauen
+    playbackMode = PlaybackMode::Tracker; // MOD/XM laeuft ueber die Tracker-Engine
 
     // 1) Alle Patterns leeren, damit nichts vom alten Song stehen bleibt.
     {
@@ -646,11 +668,15 @@ bool RetroTraxProcessor::loadTfmx (const juce::File& mdatFile, juce::String& mes
         return false;
     }
 
+    engine.stop();                          // Tracker anhalten
+    playbackMode = PlaybackMode::Tfmx;      // ab jetzt spielt der TFMX-Replayer
+
     const auto& in = tfmx.info();
     message = "\"" + in.title + "\": " + juce::String (in.subsongs) + " Subsongs, "
             + juce::String (in.patterns) + " Patterns, " + juce::String (in.macros) + " Makros, "
-            + juce::String (in.tracksteps) + " Tracksteps, " + juce::String (in.sampleBytes / 1024) + " KB Samples."
-            + "  (Wiedergabe kommt in der naechsten Stufe.)";
+            + juce::String (in.tracksteps) + " Tracksteps, " + juce::String (in.sampleBytes / 1024) + " KB Samples.";
+    message += tfmx.isPlayable() ? "  PLAY startet die Wiedergabe."
+                                 : "  (Wiedergabe nicht moeglich - .smpl gefunden?)";
     return true;
 }
 

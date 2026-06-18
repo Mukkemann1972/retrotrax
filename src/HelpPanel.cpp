@@ -597,9 +597,11 @@ void HelpPanel::rebuild()
             "smpl.NAME (die Klaenge). Beide muessen im selben Ordner liegen. Mit dem\n"
             "Knopf TFMX waehlst du die mdat-Datei; die passende smpl wird automatisch\n"
             "daneben gesucht. (Frei sammeln kann man sie z.B. bei ExoticA/Modland.)\n\n"
-            "Hinweis: Das ist ein grosser Brocken und entsteht in Etappen. Im Moment\n"
-            "liest RetroTrax die Datei ein und zeigt dir, was drinsteckt (Subsongs,\n"
-            "Patterns, Makros, Samples) - das Abspielen kommt im naechsten Schritt.",
+            "Nach dem Laden zeigt RetroTrax kurz, was drinsteckt (Subsongs, Patterns,\n"
+            "Makros, Samples). Mit PLAY startet die Wiedergabe, STOP haelt an, PLAY\n"
+            "spielt wieder von vorn. Geladen wird Subsong 0. Die Wiedergabe nutzt\n"
+            "einen eingebundenen, offenen TFMX-Player (wie der echte SID-Chip beim\n"
+            "SID-Synth) - laesst sich aber nicht im Raster bearbeiten.",
             "TFMX is the legendary Amiga music format by Chris Huelsbeck (Turrican,\n"
             "Apidya, R-Type ...). Unlike MOD/XM it is NOT a note grid but a running\n"
             "macro machine - so RetroTrax plays TFMX with its own rebuilt player\n"
@@ -608,9 +610,11 @@ void HelpPanel::rebuild()
             "(the sounds). Both must sit in the same folder. The TFMX button lets you\n"
             "pick the mdat file; the matching smpl is found next to it automatically.\n"
             "(They can be collected freely e.g. at ExoticA/Modland.)\n\n"
-            "Note: this is a big piece, built in stages. Right now RetroTrax reads the\n"
-            "file and shows you what's inside (subsongs, patterns, macros, samples) -\n"
-            "playback comes in the next step.") });
+            "After loading, RetroTrax briefly shows what's inside (subsongs, patterns,\n"
+            "macros, samples). PLAY starts playback, STOP halts, PLAY plays from the\n"
+            "top again. Subsong 0 is loaded. Playback uses a vendored open TFMX player\n"
+            "(like the real SID chip for the SID synth) - but it can't be edited in\n"
+            "the grid.") });
 
     topics.add ({ loc::t ("Sprache", "Language"),
         loc::t (

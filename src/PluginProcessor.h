@@ -91,6 +91,12 @@ private:
 
     TfmxPlayer tfmx;
 
+    // Wiedergabe-Pfad: normaler Tracker ODER der TFMX-Replayer. Laden eines TFMX
+    // schaltet auf Tfmx, Laden von Song/MOD/XM/Sample zurueck auf Tracker.
+    enum class PlaybackMode { Tracker, Tfmx };
+    std::atomic<PlaybackMode> playbackMode { PlaybackMode::Tracker };
+    bool tfmxWasPlaying = false; // nur Audio-Thread: Flanke fuer Neustart bei PLAY
+
     // Gemeinsames Song-Format fuer Host-State und .retrotrax-Dateien.
     std::unique_ptr<juce::XmlElement> stateToXml();
     void applyStateXml (const juce::XmlElement&, juce::StringArray* missingSamples = nullptr);
