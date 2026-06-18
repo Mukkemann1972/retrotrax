@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "TrackerEngine.h"
+#include "TfmxPlayer.h"
 
 class RetroTraxProcessor : public juce::AudioProcessor
 {
@@ -71,12 +72,24 @@ public:
     // XM-Format (mehr Kanaele, 16-Bit-Samples, Finetune/relative Note).
     bool loadXm (const juce::File& file, juce::String& message);
 
+    // TFMX (Chris Huelsbeck, Amiga) laden. Anders als MOD/XM kein Grid-Import,
+    // sondern ein eigener Replayer (siehe TfmxPlayer). Die passende .smpl-Datei
+    // wird per Namens-Konvention neben der .mdat gesucht. STUFE 1: liest + meldet
+    // nur den Datei-Inhalt (Diagnose), Wiedergabe folgt. 'message' = Zusammenfassung.
+    bool loadTfmx (const juce::File& mdatFile, juce::String& message);
+
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
 
 private:
     std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
+
+    // Sucht die .smpl-Begleitdatei zu einer .mdat (mdat.xxx<->smpl.xxx bzw.
+    // xxx.mdat<->xxx.smpl, sonst "mdat" im Namen durch "smpl" ersetzen).
+    static juce::File findTfmxSmpl (const juce::File& mdatFile);
+
+    TfmxPlayer tfmx;
 
     // Gemeinsames Song-Format fuer Host-State und .retrotrax-Dateien.
     std::unique_ptr<juce::XmlElement> stateToXml();

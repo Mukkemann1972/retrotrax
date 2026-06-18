@@ -14,6 +14,7 @@ RetroTraxProcessor::RetroTraxProcessor()
 void RetroTraxProcessor::prepareToPlay (double sampleRate, int)
 {
     engine.prepare (sampleRate);
+    tfmx.prepare (sampleRate);
 }
 
 bool RetroTraxProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -601,6 +602,55 @@ bool RetroTraxProcessor::loadXm (const juce::File& file, juce::String& message)
     message = "\"" + song.title + "\": " + juce::String (loaded) + " Samples, "
             + juce::String (juce::jmin (song.numPatterns, TrackerEngine::kMaxPatterns)) + " Patterns, "
             + juce::String (song.channels) + " Kanaele." + warn;
+    return true;
+}
+
+juce::File RetroTraxProcessor::findTfmxSmpl (const juce::File& mdatFile)
+{
+    const auto dir  = mdatFile.getParentDirectory();
+    const auto name = mdatFile.getFileName();
+
+    // Modland-Konvention: "mdat.xxx" <-> "smpl.xxx".
+    if (name.startsWithIgnoreCase ("mdat."))
+    {
+        auto cand = dir.getChildFile ("smpl." + name.substring (5));
+        if (cand.existsAsFile()) return cand;
+    }
+    // Endungs-Konvention: "xxx.mdat" <-> "xxx.smpl".
+    if (mdatFile.getFileExtension().equalsIgnoreCase (".mdat"))
+    {
+        auto cand = mdatFile.withFileExtension ("smpl");
+        if (cand.existsAsFile()) return cand;
+    }
+    // Fallback: "mdat" im Namen durch "smpl" ersetzen.
+    if (name.containsIgnoreCase ("mdat"))
+    {
+        auto cand = dir.getChildFile (name.replace ("mdat", "smpl", true));
+        if (cand.existsAsFile()) return cand;
+    }
+    return {};
+}
+
+bool RetroTraxProcessor::loadTfmx (const juce::File& mdatFile, juce::String& message)
+{
+    const auto smplFile = findTfmxSmpl (mdatFile);
+    if (! smplFile.existsAsFile())
+    {
+        message = "Keine passende .smpl-Datei neben \"" + mdatFile.getFileName() + "\" gefunden.";
+        return false;
+    }
+
+    if (! tfmx.load (mdatFile, smplFile))
+    {
+        message = tfmx.info().message;
+        return false;
+    }
+
+    const auto& in = tfmx.info();
+    message = "\"" + in.title + "\": " + juce::String (in.subsongs) + " Subsongs, "
+            + juce::String (in.patterns) + " Patterns, " + juce::String (in.macros) + " Makros, "
+            + juce::String (in.tracksteps) + " Tracksteps, " + juce::String (in.sampleBytes / 1024) + " KB Samples."
+            + "  (Wiedergabe kommt in der naechsten Stufe.)";
     return true;
 }
 

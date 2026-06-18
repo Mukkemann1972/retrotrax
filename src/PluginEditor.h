@@ -28,6 +28,7 @@ private:
     void loadSongClicked();
     void loadModClicked();
     void loadXmClicked();
+    void loadTfmxClicked();
     void syncUiFromState();
     void applyLanguage();
     void setDefaultHint(); // Standard-Tastenkuerzel-Zeile unten
@@ -45,6 +46,7 @@ private:
     juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
     juce::TextButton modButton { "MOD" };  // klassisches Amiga-.mod importieren
     juce::TextButton xmButton { "XM" };    // FastTracker-2-.xm importieren
+    juce::TextButton tfmxButton { "TFMX" };// TFMX (Chris Huelsbeck) abspielen
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::TextButton helpButton { "?" };

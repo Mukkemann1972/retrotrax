@@ -587,6 +587,31 @@ void HelpPanel::rebuild()
             "rows are clipped to 64, envelopes/loops are not handled yet. (Thousands\n"
             "of XMs are free on modarchive.org.)") });
 
+    topics.add ({ loc::t ("TFMX (Chris Huelsbeck)", "TFMX (Chris Huelsbeck)"),
+        loc::t (
+            "TFMX ist das legendaere Amiga-Musikformat von Chris Huelsbeck (Turrican,\n"
+            "Apidya, R-Type ...). Anders als MOD/XM ist es KEIN Noten-Raster, sondern\n"
+            "eine laufende Makro-Maschine - darum spielt RetroTrax TFMX mit einem\n"
+            "eigenen Nachbau ab, statt es ins Grid zu importieren.\n\n"
+            "TFMX-Songs bestehen aus ZWEI Dateien: mdat.NAME (die Musik) und\n"
+            "smpl.NAME (die Klaenge). Beide muessen im selben Ordner liegen. Mit dem\n"
+            "Knopf TFMX waehlst du die mdat-Datei; die passende smpl wird automatisch\n"
+            "daneben gesucht. (Frei sammeln kann man sie z.B. bei ExoticA/Modland.)\n\n"
+            "Hinweis: Das ist ein grosser Brocken und entsteht in Etappen. Im Moment\n"
+            "liest RetroTrax die Datei ein und zeigt dir, was drinsteckt (Subsongs,\n"
+            "Patterns, Makros, Samples) - das Abspielen kommt im naechsten Schritt.",
+            "TFMX is the legendary Amiga music format by Chris Huelsbeck (Turrican,\n"
+            "Apidya, R-Type ...). Unlike MOD/XM it is NOT a note grid but a running\n"
+            "macro machine - so RetroTrax plays TFMX with its own rebuilt player\n"
+            "instead of importing it into the grid.\n\n"
+            "TFMX songs consist of TWO files: mdat.NAME (the music) and smpl.NAME\n"
+            "(the sounds). Both must sit in the same folder. The TFMX button lets you\n"
+            "pick the mdat file; the matching smpl is found next to it automatically.\n"
+            "(They can be collected freely e.g. at ExoticA/Modland.)\n\n"
+            "Note: this is a big piece, built in stages. Right now RetroTrax reads the\n"
+            "file and shows you what's inside (subsongs, patterns, macros, samples) -\n"
+            "playback comes in the next step.") });
+
     topics.add ({ loc::t ("Sprache", "Language"),
         loc::t (
             "Der Knopf DE/EN oben schaltet zwischen Deutsch und Englisch um. Die\n"

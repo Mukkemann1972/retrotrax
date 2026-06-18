@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.32 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.33 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -95,7 +95,8 @@ Ein Projekt aus dem Mukkemann-Universum.
   Körnung/Sample-Rate-Reduktion), **Loop** ✅ (Vorwärts + Ping-Pong) und
   **analoge Wärme** ✅ (Drive-Sättigung + Vintage-Pitch wie die alten Sampler)
   und **Pattern-Quantisierung** ✅ (Live-Noten aufs Raster schnappen)
-- **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
+- **In Arbeit:** das offene **TFMX**-Format (Chris Hülsbeck) als eigenen Player
+  nachbauen 🚧 — Stufe 1: liest .mdat/.smpl und meldet den Inhalt (Wiedergabe folgt)
 - **Später:** 16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus
   malen wie mit dem Lichtgriffel), weitere Sampler-Effekte (Time-Stretch),
   .sid-Player + .retrotrax-Replayer für eigene Demos, Anfänger-Modus

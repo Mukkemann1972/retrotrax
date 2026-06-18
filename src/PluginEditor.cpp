@@ -20,6 +20,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (akaiButton);
     addAndMakeVisible (modButton);
     addAndMakeVisible (xmButton);
+    addAndMakeVisible (tfmxButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
@@ -65,6 +66,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     loadSongButton.onClick = [this] { loadSongClicked(); };
     modButton.onClick = [this] { loadModClicked(); };
     xmButton.onClick = [this] { loadXmClicked(); };
+    tfmxButton.onClick = [this] { loadTfmxClicked(); };
 
     helpButton.onClick = [this]
     {
@@ -484,6 +486,36 @@ void RetroTraxEditor::loadXmClicked()
         });
 }
 
+void RetroTraxEditor::loadTfmxClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    // TFMX-Dateien heissen meist "mdat.songname" (Modland) oder "songname.mdat".
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("TFMX-Modul oeffnen (.mdat)", "Open TFMX module (.mdat)"), start, "*.mdat;mdat.*");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return; // abgebrochen
+
+            juce::String message;
+            if (! proc.loadTfmx (file, message))
+            {
+                hintLabel.setText (loc::t ("TFMX laden fehlgeschlagen: ", "TFMX load failed: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+
+            hintLabel.setText (loc::t ("TFMX gelesen - ", "TFMX read - ") + message,
+                               juce::dontSendNotification);
+        });
+}
+
 void RetroTraxEditor::syncUiFromState()
 {
     bpmSlider.setValue ((double) proc.engine.bpm.load(), juce::dontSendNotification);
@@ -533,12 +565,15 @@ void RetroTraxEditor::applyLanguage()
     loadButton.setButtonText     (loc::t ("SAMPLE LADEN", "LOAD SAMPLE"));
     saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
     loadSongButton.setButtonText (loc::t ("SONG OEFFNEN", "OPEN SONG"));
-    modButton.setButtonText      (loc::t ("MOD LADEN", "LOAD MOD"));
+    modButton.setButtonText      (loc::t ("MOD", "MOD"));
     modButton.setTooltip (loc::t ("Klassisches Amiga-MOD (.mod) importieren - Samples, Patterns und Reihenfolge",
                                   "Import a classic Amiga MOD (.mod) - samples, patterns and order"));
-    xmButton.setButtonText       (loc::t ("XM LADEN", "LOAD XM"));
+    xmButton.setButtonText       (loc::t ("XM", "XM"));
     xmButton.setTooltip (loc::t ("FastTracker-2-Modul (.xm) importieren - Samples, Patterns und Reihenfolge",
                                  "Import a FastTracker 2 module (.xm) - samples, patterns and order"));
+    tfmxButton.setButtonText     (loc::t ("TFMX", "TFMX"));
+    tfmxButton.setTooltip (loc::t ("TFMX-Modul (Chris Huelsbeck, Amiga) oeffnen - .mdat + .smpl. Eigener Replayer, kein Grid-Import.",
+                                   "Open a TFMX module (Chris Huelsbeck, Amiga) - .mdat + .smpl. Own replayer, not a grid import."));
     instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
@@ -599,8 +634,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.32 | Maximieren-4eck im Fensterrahmen wieder da",
-                        "v0.32 | Maximise square back in the window frame"),
+    g.drawText (loc::t ("v0.33 | TFMX (Chris Huelsbeck): Stufe 1 - Datei lesen",
+                        "v0.33 | TFMX (Chris Huelsbeck): stage 1 - reading the file"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -659,9 +694,11 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (6);
     akaiButton.setBounds (controls.removeFromLeft (70));
     controls.removeFromLeft (6);
-    modButton.setBounds (controls.removeFromLeft (96));
+    modButton.setBounds (controls.removeFromLeft (56));
     controls.removeFromLeft (6);
-    xmButton.setBounds (controls.removeFromLeft (84));
+    xmButton.setBounds (controls.removeFromLeft (44));
+    controls.removeFromLeft (6);
+    tfmxButton.setBounds (controls.removeFromLeft (64));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
