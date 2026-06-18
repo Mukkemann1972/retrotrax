@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.35 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.36 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -41,6 +41,9 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **Note-Aus (Taste 1):** lässt SID-Stimmen sauber ausklingen
 - 16 Spuren, 64 Zeilen Pattern — passt nicht alles ins Fenster, das Grid scrollt
   seitlich mit dem Cursor mit (Pfeil ‹/› im Kopf = mehr Spuren da)
+- **Stumm & Solo pro Spur:** kleine **M**- (stumm) und **S**- (solo) Knöpfe unter
+  jedem Spurnamen — per Mausklick, auch während der Wiedergabe. Solo lässt nur die
+  gewählten Spuren hören; so findest du sofort, was im Mix nicht passt
 - **MOD-Import:** klassische Amiga-`.mod`-Songs laden (Knopf MOD LADEN) — Samples
   wandern in die Slots (bis zu 31), Patterns + Reihenfolge werden übernommen.
   Sofort abspielbar, weiterbaubar und als `.retrotrax` sicherbar

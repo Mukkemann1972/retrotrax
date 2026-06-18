@@ -130,6 +130,12 @@ void HelpPanel::rebuild()
             "Spalte. Ein breiteres Fenster zeigt mehr Spuren auf einmal.\n\n"
             "Jede Spur spielt zur gleichen Zeit eine Note ab. So baust du\n"
             "Schlagzeug, Bass und Melodie uebereinander.\n\n"
+            "STUMM & SOLO (wie in jeder DAW): Unter jedem Spurnamen sitzen zwei\n"
+            "kleine Knoepfe. M (rot) schaltet die Spur stumm. S (gelb) schaltet sie\n"
+            "solo - dann hoerst du NUR die ge-soloten Spuren. So findest du schnell,\n"
+            "welche Spur im Mix nicht passt. Beides per Mausklick, jederzeit auch\n"
+            "waehrend der Wiedergabe; es veraendert deine Noten nicht und wird nicht\n"
+            "im Song gespeichert.\n\n"
             "(Mehrere Patterns ergeben einen ganzen Song - siehe \"Song-Modus\".)",
             "The grid has 16 tracks and 64 rows. The cursor row stays in the\n"
             "centre and the pattern scrolls past it - just like the old\n"
@@ -141,6 +147,11 @@ void HelpPanel::rebuild()
             "tracks at once.\n\n"
             "Each track plays one note at the same moment. That's how you stack\n"
             "drums, bass and melody.\n\n"
+            "MUTE & SOLO (like every DAW): below each track name sit two little\n"
+            "buttons. M (red) mutes the track. S (yellow) solos it - then you hear\n"
+            "ONLY the soloed tracks. That's how you quickly find which track doesn't\n"
+            "sit right in the mix. Both by mouse click, any time even during\n"
+            "playback; it doesn't change your notes and isn't saved with the song.\n\n"
             "(Several patterns become a whole song - see \"Song mode\".)") });
 
     topics.add ({ loc::t ("Block-Bearbeitung", "Block editing"),

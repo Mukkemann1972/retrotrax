@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.35 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.36 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -39,6 +39,9 @@ A project from the Mukkemann universe.
 - **Note off (key 1):** lets SID voices fade out cleanly
 - 16 tracks, 64-row patterns — they don't all fit at once, so the grid
   scrolls sideways with the cursor (a ‹/› arrow in the header means more tracks)
+- **Mute & solo per track:** little **M** (mute) and **S** (solo) buttons under
+  each track name — by mouse click, even during playback. Solo plays only the
+  chosen tracks, so you instantly find what doesn't sit right in the mix
 - **MOD import:** load classic Amiga `.mod` songs (LOAD MOD button) — samples go
   into the slots (up to 31), patterns + order are taken over. Play it right away,
   keep building and save as `.retrotrax`

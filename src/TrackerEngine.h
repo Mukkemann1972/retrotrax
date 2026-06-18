@@ -254,6 +254,13 @@ public:
         order[0] = 0;
         songPos = 0;
         playPattern = 0;
+        // Solo/Mute sind Arbeitszustand - bei neuem Inhalt (MOD/XM/TFMX/neues Lied)
+        // alle Spuren wieder hoerbar machen, damit nichts ungewollt stumm bleibt.
+        for (int t = 0; t < kTracks; ++t)
+        {
+            trackMute[t] = false;
+            trackSolo[t] = false;
+        }
         setEditPattern (0);
     }
 
@@ -318,6 +325,34 @@ public:
     std::atomic<bool> songMode { false };// true = Reihenfolge abspielen, false = aktuelles Pattern loopen
     int order[kMaxOrder] = { 0 };        // Abspiel-Reihenfolge (Pattern-Indizes)
     int orderLen = 1;
+
+    // --- Solo / Mute pro Spur (wie in jeder DAW und jedem alten Tracker) ------
+    // Reine Wiedergabe-Schalter: der Sequencer laeuft weiter, nur der Ton einer
+    // stummen bzw. nicht ge-soloten Spur wird beim Rendern uebersprungen. Standard
+    // alle hoerbar; Arbeitszustand, NICHT im Song gespeichert. So findet man, wo
+    // im Mix etwas nicht passt.
+    std::atomic<bool> trackMute[kTracks] = {};
+    std::atomic<bool> trackSolo[kTracks] = {};
+
+    // Ist irgendwo Solo aktiv? Dann sind nur die ge-soloten Spuren hoerbar.
+    bool anySolo() const
+    {
+        for (int t = 0; t < kTracks; ++t)
+            if (trackSolo[t].load())
+                return true;
+        return false;
+    }
+
+    // Ist die Spur gerade hoerbar? Solo (irgendwo aktiv) schlaegt Mute; die
+    // Vorhoer-/MIDI-Stimme (Index kTracks) bleibt immer hoerbar.
+    bool trackAudible (int t) const
+    {
+        if (t < 0 || t >= kTracks)
+            return true;
+        if (anySolo())
+            return trackSolo[t].load();
+        return ! trackMute[t].load();
+    }
 
     mutable juce::CriticalSection lock;
 
@@ -623,6 +658,12 @@ private:
         for (auto& v : voices)
         {
             if (! v.active || v.inst == nullptr)
+                continue;
+
+            // Solo/Mute: eine stumme bzw. nicht ge-solote Spur wird nicht hoerbar
+            // gemacht - der Sequencer (Tick/Zeile) laeuft aber unveraendert weiter,
+            // sodass die Spur beim Aufheben sofort wieder an der richtigen Stelle ist.
+            if (! trackAudible (v.voiceIdx))
                 continue;
 
             // Vorhoer-Note nach Ablauf der Gate-Zeit automatisch loslassen.

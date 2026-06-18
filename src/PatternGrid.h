@@ -47,6 +47,13 @@ private:
 
     static juce::String effectText (int effect, int param); // "C40" bzw. "..."
 
+    // Lage der kleinen M (Stumm/Mute) und S (Solo) Knoepfe im Spurkopf einer
+    // Spur, deren Spalte bei x=tx mit Breite trackW liegt. Gemeinsam genutzt von
+    // Zeichnen (paint) und Klick-Treffer (mouseDown).
+    static void trackHeaderButtons (int tx, int trackW,
+                                    juce::Rectangle<int>& muteR,
+                                    juce::Rectangle<int>& soloR);
+
     // Live-Hilfe: Klartext zur aktuellen Cursor-Stelle + Effekt-Bedeutung.
     void emitCursorInfo();
     juce::String cursorHelpText() const;
@@ -98,7 +105,7 @@ private:
     int cursorTrack = 0;
     int cursorCol = 0; // 0 = Note, 1 = Instrument, 2 = Lautstaerke
 
-    static constexpr int kHeaderH = 26;
+    static constexpr int kHeaderH = 42; // Platz fuer Spurname + M/S-Knoepfe darunter
     static constexpr int kRowH    = 20;
     static constexpr int kLeftW   = 44;
 

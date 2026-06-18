@@ -636,8 +636,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.35 | TFMX laedt auch .tfmx/.sam (Zip-Variante)",
-                        "v0.35 | TFMX also loads .tfmx/.sam (zip variant)"),
+    g.drawText (loc::t ("v0.36 | Stumm/Solo pro Spur (M/S im Spurkopf)",
+                        "v0.36 | Mute/Solo per track (M/S in track header)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

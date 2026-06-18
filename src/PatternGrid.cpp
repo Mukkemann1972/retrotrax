@@ -204,6 +204,20 @@ juce::String PatternGrid::effectText (int effect, int param)
          + juce::String::formatted ("%02X", param & 0xFF);
 }
 
+void PatternGrid::trackHeaderButtons (int tx, int trackW,
+                                      juce::Rectangle<int>& muteR,
+                                      juce::Rectangle<int>& soloR)
+{
+    const int bw    = juce::jlimit (16, 30, trackW / 5); // Knopfbreite, mit der Spur wachsend
+    const int bh    = 15;
+    const int gap   = 6;
+    const int total = bw * 2 + gap;
+    const int x0    = tx + (trackW - total) / 2;         // mittig unter dem Spurnamen
+    const int y0    = kHeaderH - bh - 3;                 // unten im Kopf
+    muteR = { x0,            y0, bw, bh };
+    soloR = { x0 + bw + gap, y0, bw, bh };
+}
+
 // --- Live-Hilfe an der Cursor-Stelle --------------------------------------
 
 void PatternGrid::setLiveHelp (bool on)
@@ -671,6 +685,19 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
     if (trackW <= 0)
         return;
 
+    // Klick auf die M/S-Knoepfe im Spurkopf: Spur stumm bzw. solo schalten
+    // (ohne Cursor/Zeile zu veraendern). Solo schlaegt Mute (siehe TrackerEngine).
+    if (e.y < kHeaderH && e.x > kLeftW)
+    {
+        const int vi = juce::jmin (nVis - 1, (e.x - kLeftW) / trackW);
+        const int t  = juce::jmin (TrackerEngine::kTracks - 1, firstVisTrack + vi);
+        const int tx = kLeftW + vi * trackW;
+        juce::Rectangle<int> muteR, soloR;
+        trackHeaderButtons (tx, trackW, muteR, soloR);
+        if (muteR.contains (e.x, e.y)) { engine.trackMute[t] = ! engine.trackMute[t].load(); repaint(); return; }
+        if (soloR.contains (e.x, e.y)) { engine.trackSolo[t] = ! engine.trackSolo[t].load(); repaint(); return; }
+    }
+
     const bool playing = engine.playing.load();
     const int focusRow = playing ? engine.currentRow.load() : cursorRow;
     const int visRows  = juce::jmax (1, (getHeight() - kHeaderH) / kRowH);
@@ -838,10 +865,34 @@ void PatternGrid::paint (juce::Graphics& g)
         const int t = firstT + vi;
         if (t >= TrackerEngine::kTracks)
             break;
+        const int tx = kLeftW + vi * trackW;
         const bool isCur = t == cursorTrack;
+
+        // Spurname oben in den Kopf.
+        g.setFont (rt::mono (14.0f, true));
         g.setColour (isCur ? rt::cursor : rt::text);
-        g.drawText ("SPUR " + juce::String (t + 1),
-                    kLeftW + vi * trackW, 0, trackW, kHeaderH, juce::Justification::centred);
+        g.drawText ("SPUR " + juce::String (t + 1), tx, 1, trackW, 18,
+                    juce::Justification::centred);
+
+        // M (Stumm) / S (Solo) Knoepfe darunter - per Mausklick umschaltbar.
+        juce::Rectangle<int> muteR, soloR;
+        trackHeaderButtons (tx, trackW, muteR, soloR);
+        const bool muted  = engine.trackMute[t].load();
+        const bool soloed = engine.trackSolo[t].load();
+
+        auto drawBtn = [&g] (juce::Rectangle<int> r, const char* label, bool on, juce::Colour onCol)
+        {
+            const auto rf = r.toFloat();
+            g.setColour (on ? onCol : rt::panel.brighter (0.18f));
+            g.fillRoundedRectangle (rf, 3.0f);
+            g.setColour (on ? rt::panel.darker (0.6f) : rt::textDim);
+            g.drawRoundedRectangle (rf, 3.0f, 1.0f);
+            g.setFont (rt::mono (12.0f, true));
+            g.setColour (on ? juce::Colours::black : rt::textDim);
+            g.drawText (label, r, juce::Justification::centred);
+        };
+        drawBtn (muteR, "M", muted,  juce::Colour (0xffe05a4a)); // Stumm: rot
+        drawBtn (soloR, "S", soloed, juce::Colour (0xfff2c14e)); // Solo: gelb
     }
 
     // Spur-Trennlinien
