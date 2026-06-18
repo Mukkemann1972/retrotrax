@@ -23,7 +23,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
-    addAndMakeVisible (fullButton);
     addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (langButton);
     addAndMakeVisible (patPrevButton);
@@ -74,12 +73,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         helpPanel.grabKeyboardFocus();
     };
 
-    // Vollbild an/aus: schaltet das Fenster (Standalone) gross und wieder zurueck.
-    fullButton.onClick = [this]
-    {
-        if (auto* peer = getPeer())
-            peer->setFullScreen (! peer->isFullScreen());
-    };
+    // Kein eigener Vollbild-Knopf mehr: das Maximieren-Viereck oben rechts im
+    // Fensterrahmen (neben - und X) macht das ohnehin - spart Platz in der Leiste.
     helpPanel.onClose = [this]
     {
         helpPanel.setVisible (false);
@@ -266,7 +261,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     updateSongUi();
 
     setResizable (true, true);
-    setResizeLimits (960, 520, 3840, 2160); // groesseres Maximum, damit Vollbild den Schirm fuellt
+    setResizeLimits (960, 520, 3840, 2160); // grosses Maximum, damit Maximieren den Schirm fuellt
     setSize (1240, 720); // etwas breiter: Platz fuer den AKAI-Knopf, Spalten gleich lesbar
 
     juce::MessageManager::callAsync ([sp = juce::Component::SafePointer<PatternGrid> (&grid)]
@@ -549,9 +544,6 @@ void RetroTraxEditor::applyLanguage()
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
     liveHelpButton.setTooltip (loc::t ("Hilfe-Zeile an/aus - erklaert die Stelle unterm Cursor",
                                        "Help line on/off - explains the spot under the cursor"));
-    fullButton.setButtonText (loc::t ("VOLLBILD", "FULLSCREEN"));
-    fullButton.setTooltip (loc::t ("Vollbild an/aus (Fenster lässt sich auch unten frei ziehen)",
-                                   "Fullscreen on/off (you can also drag the window freely at the corner)"));
 
     songModeButton.setTooltip (loc::t ("LOOP = aktuelles Pattern wiederholen | SONG = die ganze Reihe abspielen",
                                        "LOOP = repeat current pattern | SONG = play the whole order"));
@@ -607,9 +599,9 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.30 | Quantisieren: Live-Noten sauber aufs Raster schnappen",
-                        "v0.30 | Quantise: snap live notes neatly onto the grid"),
-                360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
+    g.drawText (loc::t ("v0.31 | Live-Cursor wandert auf dem Play-Balken mit",
+                        "v0.31 | Live cursor rides along on the play bar"),
+                360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
 
@@ -621,8 +613,6 @@ void RetroTraxEditor::resized()
     // (klar getrennt vom Sample-Laden in der Steuerzeile darunter).
     auto songRow = juce::Rectangle<int> (0, 0, getWidth(), 54).reduced (12, 14);
     helpButton.setBounds (songRow.removeFromRight (36));
-    songRow.removeFromRight (6);
-    fullButton.setBounds (songRow.removeFromRight (92));
     songRow.removeFromRight (6);
     langButton.setBounds (songRow.removeFromRight (46));
     songRow.removeFromRight (6);

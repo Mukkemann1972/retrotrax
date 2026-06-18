@@ -13,7 +13,14 @@ PatternGrid::PatternGrid (RetroTraxProcessor& processor)
 void PatternGrid::timerCallback()
 {
     if (engine.playing.load())
+    {
+        // Der orange Eingabe-Cursor reitet live auf dem blauen Play-Balken mit:
+        // er folgt der gerade abspielenden Zeile, damit man beim Live-Aufnehmen
+        // sieht, wo in der Spur man landet (nicht mehr blind tippen). Mit </> waehlt
+        // man weiterhin Spur/Spalte. Beim Stopp bleibt er an der letzten Stelle.
+        cursorRow = engine.currentRow.load();
         repaint();
+    }
 }
 
 void PatternGrid::togglePlay()
@@ -767,9 +774,9 @@ void PatternGrid::paint (juce::Graphics& g)
             const int fxX   = tx + trackW * 65 / 100;
             const int fxW   = trackW * 33 / 100;
 
-            // Cursor-Markierung - jetzt auch waehrend des Abspielens sichtbar, damit
-            // man sieht, wo man in der Spur steht (das Grid scrollt dann mit der
-            // Abspielzeile, der orange Cursor bleibt an seiner Stelle).
+            // Cursor-Markierung - waehrend des Abspielens reitet sie auf dem
+            // Play-Balken mit (cursorRow folgt der Abspielzeile, siehe timerCallback),
+            // sodass man live sieht, wo in der Spur man gerade aufnimmt.
             if (row == cursorRow && t == cursorTrack)
             {
                 const int cx = cursorCol == 0 ? noteX - 3 : (cursorCol == 1 ? instX - 3
