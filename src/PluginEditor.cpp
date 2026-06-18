@@ -31,6 +31,23 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (songModeButton);
     addAndMakeVisible (orderAddButton);
     addAndMakeVisible (orderDelButton);
+    addAndMakeVisible (quantBox);
+    addAndMakeVisible (quantButton);
+    // Raster-Auswahl: ID = Schrittweite in Zeilen (4 Zeilen/Beat = 16tel-Standard).
+    quantBox.addItem ("1/8", 2);
+    quantBox.addItem ("1/4", 4);
+    quantBox.addItem ("1/2", 8);
+    quantBox.addItem ("1/1", 16);
+    quantBox.setSelectedId (2, juce::dontSendNotification); // Achtel als Standard
+    quantButton.onClick = [this]
+    {
+        const int step = quantBox.getSelectedId();
+        grid.quantize (step);
+        hintLabel.setText (loc::t ("Pattern quantisiert (Strg+Z macht es rueckgaengig)",
+                                   "Pattern quantised (Ctrl+Z to undo)"),
+                           juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
     addAndMakeVisible (patLabel);
     addAndMakeVisible (orderLabel);
     addAndMakeVisible (bpmSlider);
@@ -538,6 +555,11 @@ void RetroTraxEditor::applyLanguage()
 
     songModeButton.setTooltip (loc::t ("LOOP = aktuelles Pattern wiederholen | SONG = die ganze Reihe abspielen",
                                        "LOOP = repeat current pattern | SONG = play the whole order"));
+    quantButton.setButtonText (loc::t ("QUANT", "QUANT"));
+    quantButton.setTooltip (loc::t ("Aufgenommene Noten im Pattern aufs gewaehlte Raster schnappen (Strg+Z macht es rueckgaengig)",
+                                     "Snap the recorded notes in the pattern to the chosen grid (Ctrl+Z to undo)"));
+    quantBox.setTooltip (loc::t ("Raster: 1/8 = jede 2. Zeile, 1/4 = jede 4. Zeile usw.",
+                                 "Grid: 1/8 = every 2nd row, 1/4 = every 4th row, etc."));
     orderAddButton.setTooltip (loc::t ("Aktuelles Pattern hinten an die Reihenfolge anhaengen",
                                        "Append the current pattern to the order"));
     orderDelButton.setTooltip (loc::t ("Letzten Eintrag aus der Reihenfolge nehmen",
@@ -585,8 +607,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.29 | Komfort: Vollbild-Knopf + Cursor im Play sichtbar",
-                        "v0.29 | Comfort: fullscreen button + cursor visible while playing"),
+    g.drawText (loc::t ("v0.30 | Quantisieren: Live-Noten sauber aufs Raster schnappen",
+                        "v0.30 | Quantise: snap live notes neatly onto the grid"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 392), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -652,6 +674,10 @@ void RetroTraxEditor::resized()
     orderAddButton.setBounds (song.removeFromLeft (66));
     song.removeFromLeft (4);
     orderDelButton.setBounds (song.removeFromLeft (66));
+    song.removeFromLeft (16);
+    quantBox.setBounds (song.removeFromLeft (72));
+    song.removeFromLeft (4);
+    quantButton.setBounds (song.removeFromLeft (72));
     song.removeFromLeft (12);
     orderLabel.setBounds (song);
 

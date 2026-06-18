@@ -24,6 +24,11 @@ public:
     bool liveHelpOn() const { return liveHelp; }
     std::function<void(const juce::String&)> onCursorInfo; // Editor zeigt den Text an
 
+    // Aktuelles Pattern quantisieren: jede Note auf das naechste Vielfache von
+    // 'step' Zeilen schnappen (z.B. 2 = Achtel, 4 = Viertel). Rueckgaengig-faehig.
+    // Vom Editor (QUANT-Knopf) aufgerufen.
+    void quantize (int step);
+
 private:
     void timerCallback() override;
     void togglePlay();

@@ -300,6 +300,39 @@ void PatternGrid::restore (const Snapshot& s)
     repaint();
 }
 
+void PatternGrid::quantize (int step)
+{
+    if (step < 2)
+        return; // 1 = schon auf dem Raster, nichts zu tun
+
+    pushUndo(); // mit Strg+Z umkehrbar
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int t = 0; t < TrackerEngine::kTracks; ++t)
+        {
+            // Spalte einsammeln + leeren, dann jede Note auf die naechste Rasterzeile setzen.
+            TrackerEngine::Cell col[TrackerEngine::kRows];
+            for (int r = 0; r < TrackerEngine::kRows; ++r)
+            {
+                col[r] = engine.cells[r][t];
+                engine.cells[r][t] = TrackerEngine::Cell();
+            }
+            for (int r = 0; r < TrackerEngine::kRows; ++r)
+            {
+                const auto& c = col[r];
+                const bool empty = (c.note < 0 && c.instrument < 0 && c.volume < 0 && c.effect < 0);
+                if (empty)
+                    continue;
+                int tr = ((r + step / 2) / step) * step;          // naechstes Vielfaches
+                tr = juce::jlimit (0, TrackerEngine::kRows - 1, tr);
+                engine.cells[tr][t] = c;                            // bei Kollision gewinnt die letzte
+            }
+        }
+    }
+    repaint();
+    emitCursorInfo();
+}
+
 void PatternGrid::pushUndo()
 {
     undoStack.push_back (takeSnapshot());

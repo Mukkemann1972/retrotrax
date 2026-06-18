@@ -57,6 +57,8 @@ private:
     juce::TextButton songModeButton { "LOOP" };  // LOOP <-> SONG
     juce::TextButton orderAddButton { "+ PAT" }; // aktuelles Pattern hinten anhaengen
     juce::TextButton orderDelButton { "- PAT" }; // letzten Eintrag entfernen
+    juce::ComboBox   quantBox;                    // Quantisierungs-Raster (Achtel/Viertel/...)
+    juce::TextButton quantButton { "QUANT" };     // aktuelles Pattern aufs Raster schnappen
     juce::Label patLabel;
     juce::Label orderLabel;
     juce::Slider bpmSlider;

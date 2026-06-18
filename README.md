@@ -92,6 +92,7 @@ A project from the Mukkemann universe.
   12-bit crunch, per sample), **sampler effects** ✅ (reverse +
   grain/sample-rate reduction), **loop** ✅ (forward + ping-pong) and
   **analog warmth** ✅ (drive saturation + vintage pitch like the old samplers)
+  and **pattern quantise** ✅ (snap live-recorded notes onto the grid)
 - **Bigger goal:** rebuild the open **TFMX** format (Chris Hülsbeck)
 - **Later:** 16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms
   with the mouse, light-pen style), more sampler effects (time-stretch),

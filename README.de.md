@@ -94,6 +94,7 @@ Ein Projekt aus dem Mukkemann-Universum.
   12-Bit-Crunch, pro Sample), **Sampler-Effekte** ✅ (Reverse +
   Körnung/Sample-Rate-Reduktion), **Loop** ✅ (Vorwärts + Ping-Pong) und
   **analoge Wärme** ✅ (Drive-Sättigung + Vintage-Pitch wie die alten Sampler)
+  und **Pattern-Quantisierung** ✅ (Live-Noten aufs Raster schnappen)
 - **Größeres Ziel:** das offene **TFMX**-Format (Chris Hülsbeck) nachbauen
 - **Später:** 16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus
   malen wie mit dem Lichtgriffel), weitere Sampler-Effekte (Time-Stretch),

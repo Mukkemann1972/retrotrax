@@ -173,6 +173,26 @@ void HelpPanel::rebuild()
             "  and listen until it sits right.\n\n"
             "Everything can be undone with CTRL+Z.") });
 
+    topics.add ({ loc::t ("Quantisieren", "Quantise"),
+        loc::t (
+            "Beim Live-Einspielen landen Noten manchmal eine Zeile zu frueh oder\n"
+            "zu spaet. QUANT (in der Song-Leiste) schiebt alle Noten des aktuellen\n"
+            "Patterns sauber aufs Raster.\n\n"
+            "- Das Auswahlfeld daneben waehlt das Raster: 1/8 = jede 2. Zeile,\n"
+            "  1/4 = jede 4., 1/2 = jede 8., 1/1 = jede 16.\n"
+            "- Ein Klick auf QUANT schnappt alle Spuren auf das naechste Rasterfeld.\n"
+            "- Mit STRG+Z wieder rueckgaengig, falls es doch nicht passt.\n\n"
+            "So was hatte kein alter Tracker - eine kleine moderne Hilfe fuers\n"
+            "Spielen nach Gefuehl.",
+            "When playing live, notes sometimes land a row too early or late.\n"
+            "QUANT (in the song bar) snaps all notes of the current pattern neatly\n"
+            "onto the grid.\n\n"
+            "- The box next to it picks the grid: 1/8 = every 2nd row, 1/4 = every\n"
+            "  4th, 1/2 = every 8th, 1/1 = every 16th.\n"
+            "- One click on QUANT snaps all tracks to the nearest grid row.\n"
+            "- Undo with CTRL+Z if it doesn't fit after all.\n\n"
+            "No old tracker had this - a small modern help for playing by feel.") });
+
     topics.add ({ loc::t ("Effekt-Spalte", "Effect column"),
         loc::t (
             "Rechts in jeder Spur steht die Effekt-Spalte (gruen). Damit machst\n"
