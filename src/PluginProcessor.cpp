@@ -638,11 +638,20 @@ juce::File RetroTraxProcessor::findTfmxSmpl (const juce::File& mdatFile)
         auto cand = dir.getChildFile ("smpl." + name.substring (5));
         if (cand.existsAsFile()) return cand;
     }
-    // Endungs-Konvention: "xxx.mdat" <-> "xxx.smpl".
-    if (mdatFile.getFileExtension().equalsIgnoreCase (".mdat"))
+    // Endungs-Konventionen: "xxx.mdat" <-> "xxx.smpl", und
+    // "xxx.tfmx"/".tfx"/".tfm" <-> "xxx.sam" (haeufige Zip-Variante).
+    const auto ext = mdatFile.getFileExtension();
+    if (ext.equalsIgnoreCase (".mdat"))
     {
         auto cand = mdatFile.withFileExtension ("smpl");
         if (cand.existsAsFile()) return cand;
+    }
+    if (ext.equalsIgnoreCase (".tfmx") || ext.equalsIgnoreCase (".tfx") || ext.equalsIgnoreCase (".tfm"))
+    {
+        auto cand = mdatFile.withFileExtension ("sam");
+        if (cand.existsAsFile()) return cand;
+        auto cand2 = mdatFile.withFileExtension ("smpl");
+        if (cand2.existsAsFile()) return cand2;
     }
     // Fallback: "mdat" im Namen durch "smpl" ersetzen.
     if (name.containsIgnoreCase ("mdat"))

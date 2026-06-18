@@ -33,7 +33,10 @@ bool tfmxaudiodecoder::TFMXDecoder::loadSamplesFile() {
     }
 
     typedef std::pair<std::string, std::string> ExtPair;
-    std::vector<ExtPair> vExtPairs = { { ".tfx", ".sam" },   { ".TFX", ".SAM" },   { ".mdat", ".smpl" },
+    // RetroTrax-Patch: ".tfmx" ergaenzt (haeufige Zip-Konvention name.tfmx + name.sam;
+    // ".tfx" matcht ".tfmx" nicht). Zuerst probieren, sonst wie Upstream.
+    std::vector<ExtPair> vExtPairs = { { ".tfmx", ".sam" },  { ".TFMX", ".SAM" },
+                                       { ".tfx", ".sam" },   { ".TFX", ".SAM" },   { ".mdat", ".smpl" },
                                        { ".MDAT", ".SMPL" }, { "mdat.", "smpl." }, { "MDAT.", "SMPL." } };
     for (std::vector<ExtPair>::iterator it = vExtPairs.begin(); it != vExtPairs.end(); ++it) {
         std::string pathSmpl = input.path;

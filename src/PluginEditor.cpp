@@ -491,9 +491,11 @@ void RetroTraxEditor::loadTfmxClicked()
     const auto start = currentSongFile.existsAsFile()
                          ? currentSongFile.getParentDirectory() : songsFolder();
 
-    // TFMX-Dateien heissen meist "mdat.songname" (Modland) oder "songname.mdat".
+    // TFMX-Dateien heissen je nach Quelle "mdat.songname" (Modland), "songname.mdat"
+    // oder "songname.tfmx" (mit Sample-Datei .smpl bzw. .sam daneben).
     songChooser = std::make_unique<juce::FileChooser> (
-        loc::t ("TFMX-Modul oeffnen (.mdat)", "Open TFMX module (.mdat)"), start, "*.mdat;mdat.*");
+        loc::t ("TFMX-Modul oeffnen (.mdat / .tfmx)", "Open TFMX module (.mdat / .tfmx)"),
+        start, "*.mdat;mdat.*;*.tfmx;*.tfx;*.tfm");
 
     songChooser->launchAsync (juce::FileBrowserComponent::openMode
                                   | juce::FileBrowserComponent::canSelectFiles,
@@ -634,8 +636,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.34 | TFMX spielt! Turrican/Apidya im Player hoeren",
-                        "v0.34 | TFMX plays! Hear Turrican/Apidya in the player"),
+    g.drawText (loc::t ("v0.35 | TFMX laedt auch .tfmx/.sam (Zip-Variante)",
+                        "v0.35 | TFMX also loads .tfmx/.sam (zip variant)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
