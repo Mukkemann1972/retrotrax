@@ -18,6 +18,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void parentHierarchyChanged() override; // schaltet im Standalone das Maximieren-4eck frei
 
 private:
     void refreshInstrumentBox();

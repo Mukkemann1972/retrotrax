@@ -599,10 +599,22 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.31 | Live-Cursor wandert auf dem Play-Balken mit",
-                        "v0.31 | Live cursor rides along on the play bar"),
+    g.drawText (loc::t ("v0.32 | Maximieren-4eck im Fensterrahmen wieder da",
+                        "v0.32 | Maximise square back in the window frame"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
+}
+
+void RetroTraxEditor::parentHierarchyChanged()
+{
+    // Im Standalone steckt der Editor in einem DocumentWindow, das per Default nur
+    // Minimieren + Schliessen zeigt - kein Maximieren-4eck. Wir schalten alle drei
+    // Titelleisten-Knoepfe frei, sodass das gewohnte Viereck oben rechts (neben - und
+    // X) erscheint und das Fenster gross macht. So braucht es keinen eigenen
+    // VOLLBILD-Knopf in der Leiste. Im Plugin-Host (kein DocumentWindow) passiert
+    // nichts - dann rahmt der Host das Fenster ohnehin selbst.
+    if (auto* dw = findParentComponentOfClass<juce::DocumentWindow>())
+        dw->setTitleBarButtonsRequired (juce::DocumentWindow::allButtons, false);
 }
 
 void RetroTraxEditor::resized()
