@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.50 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.51 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -83,7 +83,9 @@ Ein Projekt aus dem Mukkemann-Universum.
   per **MERKEN** in einer persönlichen Sammlung sammeln — in der Sammlung wird
   der Knopf zu **VERGESSEN** und wirft einen Sound wieder in den Papierkorb
 - **Songs speichern & öffnen:** deine Arbeit als `.retrotrax`-Datei sichern und
-  jederzeit wieder öffnen — fehlende Samples werden gemeldet statt still zu fehlen
+  jederzeit wieder öffnen. **Selbst-enthaltend:** alle Samples werden komprimiert
+  in die Datei eingebettet — eine portable Mini-Datei (auch gezeichnete/gegrabbte
+  Klänge bleiben erhalten); SID-Songs brauchen gar keine Sampledaten
 - **Eingebaute Hilfe (`?`-Knopf):** Themen zu jeder Funktion, in deiner Sprache,
   wächst mit dem Programm mit
 - **Zweisprachig (Deutsch / Englisch):** jederzeit per DE/EN-Knopf umschaltbar;

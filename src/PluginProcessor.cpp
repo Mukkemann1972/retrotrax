@@ -606,6 +606,51 @@ void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, dou
     engine.previewInstrument (std::move (inst));
 }
 
+// --- Selbst-enthaltenes .retrotrax: Sample-Daten einbetten -------------------
+// Samples werden als 16-Bit-PCM, GZIP-komprimiert und Base64-kodiert direkt in
+// die Song-Datei geschrieben -> eine portable Mini-Datei (Games/Demos/Web), und
+// auch gezeichnete/gegrabbte Samples ohne Quelldatei bleiben erhalten.
+static juce::String encodeSamples (const juce::AudioBuffer<float>& buf)
+{
+    const int ch = buf.getNumChannels();
+    const int n  = buf.getNumSamples();
+    juce::MemoryBlock pcm ((size_t) ch * (size_t) n * 2);
+    auto* out = (int16_t*) pcm.getData();
+    for (int i = 0; i < n; ++i)
+        for (int c = 0; c < ch; ++c)
+            *out++ = (int16_t) juce::jlimit (-32767, 32767,
+                        (int) std::lround (juce::jlimit (-1.0f, 1.0f, buf.getReadPointer (c)[i]) * 32767.0f));
+
+    juce::MemoryBlock gz;
+    {
+        juce::MemoryOutputStream gzo (gz, false);
+        juce::GZIPCompressorOutputStream comp (gzo, 9);
+        comp.write (pcm.getData(), pcm.getSize());
+    } // comp + gzo hier zerstoert -> gz ist vollstaendig
+    return juce::Base64::toBase64 (gz.getData(), gz.getSize());
+}
+
+static bool decodeSamples (const juce::String& b64, int ch, int n, juce::AudioBuffer<float>& out)
+{
+    if (ch < 1 || n < 1 || b64.isEmpty())
+        return false;
+    juce::MemoryOutputStream gz;
+    if (! juce::Base64::convertFromBase64 (gz, b64))
+        return false;
+    juce::MemoryInputStream gzin (gz.getData(), gz.getDataSize(), false);
+    juce::GZIPDecompressorInputStream dec (gzin);
+    juce::MemoryBlock pcm;
+    dec.readIntoMemoryBlock (pcm);
+    if ((int) pcm.getSize() < ch * n * 2)
+        return false;
+    const auto* s = (const int16_t*) pcm.getData();
+    out.setSize (ch, n);
+    for (int i = 0; i < n; ++i)
+        for (int c = 0; c < ch; ++c)
+            out.getWritePointer (c)[i] = (float) s[i * ch + c] / 32768.0f;
+    return true;
+}
+
 std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
 {
     auto xml = std::make_unique<juce::XmlElement> ("RETROTRAX");
@@ -662,12 +707,19 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("det", ip->detune);
             e->setAttribute ("chord", ip->chord);
         }
-        else if (ip->filePath.isNotEmpty())
+        else if (ip->kind == TrackerEngine::Instrument::Kind::Sample
+                 && ip->data.getNumSamples() > 1)
         {
             auto* e = xml->createNewChildElement ("INSTRUMENT");
             e->setAttribute ("slot", i);
             e->setAttribute ("name", ip->name);
-            e->setAttribute ("path", ip->filePath);
+            if (ip->filePath.isNotEmpty())
+                e->setAttribute ("path", ip->filePath); // Quellpfad als Hinweis
+            // Selbst-enthaltend: Sample-Daten komprimiert einbetten.
+            e->setAttribute ("dch", ip->data.getNumChannels());
+            e->setAttribute ("dlen", ip->data.getNumSamples());
+            e->setAttribute ("drate", ip->sourceRate);
+            e->createNewChildElement ("D")->addTextElement (encodeSamples (ip->data));
             // Akai-Filter nur sichern, wenn er ueberhaupt benutzt wird -> normale
             // Sample-Slots bleiben in der Datei unveraendert (alte Songs laden weiter).
             if (ip->akaiOn || ip->akai12bit || ip->reverse || ip->srReduction > 0.0f
@@ -690,19 +742,22 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         }
     }
 
-    // Drum-Kit-Pads (16). Wie bei den Sample-Slots per Dateipfad referenziert,
-    // plus der Sampler-Charakter (12-Bit/Loop/Drive...). Pads ohne Dateipfad
-    // (z.B. spaeter gezeichnete) bleiben hier vorerst aussen vor.
+    // Drum-Kit-Pads (16): Sample-Daten ebenfalls selbst-enthaltend einbetten,
+    // plus der Sampler-Charakter (12-Bit/Loop/Drive...).
     for (int p = 0; p < TrackerEngine::kPads; ++p)
     {
         const juce::ScopedLock sl (engine.lock);
         const auto* pad = engine.getPad (p);
-        if (pad == nullptr || pad->filePath.isEmpty())
+        if (pad == nullptr || pad->data.getNumSamples() < 2)
             continue;
         auto* e = xml->createNewChildElement ("PAD");
         e->setAttribute ("idx", p);
         e->setAttribute ("name", pad->name);
-        e->setAttribute ("path", pad->filePath);
+        if (pad->filePath.isNotEmpty())
+            e->setAttribute ("path", pad->filePath);
+        e->setAttribute ("dch", pad->data.getNumChannels());
+        e->setAttribute ("dlen", pad->data.getNumSamples());
+        e->createNewChildElement ("D")->addTextElement (encodeSamples (pad->data));
         e->setAttribute ("akon", pad->akaiOn ? 1 : 0);
         e->setAttribute ("akcut", pad->akaiCutoff);
         e->setAttribute ("akres", pad->akaiResonance);
@@ -806,12 +861,43 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                 continue;
             }
 
-            const juce::File f (e->getStringAttribute ("path"));
-            if (f.existsAsFile())
+            // Bevorzugt: eingebettete Sample-Daten (selbst-enthaltend). Sonst
+            // Rueckfall auf den Dateipfad (alte Songs / externe Referenz).
+            bool loaded = false;
+            if (auto* dEl = e->getChildByName ("D"))
             {
-                loadInstrument (slot, f);
-                // Akai-Filter-Einstellungen auf das frisch geladene Sample legen
-                // (fehlen sie in der Datei -> Standard AUS, Klang unveraendert).
+                juce::AudioBuffer<float> buf;
+                if (decodeSamples (dEl->getAllSubText(),
+                                   e->getIntAttribute ("dch", 1),
+                                   e->getIntAttribute ("dlen", 0), buf))
+                {
+                    auto inst = std::make_unique<TrackerEngine::Instrument>();
+                    inst->kind       = TrackerEngine::Instrument::Kind::Sample;
+                    inst->data       = std::move (buf);
+                    inst->sourceRate = e->getDoubleAttribute ("drate", 44100.0);
+                    inst->name       = e->getStringAttribute ("name", "Sample");
+                    inst->filePath   = e->getStringAttribute ("path");
+                    engine.setInstrument (slot, std::move (inst));
+                    loaded = true;
+                }
+            }
+            if (! loaded)
+            {
+                const juce::File f (e->getStringAttribute ("path"));
+                if (f.existsAsFile())
+                    loaded = loadInstrument (slot, f);
+                else if (missingSamples != nullptr)
+                {
+                    auto name = e->getStringAttribute ("name");
+                    if (name.isEmpty())
+                        name = f.getFileNameWithoutExtension();
+                    missingSamples->add (name);
+                }
+            }
+            if (loaded)
+            {
+                // Akai-Filter/Charakter auf den geladenen Slot legen (egal ob
+                // eingebettet oder aus Datei; fehlen sie -> Standard AUS).
                 const juce::ScopedLock sl (engine.lock);
                 if (auto& ip = engine.instruments[slot])
                 {
@@ -829,19 +915,37 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);
                 }
             }
-            else if (missingSamples != nullptr)
-            {
-                auto name = e->getStringAttribute ("name");
-                if (name.isEmpty())
-                    name = f.getFileNameWithoutExtension();
-                missingSamples->add (name);
-            }
         }
         else if (e->hasTagName ("PAD"))
         {
             const int idx = e->getIntAttribute ("idx", -1);
-            const juce::File f (e->getStringAttribute ("path"));
-            if (idx >= 0 && idx < TrackerEngine::kPads && f.existsAsFile() && loadPad (idx, f))
+            bool padOk = false;
+            if (idx >= 0 && idx < TrackerEngine::kPads)
+            {
+                if (auto* dEl = e->getChildByName ("D"))
+                {
+                    juce::AudioBuffer<float> buf;
+                    if (decodeSamples (dEl->getAllSubText(),
+                                       e->getIntAttribute ("dch", 1),
+                                       e->getIntAttribute ("dlen", 0), buf))
+                    {
+                        auto inst = std::make_unique<TrackerEngine::Instrument>();
+                        inst->kind       = TrackerEngine::Instrument::Kind::Sample;
+                        inst->data       = std::move (buf);
+                        inst->sourceRate = e->getDoubleAttribute ("rate", 8287.0);
+                        inst->name       = e->getStringAttribute ("name", "Pad");
+                        inst->filePath   = e->getStringAttribute ("path");
+                        engine.setPad (idx, std::move (inst));
+                        padOk = true;
+                    }
+                }
+                if (! padOk)
+                {
+                    const juce::File f (e->getStringAttribute ("path"));
+                    padOk = f.existsAsFile() && loadPad (idx, f);
+                }
+            }
+            if (padOk)
             {
                 const juce::ScopedLock sl (engine.lock);
                 if (auto* pad = const_cast<TrackerEngine::Instrument*> (engine.getPad (idx)))

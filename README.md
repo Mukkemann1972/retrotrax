@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.50 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.51 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -81,7 +81,9 @@ A project from the Mukkemann universe.
   personal collection — inside the collection that button becomes **FORGET** and
   sends a sound back to the trash
 - **Save & open songs:** store your work as a `.retrotrax` file and reopen it
-  anytime — missing samples are reported instead of silently failing
+  anytime. **Self-contained:** all samples are embedded compressed into the file —
+  a portable mini-file (drawn/grabbed sounds are kept too); SID songs need no
+  sample data at all
 - **Built-in help (`?` button):** topics for every feature, in your language,
   growing with the app
 - **Bilingual (German / English):** switch any time with the DE/EN button;
