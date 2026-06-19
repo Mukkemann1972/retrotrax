@@ -1,5 +1,52 @@
 #include "SampleEditPanel.h"
 
+// Time-Stretch ohne Tonhoehenaenderung: granulares Overlap-Add (OLA). Koernchen
+// mit Hann-Fenster, 50 % Ueberlappung (Cosinus-Fenster summieren sich dann zu ~1).
+// factor > 1 = laenger/langsamer, < 1 = kuerzer/schneller - die Tonhoehe bleibt,
+// weil die Koernchen selbst unveraendert gelesen werden. Klang ist bewusst
+// einfach/lo-fi (passt zum Vintage-Charakter), kein Studio-Phase-Vocoder.
+static juce::AudioBuffer<float> timeStretch (const juce::AudioBuffer<float>& in, double factor)
+{
+    factor = juce::jlimit (0.25, 4.0, factor);
+    const int C = in.getNumChannels();
+    const int N = in.getNumSamples();
+    if (N < 8 || C < 1)
+        return in;
+
+    const int outLen = juce::jmax (8, (int) std::round (N * factor));
+    const int G      = juce::jlimit (256, 4096, N / 8); // Koerngroesse
+    const int hopOut = G / 2;                           // 50 % Ueberlappung
+
+    std::vector<float> win ((size_t) G);
+    for (int i = 0; i < G; ++i)
+        win[(size_t) i] = 0.5f - 0.5f * std::cos (2.0f * juce::MathConstants<float>::pi
+                                                  * (float) i / (float) (G - 1));
+
+    juce::AudioBuffer<float> out (C, outLen);
+    out.clear();
+    for (int k = 0; ; ++k)
+    {
+        const int outStart = k * hopOut;
+        if (outStart >= outLen)
+            break;
+        const int inStart = (int) std::round (outStart / factor);
+        for (int c = 0; c < C; ++c)
+        {
+            const float* src = in.getReadPointer (c);
+            float*       dst = out.getWritePointer (c);
+            for (int i = 0; i < G; ++i)
+            {
+                const int oi = outStart + i;
+                if (oi >= outLen) break;
+                const int si = inStart + i;
+                if (si >= 0 && si < N)
+                    dst[oi] += src[si] * win[(size_t) i];
+            }
+        }
+    }
+    return out;
+}
+
 SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (processor)
 {
     setWantsKeyboardFocus (true);
@@ -86,6 +133,34 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
 
     closeButton.onClick = [this] { if (onClose) onClose(); };
 
+    // Time-Stretch-Reihe.
+    stretchLabel.setFont (rt::mono (12.0f, true));
+    stretchLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addAndMakeVisible (stretchLabel);
+    stretchSlider.setSliderStyle (juce::Slider::LinearBar);
+    stretchSlider.setRange (0.5, 2.0, 0.01);
+    stretchSlider.setValue (1.0, juce::dontSendNotification);
+    stretchSlider.setTextValueSuffix ("x");
+    stretchSlider.setNumDecimalPlacesToDisplay (2);
+    addAndMakeVisible (stretchSlider);
+    addAndMakeVisible (stretchButton);
+    stretchButton.onClick = [this]
+    {
+        const double f = stretchSlider.getValue();
+        if (std::abs (f - 1.0) < 0.005 || work.getNumSamples() < 8)
+        {
+            setHint ("Faktor einstellen (z.B. 2x laenger, 0.5x kuerzer).",
+                     "Set a factor first (e.g. 2x longer, 0.5x shorter).");
+            return;
+        }
+        work = timeStretch (work, f);
+        stretchSlider.setValue (1.0, juce::dontSendNotification);
+        hasSel = false;
+        setHint ("Time-Stretch angewandt (Tonhoehe bleibt).",
+                 "Time-stretch applied (pitch unchanged).");
+        repaint();
+    };
+
     hintLabel.setFont (rt::mono (12.0f, false));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centredLeft);
@@ -114,6 +189,10 @@ void SampleEditPanel::applyLanguage()
     applyButton.setTooltip (loc::t ("Bearbeitetes Sample zurueck in den Slot legen (bleibt im Song)",
                                     "Put the edited sample back into the slot (kept with the song)"));
     closeButton.setButtonText  (loc::t ("SCHLIESSEN", "CLOSE"));
+    stretchLabel.setText (loc::t ("TIME-STRETCH", "TIME-STRETCH"), juce::dontSendNotification);
+    stretchButton.setButtonText (loc::t ("DEHNEN", "STRETCH"));
+    stretchButton.setTooltip (loc::t ("Sample laenger/kuerzer machen OHNE die Tonhoehe zu aendern",
+                                      "Make the sample longer/shorter WITHOUT changing the pitch"));
     setHint ("Bereich ziehen zum Markieren. FREIHAND zeichnet die Welle. IN KIT schneidet auf die Pads.",
              "Drag to select. FREEHAND draws the wave. TO KIT slices onto the pads.");
 }
@@ -319,6 +398,17 @@ void SampleEditPanel::resized()
     }
     area.removeFromBottom (6);
     hintLabel.setBounds (area.removeFromBottom (20));
+    area.removeFromBottom (6);
+
+    // Time-Stretch-Reihe.
+    {
+        auto row = area.removeFromBottom (26);
+        stretchLabel.setBounds (row.removeFromLeft (110));
+        row.removeFromLeft (8);
+        stretchButton.setBounds (row.removeFromRight (110));
+        row.removeFromRight (8);
+        stretchSlider.setBounds (row);
+    }
     area.removeFromBottom (8);
 
     waveRect = area; // der Rest ist das Wellenform-Feld

@@ -727,6 +727,8 @@ void HelpPanel::rebuild()
             "- IN KIT (16) schneidet das Sample in 16 gleiche Scheiben und legt sie\n"
             "  auf die Drum-Pads (z.B. einen Break zerlegen) - die klassische\n"
             "  MPC/SP-1200-Idee.\n"
+            "- TIME-STRETCH: das Sample mit dem Regler laenger/kuerzer machen und mit\n"
+            "  DEHNEN anwenden - die Tonhoehe bleibt gleich (granulare Dehnung).\n"
             "- VORHOEREN spielt die Arbeitskopie; UEBERNEHMEN legt sie zurueck in den\n"
             "  Slot (als WAV gesichert, bleibt im Song erhalten).",
             "The FAIRLIGHT button opens the sample tool for the current slot - a small\n"
@@ -739,6 +741,8 @@ void HelpPanel::rebuild()
             "  feel. If the slot is empty, you paint from scratch.\n"
             "- TO KIT (16) slices the sample into 16 equal pieces and puts them on the\n"
             "  drum pads (e.g. to chop a break) - the classic MPC/SP-1200 idea.\n"
+            "- TIME-STRETCH: make the sample longer/shorter with the slider and apply\n"
+            "  with STRETCH - the pitch stays the same (granular stretch).\n"
             "- PREVIEW plays the working copy; APPLY puts it back into the slot (saved\n"
             "  as a WAV, kept with the song).") });
 

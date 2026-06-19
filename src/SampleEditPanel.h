@@ -47,6 +47,12 @@ private:
     int    lastDrawIdx = -1;
 
     juce::Label titleLabel;
+
+    // Time-Stretch: Faktor 0.5..2.0, DEHNEN wendet ihn auf die Arbeitskopie an.
+    juce::Label      stretchLabel;
+    juce::Slider     stretchSlider;
+    juce::TextButton stretchButton { "DEHNEN" };
+
     juce::TextButton trimButton   { "TRIMMEN" };
     juce::TextButton normButton   { "NORMAL." };
     juce::TextButton revButton    { "UMKEHREN" };
