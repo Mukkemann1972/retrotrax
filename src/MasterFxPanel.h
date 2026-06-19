@@ -38,6 +38,10 @@ private:
     juce::Label      revHead, revSizeLabel, revMixLabel;
     juce::Slider     revSizeSlider, revMixSlider;
 
+    // 3-Band-EQ.
+    juce::Label      eqHead, eqLowLabel, eqMidLabel, eqHighLabel;
+    juce::Slider     eqLowSlider, eqMidSlider, eqHighSlider;
+
     juce::TextButton closeButton { "SCHLIESSEN" };
     bool loading = false;
 

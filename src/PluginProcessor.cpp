@@ -16,10 +16,52 @@ RetroTraxProcessor::RetroTraxProcessor()
     formatManager.registerFormat (new IFF8SVXAudioFormat(), false); // Amiga 8SVX/IFF
 }
 
+// Kleiner Biquad (RBJ-Cookbook) fuer den Master-EQ - Transposed Direct Form II.
+struct Biquad
+{
+    float b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
+    float run (float x, float& z1, float& z2) const
+    {
+        const float y = b0 * x + z1;
+        z1 = b1 * x - a1 * y + z2;
+        z2 = b2 * x - a2 * y;
+        return y;
+    }
+};
+
+static Biquad makeShelf (double fc, double dB, double fs, bool high)
+{
+    const double A  = std::pow (10.0, dB / 40.0);
+    const double w0 = 2.0 * juce::MathConstants<double>::pi * fc / fs;
+    const double c  = std::cos (w0), s = std::sin (w0);
+    const double alpha = s / 2.0 * std::sqrt ((A + 1.0 / A) * (1.0 / 0.9 - 1.0) + 2.0);
+    const double tsa = 2.0 * std::sqrt (A) * alpha;
+    const double sign = high ? -1.0 : 1.0;
+    const double b0 = A * ((A + 1) - sign * (A - 1) * c + tsa);
+    const double b1 = 2 * A * ((A - 1) - sign * (A + 1) * c) * sign;
+    const double b2 = A * ((A + 1) - sign * (A - 1) * c - tsa);
+    const double a0 = (A + 1) + sign * (A - 1) * c + tsa;
+    const double a1 = -2 * ((A - 1) + sign * (A + 1) * c) * sign;
+    const double a2 = (A + 1) + sign * (A - 1) * c - tsa;
+    return { (float)(b0/a0), (float)(b1/a0), (float)(b2/a0), (float)(a1/a0), (float)(a2/a0) };
+}
+
+static Biquad makePeak (double fc, double dB, double q, double fs)
+{
+    const double A  = std::pow (10.0, dB / 40.0);
+    const double w0 = 2.0 * juce::MathConstants<double>::pi * fc / fs;
+    const double c  = std::cos (w0), s = std::sin (w0);
+    const double alpha = s / (2.0 * q);
+    const double b0 = 1 + alpha * A, b1 = -2 * c, b2 = 1 - alpha * A;
+    const double a0 = 1 + alpha / A, a1 = -2 * c, a2 = 1 - alpha / A;
+    return { (float)(b0/a0), (float)(b1/a0), (float)(b2/a0), (float)(a1/a0), (float)(a2/a0) };
+}
+
 void RetroTraxProcessor::prepareToPlay (double sampleRate, int)
 {
     engine.prepare (sampleRate);
     tfmx.prepare (sampleRate);
+    for (auto& ch : eqZ) for (auto& f : ch) { f[0] = 0.0f; f[1] = 0.0f; }
 
     // Master-FX vorbereiten: Echo-Verzoegerungsspeicher (bis 2 s) + Hall.
     fxSampleRate = sampleRate;
@@ -81,6 +123,27 @@ void RetroTraxProcessor::applyMasterFx (juce::AudioBuffer<float>& buffer)
             reverb.processStereo (buffer.getWritePointer (0), buffer.getWritePointer (1), n);
         else
             reverb.processMono (buffer.getWritePointer (0), n);
+    }
+
+    // --- 3-Band-EQ (Bass-Shelf / Mitten-Peak / Hoehen-Shelf) -----------------
+    const float lo = eqLow.load(), md = eqMid.load(), hi = eqHigh.load();
+    if (std::abs (lo) > 0.05f || std::abs (md) > 0.05f || std::abs (hi) > 0.05f)
+    {
+        const Biquad bLo = makeShelf (200.0,  lo, fxSampleRate, false);
+        const Biquad bMd = makePeak  (1000.0, md, 0.9, fxSampleRate);
+        const Biquad bHi = makeShelf (4000.0, hi, fxSampleRate, true);
+        for (int c = 0; c < juce::jmin (ch, 2); ++c)
+        {
+            float* d = buffer.getWritePointer (c);
+            for (int i = 0; i < n; ++i)
+            {
+                float x = d[i];
+                x = bLo.run (x, eqZ[c][0][0], eqZ[c][0][1]);
+                x = bMd.run (x, eqZ[c][1][0], eqZ[c][1][1]);
+                x = bHi.run (x, eqZ[c][2][0], eqZ[c][2][1]);
+                d[i] = x;
+            }
+        }
     }
 }
 
@@ -664,6 +727,9 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
     xml->setAttribute ("echoMix",  (double) echoMix.load());
     xml->setAttribute ("revSize",  (double) reverbSize.load());
     xml->setAttribute ("revMix",   (double) reverbMix.load());
+    xml->setAttribute ("eqLow",    (double) eqLow.load());
+    xml->setAttribute ("eqMid",    (double) eqMid.load());
+    xml->setAttribute ("eqHigh",   (double) eqHigh.load());
 
     // Song-Reihenfolge + Modus (Reihenfolge als Liste von Pattern-Nummern).
     {
@@ -813,6 +879,9 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
     echoMix      = (float) xml.getDoubleAttribute ("echoMix",  0.0);
     reverbSize   = (float) xml.getDoubleAttribute ("revSize",  0.5);
     reverbMix    = (float) xml.getDoubleAttribute ("revMix",   0.0);
+    eqLow        = (float) xml.getDoubleAttribute ("eqLow",    0.0);
+    eqMid        = (float) xml.getDoubleAttribute ("eqMid",    0.0);
+    eqHigh       = (float) xml.getDoubleAttribute ("eqHigh",   0.0);
 
     // Alte Instrumente leeren, damit Slots eines frueheren Songs nicht zurueckbleiben.
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)

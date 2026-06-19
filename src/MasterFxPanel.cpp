@@ -39,6 +39,14 @@ MasterFxPanel::MasterFxPanel (RetroTraxProcessor& processor) : proc (processor)
     revSizeSlider.setTextValueSuffix (" %");
     revMixSlider.setTextValueSuffix (" %");
 
+    setupHead (eqHead);
+    setupSlider (eqLowSlider,  eqLowLabel,  -12.0, 12.0, 0.5);
+    setupSlider (eqMidSlider,  eqMidLabel,  -12.0, 12.0, 0.5);
+    setupSlider (eqHighSlider, eqHighLabel, -12.0, 12.0, 0.5);
+    eqLowSlider.setTextValueSuffix (" dB");
+    eqMidSlider.setTextValueSuffix (" dB");
+    eqHighSlider.setTextValueSuffix (" dB");
+
     closeButton.onClick = [this] { if (onClose) onClose(); };
     addAndMakeVisible (closeButton);
 
@@ -59,6 +67,10 @@ void MasterFxPanel::applyLanguage()
     revSizeLabel.setText (loc::t ("RAUM", "ROOM"), juce::dontSendNotification);
     revMixLabel.setText (loc::t ("MIX", "MIX"), juce::dontSendNotification);
     revMixSlider.setTooltip (loc::t ("Hall-Anteil - 0 = aus", "Reverb amount - 0 = off"));
+    eqHead.setText (loc::t ("EQ (3-Band)", "EQ (3-band)"), juce::dontSendNotification);
+    eqLowLabel.setText (loc::t ("BASS", "LOW"), juce::dontSendNotification);
+    eqMidLabel.setText (loc::t ("MITTEN", "MID"), juce::dontSendNotification);
+    eqHighLabel.setText (loc::t ("HOEHEN", "HIGH"), juce::dontSendNotification);
     closeButton.setButtonText (loc::t ("SCHLIESSEN", "CLOSE"));
 }
 
@@ -70,6 +82,9 @@ void MasterFxPanel::refresh()
     echoMixSlider.setValue  ((double) proc.echoMix.load() * 100.0,   juce::dontSendNotification);
     revSizeSlider.setValue  ((double) proc.reverbSize.load() * 100.0, juce::dontSendNotification);
     revMixSlider.setValue   ((double) proc.reverbMix.load() * 100.0, juce::dontSendNotification);
+    eqLowSlider.setValue    ((double) proc.eqLow.load(),  juce::dontSendNotification);
+    eqMidSlider.setValue    ((double) proc.eqMid.load(),  juce::dontSendNotification);
+    eqHighSlider.setValue   ((double) proc.eqHigh.load(), juce::dontSendNotification);
     loading = false;
 }
 
@@ -82,6 +97,9 @@ void MasterFxPanel::writeParams()
     proc.echoMix      = (float) (echoMixSlider.getValue() / 100.0);
     proc.reverbSize   = (float) (revSizeSlider.getValue() / 100.0);
     proc.reverbMix    = (float) (revMixSlider.getValue()  / 100.0);
+    proc.eqLow        = (float) eqLowSlider.getValue();
+    proc.eqMid        = (float) eqMidSlider.getValue();
+    proc.eqHigh       = (float) eqHighSlider.getValue();
 }
 
 bool MasterFxPanel::keyPressed (const juce::KeyPress& key)
@@ -127,6 +145,13 @@ void MasterFxPanel::resized()
     area.removeFromTop (4);
     sliderRow (revSizeLabel, revSizeSlider);
     sliderRow (revMixLabel,  revMixSlider);
+
+    area.removeFromTop (12);
+    eqHead.setBounds (area.removeFromTop (22));
+    area.removeFromTop (4);
+    sliderRow (eqLowLabel,  eqLowSlider);
+    sliderRow (eqMidLabel,  eqMidSlider);
+    sliderRow (eqHighLabel, eqHighSlider);
 
     auto bottom = getLocalBounds().reduced (16).removeFromBottom (32);
     closeButton.setBounds (bottom.removeFromRight (140));

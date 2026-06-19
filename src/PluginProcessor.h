@@ -149,6 +149,9 @@ public:
     std::atomic<float> echoMix      { 0.0f };   // 0 = aus
     std::atomic<float> reverbSize   { 0.5f };   // Raumgroesse 0..1
     std::atomic<float> reverbMix    { 0.0f };   // 0 = aus
+    std::atomic<float> eqLow        { 0.0f };   // Bass  +/- dB (0 = flach)
+    std::atomic<float> eqMid        { 0.0f };   // Mitten +/- dB
+    std::atomic<float> eqHigh       { 0.0f };   // Hoehen +/- dB
 
 private:
     std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
@@ -168,6 +171,7 @@ private:
     int    echoWrite    = 0;
     double fxSampleRate = 44100.0;
     juce::Reverb reverb;                // juce::Reverb (in juce_audio_basics)
+    float  eqZ[2][3][2] = {};           // EQ-Biquad-Speicher: [Kanal][Filter][z1/z2]
 
     // Wiedergabe-Pfad: normaler Tracker ODER der TFMX-Replayer. Laden eines TFMX
     // schaltet auf Tfmx, Laden von Song/MOD/XM/Sample zurueck auf Tracker.
