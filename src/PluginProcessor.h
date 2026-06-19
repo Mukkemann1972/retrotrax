@@ -58,6 +58,11 @@ public:
     // Veraendert die Parameter eines Sample-Slots in-place (legt nichts neu an).
     void editSample (int slot, std::function<void (TrackerEngine::Instrument&)> fn);
 
+    // Den Song offline als Stereo-WAV (16 Bit) rausrendern: im Song-Modus die
+    // ganze Reihenfolge einmal, sonst das aktuelle Pattern einmal. Laeuft schneller
+    // als Echtzeit (Audio waehrenddessen ausgesetzt). 'message' = Zusammenfassung.
+    bool renderSongToWav (const juce::File& file, juce::String& message);
+
     // Song als .retrotrax-Datei speichern bzw. oeffnen. loadSong sammelt in
     // 'missingSamples' die Namen der Samples, deren Datei nicht (mehr) da ist.
     bool saveSong (const juce::File& file);

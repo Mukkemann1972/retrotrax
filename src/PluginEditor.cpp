@@ -20,6 +20,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (sidButton);
     addAndMakeVisible (akaiButton);
     addAndMakeVisible (saveSongButton);
+    addAndMakeVisible (wavButton);
     addAndMakeVisible (helpButton);
     addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (spectrumButton);
@@ -60,6 +61,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     playButton.onClick = [this] { proc.engine.play(); updateTransportButtons(); };
     stopButton.onClick = [this] { proc.engine.stop(); updateTransportButtons(); };
     saveSongButton.onClick = [this] { saveSongClicked(); };
+    wavButton.onClick = [this] { exportWavClicked(); };
     // EIN Lade-Knopf statt vieler: oeffnet ein Aufklapp-Menue mit allem zum Laden
     // (Sample, Sample-Browser, Song) und einem Untermenue "Importieren" (MOD/XM/TFMX).
     loadMenuButton.onClick = [this]
@@ -417,6 +419,35 @@ void RetroTraxEditor::saveSongClicked()
         });
 }
 
+void RetroTraxEditor::exportWavClicked()
+{
+    // Vorschlag: Songname (falls gespeichert), sonst Standardname, als .wav.
+    const auto base = currentSongFile.existsAsFile()
+                          ? currentSongFile.getFileNameWithoutExtension()
+                          : loc::t ("Mein Song", "My Song");
+    const auto start = songsFolder().getChildFile (base + ".wav");
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Song als WAV exportieren", "Export song as WAV"), start, "*.wav");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::saveMode
+                                  | juce::FileBrowserComponent::warnAboutOverwriting,
+        [this] (const juce::FileChooser& fc)
+        {
+            auto file = fc.getResult();
+            if (file == juce::File())
+                return; // abgebrochen
+            if (file.getFileExtension().isEmpty())
+                file = file.withFileExtension ("wav");
+
+            juce::String msg;
+            const bool ok = proc.renderSongToWav (file, msg);
+            hintLabel.setText (ok ? msg
+                                  : loc::t ("WAV-Export fehlgeschlagen: ", "WAV export failed: ") + msg,
+                               juce::dontSendNotification);
+        });
+}
+
 void RetroTraxEditor::loadSongClicked()
 {
     const auto start = currentSongFile.existsAsFile() ? currentSongFile : songsFolder();
@@ -600,6 +631,9 @@ void RetroTraxEditor::applyLanguage()
     loadMenuButton.setTooltip (loc::t ("Sample oder Song laden, Sample-Browser, oder ein Modul importieren (MOD/XM/TFMX)",
                                        "Load a sample or song, open the sample browser, or import a module (MOD/XM/TFMX)"));
     saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
+    wavButton.setButtonText (loc::t ("WAV", "WAV"));
+    wavButton.setTooltip (loc::t ("Song als WAV-Datei rausrendern - zum Teilen, Hochladen (Ko-fi/YouTube)",
+                                  "Render the song to a WAV file - to share or upload (Ko-fi/YouTube)"));
     instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
@@ -664,8 +698,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.38 | Spektrum-Anzeige: tanzende Frequenzbalken",
-                        "v0.38 | Spectrum display: dancing frequency bars"),
+    g.drawText (loc::t ("v0.39 | WAV-Export: Song als WAV rausrendern",
+                        "v0.39 | WAV export: render the song to WAV"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -698,6 +732,8 @@ void RetroTraxEditor::resized()
     spectrumButton.setBounds (songRow.removeFromRight (96));
     songRow.removeFromRight (12);
     saveSongButton.setBounds (songRow.removeFromRight (140));
+    songRow.removeFromRight (6);
+    wavButton.setBounds (songRow.removeFromRight (60));
 
     area.removeFromTop (54); // Titelzeile (nur paint)
 

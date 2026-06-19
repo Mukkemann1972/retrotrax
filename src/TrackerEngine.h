@@ -180,6 +180,7 @@ public:
         speed = 6;                  // klassische Vorgabe; Fxx im Pattern kann das aendern
         currentTick = speed.load() - 1; // ++ -> wickelt auf 0 und loest Zeile 0 aus
         samplesUntilTick = 0.0;
+        songLoopCount = 0; // neuer Durchlauf beginnt (fuer den Offline-Export)
         // Song-Modus: vorn in der Reihenfolge starten. Loop-Modus: aktuelles Pattern.
         if (songMode.load())
         {
@@ -325,6 +326,9 @@ public:
     std::atomic<bool> songMode { false };// true = Reihenfolge abspielen, false = aktuelles Pattern loopen
     int order[kMaxOrder] = { 0 };        // Abspiel-Reihenfolge (Pattern-Indizes)
     int orderLen = 1;
+    // Zaehlt, wie oft die Reihenfolge komplett umgelaufen ist. Der Offline-WAV-
+    // Export rendert, bis dieser Wert von 0 auf 1 springt = ein voller Durchlauf.
+    std::atomic<int> songLoopCount { 0 };
 
     // --- Solo / Mute pro Spur (wie in jeder DAW und jedem alten Tracker) ------
     // Reine Wiedergabe-Schalter: der Sequencer laeuft weiter, nur der Ton einer
@@ -455,7 +459,7 @@ private:
             if (songMode.load())
             {
                 int sp = songPos.load() + 1;
-                if (sp >= orderLen) sp = 0; // Song laeuft in Schleife
+                if (sp >= orderLen) { sp = 0; songLoopCount.fetch_add (1, std::memory_order_relaxed); } // Reihenfolge umgelaufen
                 songPos = sp;
                 playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
             }

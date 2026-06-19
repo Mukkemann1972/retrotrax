@@ -77,6 +77,81 @@ void RetroTraxProcessor::feedScope (const juce::AudioBuffer<float>& buffer)
     scopePos.store (p, std::memory_order_relaxed);
 }
 
+bool RetroTraxProcessor::renderSongToWav (const juce::File& file, juce::String& message)
+{
+    const double sr = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
+
+    file.deleteFile();
+    std::unique_ptr<juce::FileOutputStream> stream (file.createOutputStream());
+    if (stream == nullptr)
+    {
+        message = "Datei konnte nicht angelegt werden.";
+        return false;
+    }
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::AudioFormatWriter> writer (
+        wav.createWriterFor (stream.get(), sr, 2, 16, {}, 0));
+    if (writer == nullptr)
+    {
+        message = "WAV-Writer konnte nicht erstellt werden.";
+        return false;
+    }
+    stream.release(); // der Writer uebernimmt den Stream
+
+    // Waehrend des Offline-Renderns das Live-Audio aussetzen, damit der Audio-
+    // Thread die Engine nicht parallel anfasst (sonst Datenrennen/Doppel-Trigger).
+    suspendProcessing (true);
+
+    // Transport sichern und so einstellen, dass wir GENAU einen Durchlauf rendern:
+    // im Song-Modus die echte Reihenfolge, sonst nur das gerade bearbeitete Pattern.
+    const bool savedSongMode = engine.songMode.load();
+    const int  savedOrder0   = engine.order[0];
+    const int  savedOrderLen = engine.orderLen;
+
+    engine.stop();
+    if (! savedSongMode)
+    {
+        engine.order[0] = engine.editPattern.load();
+        engine.orderLen = 1;
+    }
+    engine.songMode = true;
+    engine.play(); // startet bei Order-Position 0, setzt songLoopCount = 0
+
+    const int block = 1024;
+    juce::AudioBuffer<float> buf (2, block);
+    const double maxSamples = sr * 60.0 * 12.0; // Sicherheits-Kappe: 12 Minuten
+    double rendered = 0.0;
+    bool ok = true;
+    // Rendern, bis die Reihenfolge einmal komplett umgelaufen ist.
+    while (engine.songLoopCount.load() == 0 && rendered < maxSamples)
+    {
+        buf.clear();
+        engine.process (buf);
+        if (! writer->writeFromAudioSampleBuffer (buf, 0, block))
+        {
+            ok = false;
+            break;
+        }
+        rendered += block;
+    }
+
+    engine.stop();
+    engine.songMode = savedSongMode;
+    engine.order[0] = savedOrder0;
+    engine.orderLen = savedOrderLen;
+
+    writer.reset(); // schliesst und finalisiert die WAV-Datei
+    suspendProcessing (false);
+
+    if (! ok)
+    {
+        message = "Schreiben der WAV-Datei fehlgeschlagen.";
+        return false;
+    }
+    message = "Song als WAV gespeichert (" + juce::String (rendered / sr, 1) + " s).";
+    return true;
+}
+
 std::unique_ptr<TrackerEngine::Instrument> RetroTraxProcessor::createInstrument (const juce::File& file)
 {
     std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));

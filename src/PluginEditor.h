@@ -27,6 +27,7 @@ private:
     void loadSampleClicked();
     void saveSongClicked();
     void loadSongClicked();
+    void exportWavClicked();
     void loadModClicked();
     void loadXmClicked();
     void loadTfmxClicked();
@@ -45,6 +46,7 @@ private:
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
     juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
+    juce::TextButton wavButton { "WAV" }; // Song als WAV-Datei rausrendern
     juce::TextButton helpButton { "?" };
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton spectrumButton { "SPEKTRUM" }; // Frequenz-Anzeige ein/aus
