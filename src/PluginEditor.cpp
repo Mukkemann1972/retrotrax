@@ -830,8 +830,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.43 | Drum-Kit (16 Pads, MPC/SP-1200)",
-                        "v0.43 | Drum kit (16 pads, MPC/SP-1200)"),
+    g.drawText (loc::t ("v0.44 | SP-1200/Emu-Klang pro Pad",
+                        "v0.44 | SP-1200/Emu sound per pad"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

@@ -49,7 +49,35 @@ DrumKitPanel::DrumKitPanel (RetroTraxProcessor& processor) : proc (processor)
     hintLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (hintLabel);
 
+    // --- Charakter-Regler fuers gewaehlte Pad (SP-1200/Emu) ------------------
+    selLabel.setFont (rt::mono (12.0f, true));
+    selLabel.setColour (juce::Label::textColourId, rt::steelHi);
+    addAndMakeVisible (selLabel);
+
+    auto setupCharSlider = [this] (juce::Slider& s, juce::Label& lab, double lo, double hi)
+    {
+        s.setSliderStyle (juce::Slider::LinearBar);
+        s.setRange (lo, hi, hi - lo > 80 ? 1.0 : 0.5);
+        s.onValueChange = [this] { writePadParams(); };
+        s.onDragEnd     = [this] { triggerPad (selected); };
+        addAndMakeVisible (s);
+        lab.setFont (rt::mono (12.0f, true));
+        lab.setColour (juce::Label::textColourId, rt::textDim);
+        addAndMakeVisible (lab);
+    };
+    setupCharSlider (tuneSlider, tuneLabel, -24.0, 24.0); // Halbtoene
+    setupCharSlider (gritSlider, gritLabel,   0.0, 100.0); // SR-Reduktion %
+    tuneSlider.setTextValueSuffix (" st");
+    gritSlider.setTextValueSuffix (" %");
+
+    bitButton.setClickingTogglesState (true);
+    bitButton.onClick = [this] { writePadParams(); triggerPad (selected); };
+    addAndMakeVisible (bitButton);
+    spButton.onClick  = [this] { applySP1200(); };
+    addAndMakeVisible (spButton);
+
     refresh();
+    setSelected (0);
     applyLanguage();
     startTimerHz (30);
 }
@@ -74,6 +102,19 @@ void DrumKitPanel::applyLanguage()
     fromSlotBtn.setTooltip (loc::t ("Sample aus dem aktuellen Spur-Slot in dieses Pad legen",
                                     "Put the sample from the current track slot into this pad"));
     closeButton.setButtonText  (loc::t ("SCHLIESSEN", "CLOSE"));
+    tuneLabel.setText (loc::t ("STIMMUNG", "TUNE"), juce::dontSendNotification);
+    tuneSlider.setTooltip (loc::t ("Stimmung des Pads in Halbtoenen (wie SP-1200/MPC) - runter = dicker/crunchy",
+                                   "Pad tuning in semitones (like SP-1200/MPC) - down = fatter/crunchier"));
+    gritLabel.setText (loc::t ("GRIT", "GRIT"), juce::dontSendNotification);
+    gritSlider.setTooltip (loc::t ("Koernung/Sample-Rate-Reduktion - der dreckige SP-1200/Emu-Charakter",
+                                   "Grain/sample-rate reduction - the dirty SP-1200/Emu character"));
+    bitButton.setButtonText (loc::t ("12-BIT", "12-BIT"));
+    bitButton.setTooltip (loc::t ("12-Bit-Crunch wie die alten 12-Bit-Drum-Sampler",
+                                  "12-bit crunch like the old 12-bit drum samplers"));
+    spButton.setButtonText (loc::t ("SP-1200", "SP-1200"));
+    spButton.setTooltip (loc::t ("Ein Klick: klassischer 12-Bit-SP-1200-Crunch aufs Pad",
+                                 "One click: classic 12-bit SP-1200 crunch on the pad"));
+    refreshPadControls();
     setHint ("Pad klicken oder per Tastatur (1234/QWER/ASDF/YXCV) trommeln.",
              "Click a pad or finger-drum on the keyboard (1234/QWER/ASDF/ZXCV).");
 }
@@ -86,11 +127,69 @@ void DrumKitPanel::refresh()
         padFilled[p] = proc.getPadName (p, name);
         padNames[p]  = name;
     }
+    refreshPadControls();
 }
 
 void DrumKitPanel::setHint (const juce::String& de, const juce::String& en)
 {
     hintLabel.setText (loc::t (de, en), juce::dontSendNotification);
+}
+
+void DrumKitPanel::setSelected (int pad)
+{
+    selected = juce::jlimit (0, TrackerEngine::kPads - 1, pad);
+    refreshPadControls();
+}
+
+void DrumKitPanel::refreshPadControls()
+{
+    selLabel.setText (loc::t ("PAD ", "PAD ") + juce::String (selected + 1),
+                      juce::dontSendNotification);
+
+    TrackerEngine::Instrument s;
+    const bool have = proc.getPad (selected, s);
+
+    loadingCtl = true;
+    tuneSlider.setValue (have ? (double) s.tuneSemis   :  0.0, juce::dontSendNotification);
+    gritSlider.setValue (have ? (double) s.srReduction * 100.0 : 0.0, juce::dontSendNotification);
+    bitButton.setToggleState (have && s.akai12bit, juce::dontSendNotification);
+    loadingCtl = false;
+
+    tuneSlider.setEnabled (have);
+    gritSlider.setEnabled (have);
+    bitButton.setEnabled (have);
+    spButton.setEnabled (have);
+}
+
+void DrumKitPanel::writePadParams()
+{
+    if (loadingCtl)
+        return;
+    const float tune = (float) tuneSlider.getValue();
+    const float grit = (float) (gritSlider.getValue() / 100.0);
+    const bool  bit  = bitButton.getToggleState();
+    proc.editPad (selected, [=] (TrackerEngine::Instrument& i)
+    {
+        i.tuneSemis   = tune;
+        i.srReduction = grit;
+        i.akai12bit   = bit;
+    });
+}
+
+void DrumKitPanel::applySP1200()
+{
+    // Klassischer 12-Bit-SP-1200-Crunch: 12-Bit an, etwas Koernung, rohe
+    // Wandlung beim Pitchen (vintage) - der dreckige, druckvolle Drum-Charakter.
+    proc.editPad (selected, [] (TrackerEngine::Instrument& i)
+    {
+        i.akai12bit    = true;
+        i.srReduction  = juce::jmax (i.srReduction, 0.30f);
+        i.vintagePitch = true;
+    });
+    refreshPadControls();
+    triggerPad (selected);
+    setHint ("SP-1200-Crunch auf Pad " + juce::String (selected + 1) + " gelegt.",
+             "SP-1200 crunch applied to pad " + juce::String (selected + 1) + ".");
 }
 
 // MPC-Layout: Pad 1 liegt UNTEN LINKS. Sichtzeile 0 (oben) zeigt Pad 13..16.
@@ -124,7 +223,8 @@ void DrumKitPanel::triggerPad (int pad)
 {
     if (pad < 0 || pad >= TrackerEngine::kPads)
         return;
-    selected = pad;
+    if (pad != selected)
+        setSelected (pad);
     proc.engine.auditionPad (pad, 60, -1); // C-5, einmal ganz durch (One-Shot)
     padGlow[pad] = 1.0f;
     repaint();
@@ -136,7 +236,7 @@ void DrumKitPanel::mouseDown (const juce::MouseEvent& e)
     {
         if (padBounds (p).contains (e.getPosition()))
         {
-            selected = p;
+            setSelected (p);
             if (padFilled[p])
                 triggerPad (p);
             else if (e.getNumberOfClicks() >= 2)
@@ -269,6 +369,24 @@ void DrumKitPanel::resized()
     area.removeFromBottom (6);
     hintLabel.setBounds (area.removeFromBottom (20));
     area.removeFromBottom (8);
+
+    // Charakter-Reihe fuers gewaehlte Pad: PAD n | STIMMUNG | GRIT | 12-BIT | SP-1200.
+    {
+        auto row = area.removeFromBottom (28);
+        selLabel.setBounds (row.removeFromLeft (66));
+        row.removeFromLeft (8);
+        spButton.setBounds  (row.removeFromRight (96));
+        row.removeFromRight (8);
+        bitButton.setBounds (row.removeFromRight (84));
+        row.removeFromRight (12);
+        const int half = (row.getWidth() - 12) / 2;
+        tuneLabel.setBounds (row.removeFromLeft (74));
+        tuneSlider.setBounds (row.removeFromLeft (half - 74));
+        row.removeFromLeft (12);
+        gritLabel.setBounds (row.removeFromLeft (52));
+        gritSlider.setBounds (row);
+    }
+    area.removeFromBottom (10);
 
     gridRect = area; // der Rest ist das 4x4-Pad-Feld
 }

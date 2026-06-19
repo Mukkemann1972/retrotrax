@@ -30,6 +30,10 @@ public:
 private:
     void timerCallback() override;       // Pad-Leuchten ausblenden
     void triggerPad (int pad);           // Pad anschlagen + aufleuchten lassen
+    void setSelected (int pad);          // Pad waehlen + Charakter-Regler nachziehen
+    void refreshPadControls();           // Regler aus dem gewaehlten Pad fuellen
+    void writePadParams();               // Regler -> gewaehltes Pad (live)
+    void applySP1200();                  // SP-1200-Charakter aufs Pad legen
     int  padAtIndex (int visCol, int visRow) const; // Sichtposition -> Pad-Index (MPC-Layout)
     int  padFromKey (const juce::KeyPress&) const;   // Tastatur -> Pad (-1 = keins)
     juce::Rectangle<int> padBounds (int pad) const;  // Bildschirm-Rechteck eines Pads
@@ -45,6 +49,14 @@ private:
     bool padFilled[TrackerEngine::kPads] = {};
 
     juce::Label titleLabel;
+
+    // Charakter-Regler fuer das GEWAEHLTE Pad (SP-1200/Emu-Klang).
+    juce::Label      selLabel;                      // "PAD n"
+    juce::Label      tuneLabel, gritLabel;
+    juce::Slider     tuneSlider, gritSlider;        // Stimmung (Halbtoene), Grit (SR-Reduktion)
+    juce::TextButton bitButton { "12-BIT" };        // 12-Bit-Crunch
+    juce::TextButton spButton  { "SP-1200" };       // ein Klick = klassischer Crunch
+    bool loadingCtl = false;                        // true, waehrend Regler gesetzt werden
 
     juce::TextButton loadButton   { "LADEN" };       // Datei in gewaehltes Pad
     juce::TextButton clearButton  { "LEEREN" };      // gewaehltes Pad leeren

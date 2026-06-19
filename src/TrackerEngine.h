@@ -91,6 +91,11 @@ public:
         float drive         = 0.0f;   // 0 = clean .. 1 = stark gesaettigt
         bool  vintagePitch  = false;
 
+        // Stimmung in Halbtoenen (fein, darf gebrochen sein) - verschiebt die
+        // Tonhoehe relativ zur Note. Vor allem fuer Drum-Pads (jedes Pad eigene
+        // Stimmung wie SP-1200/MPC), wirkt aber auf jedes Instrument. Standard 0.
+        float tuneSemis     = 0.0f;
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
@@ -484,9 +489,10 @@ private:
     double stepForNote (const Instrument* inst, int note) const
     {
         note = juce::jlimit (0, kMaxNote, note);
+        const double tune = (double) inst->tuneSemis; // Feinstimmung (Halbtoene)
         if (inst->kind == Instrument::Kind::Synth)
-            return (440.0 * std::pow (2.0, (note - 69) / 12.0)) / sampleRate;
-        return (inst->sourceRate / sampleRate) * std::pow (2.0, (note - 60) / 12.0);
+            return (440.0 * std::pow (2.0, (note - 69 + tune) / 12.0)) / sampleRate;
+        return (inst->sourceRate / sampleRate) * std::pow (2.0, (note - 60 + tune) / 12.0);
     }
 
     // Ein Tick weiter: Tick 0 = neue Zeile (Noten ausloesen + Effekte einrichten),

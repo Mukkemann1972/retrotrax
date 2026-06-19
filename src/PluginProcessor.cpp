@@ -300,6 +300,7 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.loopXfade     = p->loopXfade;
     out.drive         = p->drive;
     out.vintagePitch  = p->vintagePitch;
+    out.tuneSemis     = p->tuneSemis;
     return true;
 }
 
@@ -360,6 +361,7 @@ bool RetroTraxProcessor::getPad (int pad, TrackerEngine::Instrument& out) const
     out.drive         = p->drive;
     out.vintagePitch  = p->vintagePitch;
     out.sourceRate    = p->sourceRate;
+    out.tuneSemis     = p->tuneSemis;
     return true;
 }
 
@@ -454,7 +456,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             if (ip->akaiOn || ip->akai12bit || ip->reverse || ip->srReduction > 0.0f
                 || ip->loopMode != TrackerEngine::Instrument::Loop::Off
                 || ip->loopXfade > 0.0f
-                || ip->drive > 0.0f || ip->vintagePitch)
+                || ip->drive > 0.0f || ip->vintagePitch || ip->tuneSemis != 0.0f)
             {
                 e->setAttribute ("akon", ip->akaiOn ? 1 : 0);
                 e->setAttribute ("akcut", ip->akaiCutoff);
@@ -466,6 +468,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("lxf", ip->loopXfade);
                 e->setAttribute ("drv", ip->drive);
                 e->setAttribute ("vint", ip->vintagePitch ? 1 : 0);
+                e->setAttribute ("tune", ip->tuneSemis);
             }
         }
     }
@@ -494,6 +497,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         e->setAttribute ("drv", pad->drive);
         e->setAttribute ("vint", pad->vintagePitch ? 1 : 0);
         e->setAttribute ("rate", pad->sourceRate);
+        e->setAttribute ("tune", pad->tuneSemis);
     }
 
     for (int p = 0; p < TrackerEngine::kMaxPatterns; ++p)
@@ -599,6 +603,7 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->loopXfade     = (float) e->getDoubleAttribute ("lxf", 0.0);
                     ip->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
                     ip->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
+                    ip->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);
                 }
             }
             else if (missingSamples != nullptr)
@@ -630,6 +635,7 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     pad->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
                     pad->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
                     pad->sourceRate    = e->getDoubleAttribute ("rate", pad->sourceRate);
+                    pad->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);
                     if (e->getStringAttribute ("name").isNotEmpty())
                         pad->name = e->getStringAttribute ("name");
                 }

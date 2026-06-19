@@ -688,7 +688,10 @@ void HelpPanel::rebuild()
             "- -> SLOT kopiert das Pad in den aktuellen Spur-Slot, damit du es im\n"
             "  Tracker benutzen kannst; SLOT -> holt umgekehrt das Sample aus dem\n"
             "  aktuellen Slot ins Pad. So wandern Klaenge frei hin und her\n"
-            "  (auch TFMX-Grabber-Beute oder Browser-Sounds).\n\n"
+            "  (auch TFMX-Grabber-Beute oder Browser-Sounds).\n"
+            "- Charakter pro Pad (SP-1200/Emu): STIMMUNG stimmt das Pad in Halbtoenen\n"
+            "  (runter = dicker/crunchy), GRIT gibt Koernung dazu, 12-BIT den 12-Bit-\n"
+            "  Crunch, und SP-1200 legt den klassischen Mix mit einem Klick auf.\n\n"
             "Das Kit wird im Song (.retrotrax) mitgespeichert. Jedes Pad ist ein\n"
             "ganz normales Sample - der Akai-Filter, 12-Bit, Loop usw. lassen sich\n"
             "spaeter genauso darauf anwenden.",
@@ -703,10 +706,13 @@ void HelpPanel::rebuild()
             "- -> SLOT copies the pad into the current track slot so you can use it in\n"
             "  the tracker; SLOT -> grabs the sample from the current slot into the\n"
             "  pad. Sounds move freely both ways (TFMX-grabber loot or browser sounds\n"
-            "  included).\n\n"
+            "  included).\n"
+            "- Per-pad character (SP-1200/Emu): TUNE tunes the pad in semitones (down\n"
+            "  = fatter/crunchier), GRIT adds sample-rate reduction, 12-BIT adds the\n"
+            "  12-bit crunch, and SP-1200 applies the classic combo in one click.\n\n"
             "The kit is saved with the song (.retrotrax). Each pad is an ordinary\n"
-            "sample - the Akai filter, 12-bit, loop etc. can be applied to it later\n"
-            "just the same.") });
+            "sample - the Akai filter, loop etc. can be applied to it later just the\n"
+            "same.") });
 
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (

@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.43 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.44 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -122,6 +122,9 @@ Ein Projekt aus dem Mukkemann-Universum.
   MPC60/SP-1200-Stil mit eigenen Samples — anklicken oder per Tastatur trommeln
   (Pads leuchten beim Anschlag). **→ SLOT** / **SLOT →** schiebt Klänge frei
   zwischen Pad und Spur-Slot; das Kit wird im Song gespeichert
+- **SP-1200/Emu-Klang pro Pad** ✅: jedes Pad hat eigene **STIMMUNG** (Halbtöne),
+  **GRIT** (Sample-Rate-Reduktion), **12-BIT**-Crunch und einen **SP-1200**-Knopf,
+  der den klassischen Crunch mit einem Klick auflegt — der dreckige Drum-Charakter
 - **Später:** 16er-Drumpad, **Fairlight-Zeichentool** (Wellenformen mit der Maus
   malen wie mit dem Lichtgriffel), weitere Sampler-Effekte (Time-Stretch),
   .sid-Player + .retrotrax-Replayer für eigene Demos, Anfänger-Modus
