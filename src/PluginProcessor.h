@@ -71,6 +71,20 @@ public:
     bool padToSlot (int pad, int slot);  // Pad-Sample in einen Spur-Slot kopieren
     bool slotToPad (int slot, int pad);  // Spur-Slot-Sample in ein Pad kopieren
 
+    // --- Fairlight-Sample-Werkzeug -------------------------------------------
+    // Arbeitskopie eines Slot-Samples holen (zum Anzeigen/Bearbeiten im Editor).
+    bool getSampleCopy (int slot, juce::AudioBuffer<float>& out, double& rate) const;
+    // Eine bearbeitete Arbeitskopie als WAV sichern und in den Slot laden (so
+    // bleibt sie im Song erhalten - wie beim Grabber, ueber Dateipfad).
+    bool applyEditedSample (int slot, const juce::AudioBuffer<float>& buf, double rate,
+                            juce::String& message);
+    // Ein Sample in gleich grosse Scheiben schneiden und auf die Kit-Pads legen
+    // (als WAVs gesichert). Liefert die Anzahl gefuellter Pads.
+    int chopToKit (const juce::AudioBuffer<float>& buf, double rate, int slices,
+                   const juce::String& baseName, juce::String& message);
+    // Eine Arbeitskopie sofort vorhoeren (ohne einen Slot zu belegen).
+    void previewBuffer (const juce::AudioBuffer<float>& buf, double rate);
+
     // Den Song offline als Stereo-WAV (16 Bit) rausrendern: im Song-Modus die
     // ganze Reihenfolge einmal, sonst das aktuelle Pattern einmal. Laeuft schneller
     // als Echtzeit (Audio waehrenddessen ausgesetzt). 'message' = Zusammenfassung.

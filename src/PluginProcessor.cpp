@@ -6,6 +6,9 @@
 #include "S3mImport.h"
 #include "ItImport.h"
 
+// Schreibt einen Float-Puffer als 16-Bit-WAV (Grabber/Chop/Edit). Definition weiter unten.
+static bool writeWavBuffer (const juce::File& file, const juce::AudioBuffer<float>& buf, double rate);
+
 RetroTraxProcessor::RetroTraxProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
@@ -393,6 +396,90 @@ bool RetroTraxProcessor::slotToPad (int slot, int pad)
         return false;
     engine.setPad (pad, std::make_unique<TrackerEngine::Instrument> (*p)); // tiefe Kopie
     return true;
+}
+
+// --- Fairlight-Sample-Werkzeug ------------------------------------------------
+
+bool RetroTraxProcessor::getSampleCopy (int slot, juce::AudioBuffer<float>& out, double& rate) const
+{
+    const juce::ScopedLock sl (engine.lock);
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    const auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Sample
+        || p->data.getNumSamples() < 2)
+        return false;
+    out  = p->data; // tiefe Kopie
+    rate = p->sourceRate;
+    return true;
+}
+
+bool RetroTraxProcessor::applyEditedSample (int slot, const juce::AudioBuffer<float>& buf,
+                                            double rate, juce::String& message)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments || buf.getNumSamples() < 2)
+    {
+        message = "Kein bearbeitbares Sample.";
+        return false;
+    }
+    auto dir = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                   .getChildFile ("RetroTrax").getChildFile ("Bearbeitet");
+    dir.createDirectory();
+    const auto stamp = juce::Time::getCurrentTime().formatted ("%Y%m%d-%H%M%S");
+    const auto file  = dir.getChildFile ("edit-" + stamp + ".wav");
+    if (! writeWavBuffer (file, buf, rate) || ! loadInstrument (slot, file))
+    {
+        message = "Konnte das bearbeitete Sample nicht sichern.";
+        return false;
+    }
+    message = "Bearbeitetes Sample in Slot " + juce::String (slot + 1) + " uebernommen.";
+    return true;
+}
+
+int RetroTraxProcessor::chopToKit (const juce::AudioBuffer<float>& buf, double rate, int slices,
+                                   const juce::String& baseName, juce::String& message)
+{
+    slices = juce::jlimit (1, TrackerEngine::kPads, slices);
+    const int total = buf.getNumSamples();
+    if (total < slices * 2)
+    {
+        message = "Sample zu kurz zum Schneiden.";
+        return 0;
+    }
+    auto safe = juce::File::createLegalFileName (baseName);
+    if (safe.isEmpty()) safe = "Chop";
+    auto dir = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                   .getChildFile ("RetroTrax").getChildFile ("Chops").getChildFile (safe);
+    dir.createDirectory();
+
+    const int ch  = buf.getNumChannels();
+    const int len = total / slices;
+    int filled = 0;
+    for (int s = 0; s < slices; ++s)
+    {
+        const int start = s * len;
+        const int n     = (s == slices - 1) ? (total - start) : len; // Rest in die letzte Scheibe
+        juce::AudioBuffer<float> slice (ch, n);
+        for (int c = 0; c < ch; ++c)
+            slice.copyFrom (c, 0, buf, c, start, n);
+        const auto file = dir.getChildFile (juce::String::formatted ("%02d ", s + 1) + safe + ".wav");
+        if (writeWavBuffer (file, slice, rate) && loadPad (s, file))
+            ++filled;
+    }
+    message = juce::String (filled) + " Scheiben auf die Kit-Pads gelegt (\"" + safe + "\").";
+    return filled;
+}
+
+void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate)
+{
+    if (buf.getNumSamples() < 2)
+        return;
+    auto inst = std::make_unique<TrackerEngine::Instrument>();
+    inst->kind       = TrackerEngine::Instrument::Kind::Sample;
+    inst->data       = buf;
+    inst->sourceRate = rate;
+    inst->name       = "Vorschau";
+    engine.previewInstrument (std::move (inst));
 }
 
 std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()

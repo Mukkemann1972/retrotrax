@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.44 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.45 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -123,8 +123,11 @@ A project from the Mukkemann universe.
 - **SP-1200/Emu sound per pad** ✅: each pad has its own **TUNE** (semitones),
   **GRIT** (sample-rate reduction), **12-BIT** crunch and an **SP-1200** button
   that applies the classic crunch in one click — the dirty drum character
-- **Later:** 16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms
-  with the mouse, light-pen style), more sampler effects (time-stretch),
+- **Fairlight sample tool** ✅: the **FAIRLIGHT** button opens a waveform editor —
+  select a range and **trim**, **normalise**, **reverse**, **draw** the wave with
+  the mouse (light-pen feel) and above all **chop into 16 kit slices** (slice a
+  break → drum pads, the MPC/SP-1200 idea)
+- **Later:** more sampler effects (time-stretch), real beat detection,
   .sid player + .retrotrax replayer for your own demos, beginner mode
 
 ## Controls

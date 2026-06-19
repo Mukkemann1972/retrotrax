@@ -714,6 +714,34 @@ void HelpPanel::rebuild()
             "sample - the Akai filter, loop etc. can be applied to it later just the\n"
             "same.") });
 
+    topics.add ({ loc::t ("Fairlight-Sample-Werkzeug", "Fairlight sample tool"),
+        loc::t (
+            "Der FAIRLIGHT-Knopf oeffnet das Sample-Werkzeug fuer den aktuellen Slot -\n"
+            "ein kleiner Wellenform-Editor im Geiste des Fairlight CMI.\n\n"
+            "- Mit der Maus ueber die Welle ziehen markiert einen Bereich.\n"
+            "- TRIMMEN schneidet auf die Markierung zu.\n"
+            "- NORMALISIEREN hebt das Sample auf vollen Pegel.\n"
+            "- UMKEHREN dreht es um.\n"
+            "- FREIHAND: die Wellenform mit der Maus zeichnen - das Lichtgriffel-\n"
+            "  Gefuehl des Fairlight. Ist der Slot leer, malst du von Null an.\n"
+            "- IN KIT (16) schneidet das Sample in 16 gleiche Scheiben und legt sie\n"
+            "  auf die Drum-Pads (z.B. einen Break zerlegen) - die klassische\n"
+            "  MPC/SP-1200-Idee.\n"
+            "- VORHOEREN spielt die Arbeitskopie; UEBERNEHMEN legt sie zurueck in den\n"
+            "  Slot (als WAV gesichert, bleibt im Song erhalten).",
+            "The FAIRLIGHT button opens the sample tool for the current slot - a small\n"
+            "waveform editor in the spirit of the Fairlight CMI.\n\n"
+            "- Drag across the wave to select a range.\n"
+            "- TRIM cuts to the selection.\n"
+            "- NORMALISE boosts the sample to full level.\n"
+            "- REVERSE flips it.\n"
+            "- FREEHAND: draw the waveform with the mouse - the Fairlight light-pen\n"
+            "  feel. If the slot is empty, you paint from scratch.\n"
+            "- TO KIT (16) slices the sample into 16 equal pieces and puts them on the\n"
+            "  drum pads (e.g. to chop a break) - the classic MPC/SP-1200 idea.\n"
+            "- PREVIEW plays the working copy; APPLY puts it back into the slot (saved\n"
+            "  as a WAV, kept with the song).") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

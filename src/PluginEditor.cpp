@@ -2,7 +2,7 @@
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p),
-      kitPanel (p), spectrumPanel (p)
+      kitPanel (p), editPanel (p), spectrumPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -14,6 +14,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
     addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
     addChildComponent (kitPanel);    // unsichtbar, bis KIT gedrueckt wird
+    addChildComponent (editPanel);   // unsichtbar, bis FAIRLIGHT gedrueckt wird
     addChildComponent (spectrumPanel); // unsichtbar, bis SPEKTRUM gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
@@ -21,6 +22,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (sidButton);
     addAndMakeVisible (akaiButton);
     addAndMakeVisible (kitButton);
+    addAndMakeVisible (editButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (wavButton);
     addAndMakeVisible (helpButton);
@@ -268,6 +270,21 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         kitPanel.setVisible (false);
         kitButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+
+    editButton.onClick = [this]
+    {
+        editPanel.refresh();
+        editPanel.setVisible (true);
+        editButton.setToggleState (true, juce::dontSendNotification);
+        editPanel.toFront (false);
+        editPanel.grabKeyboardFocus();
+    };
+    editPanel.onClose = [this]
+    {
+        editPanel.setVisible (false);
+        editButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
 
@@ -797,6 +814,10 @@ void RetroTraxEditor::applyLanguage()
     kitButton.setTooltip (loc::t ("Drum-Kit: 16 Pads im MPC60/SP-1200-Stil zum Trommeln (eigene Samples)",
                                   "Drum kit: 16 pads in MPC60/SP-1200 style for finger drumming (own samples)"));
     kitPanel.applyLanguage();
+    editButton.setButtonText (loc::t ("FAIRLIGHT", "FAIRLIGHT"));
+    editButton.setTooltip (loc::t ("Sample-Werkzeug: trimmen, normalisieren, umkehren, Welle zeichnen, in 16 Kit-Scheiben choppen",
+                                   "Sample tool: trim, normalise, reverse, draw the wave, chop into 16 kit slices"));
+    editPanel.applyLanguage();
     akaiButton.setButtonText (loc::t ("AKAI", "AKAI"));
     akaiButton.setTooltip (loc::t ("Akai-Sampler-Filter fuer das aktuelle Sample (resonanter Tiefpass + 12-Bit-Crunch)",
                                    "Akai sampler filter for the current sample (resonant low-pass + 12-bit crunch)"));
@@ -830,8 +851,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.44 | SP-1200/Emu-Klang pro Pad",
-                        "v0.44 | SP-1200/Emu sound per pad"),
+    g.drawText (loc::t ("v0.45 | Fairlight-Sample-Werkzeug (choppen/zeichnen)",
+                        "v0.45 | Fairlight sample tool (chop/draw)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -891,6 +912,8 @@ void RetroTraxEditor::resized()
     akaiButton.setBounds (controls.removeFromLeft (70));
     controls.removeFromLeft (6);
     kitButton.setBounds (controls.removeFromLeft (64));
+    controls.removeFromLeft (6);
+    editButton.setBounds (controls.removeFromLeft (96));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
@@ -920,5 +943,6 @@ void RetroTraxEditor::resized()
     sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     akaiPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     kitPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
+    editPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     spectrumPanel.setBounds (gridArea); // ebenfalls Overlay ueber dem Grid
 }
