@@ -293,12 +293,13 @@ public:
     }
 
     // Pad anschlagen (Vorhoer-/MIDI-Stimme, Index kTracks) - blockiert keinen Slot.
-    void auditionPad (int pad, int note = 60, int gateSamples = -1)
+    // volume 0..64 = Anschlagdynamik (Velocity); -1 = volle Lautstaerke.
+    void auditionPad (int pad, int note = 60, int gateSamples = -1, int volume = -1)
     {
         const juce::ScopedLock sl (lock);
         if (pad < 0 || pad >= kPads || kitPads[pad] == nullptr)
             return;
-        startVoice (kTracks, note, kitPads[pad].get(), -1);
+        startVoice (kTracks, note, kitPads[pad].get(), volume);
         voices[kTracks].gate = gateSamples;
     }
 

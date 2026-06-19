@@ -29,7 +29,7 @@ public:
 
 private:
     void timerCallback() override;       // Pad-Leuchten ausblenden
-    void triggerPad (int pad);           // Pad anschlagen + aufleuchten lassen
+    void triggerPad (int pad, int velocity = 64); // Pad anschlagen (Velocity 0..64) + aufleuchten
     void setSelected (int pad);          // Pad waehlen + Charakter-Regler nachziehen
     void refreshPadControls();           // Regler aus dem gewaehlten Pad fuellen
     void writePadParams();               // Regler -> gewaehltes Pad (live)

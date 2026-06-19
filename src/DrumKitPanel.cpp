@@ -219,14 +219,15 @@ int DrumKitPanel::padFromKey (const juce::KeyPress& key) const
     return -1;
 }
 
-void DrumKitPanel::triggerPad (int pad)
+void DrumKitPanel::triggerPad (int pad, int velocity)
 {
     if (pad < 0 || pad >= TrackerEngine::kPads)
         return;
     if (pad != selected)
         setSelected (pad);
-    proc.engine.auditionPad (pad, 60, -1); // C-5, einmal ganz durch (One-Shot)
-    padGlow[pad] = 1.0f;
+    velocity = juce::jlimit (1, 64, velocity);
+    proc.engine.auditionPad (pad, 60, -1, velocity); // C-5, One-Shot, mit Anschlag
+    padGlow[pad] = 0.35f + 0.65f * (float) velocity / 64.0f; // harter Schlag = heller
     repaint();
 }
 
@@ -234,11 +235,17 @@ void DrumKitPanel::mouseDown (const juce::MouseEvent& e)
 {
     for (int p = 0; p < TrackerEngine::kPads; ++p)
     {
-        if (padBounds (p).contains (e.getPosition()))
+        const auto r = padBounds (p);
+        if (r.contains (e.getPosition()))
         {
             setSelected (p);
             if (padFilled[p])
-                triggerPad (p);
+            {
+                // Anschlagdynamik aus der Klickhoehe: oben = hart/laut, unten = leise.
+                const float rel = juce::jlimit (0.0f, 1.0f,
+                    (float) (r.getBottom() - e.y) / (float) juce::jmax (1, r.getHeight()));
+                triggerPad (p, 10 + (int) (rel * 54.0f));
+            }
             else if (e.getNumberOfClicks() >= 2)
                 loadIntoSelected();        // Doppelklick auf leeres Pad = laden
             repaint();
