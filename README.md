@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.37 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.38 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -42,6 +42,9 @@ A project from the Mukkemann universe.
 - **Mute & solo per track:** little **M** (mute) and **S** (solo) buttons under
   each track name — by mouse click, even during playback. Solo plays only the
   chosen tracks, so you instantly find what doesn't sit right in the mix
+- **Spectrum display:** the **SPECTRUM** button opens the frequency bars — the
+  "dancing bars" from the old trackers/demos. Purely visual, shows at a glance
+  whether the bass has punch and the highs are there (lows left, highs right)
 - **One LOAD menu:** a single **LOAD** button bundles everything — load a sample,
   the sample browser, open a song, and an **Import** submenu (MOD/XM/TFMX). Keeps
   the strip tidy instead of many buttons side by side

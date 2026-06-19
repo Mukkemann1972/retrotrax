@@ -82,6 +82,16 @@ public:
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
 
+    // --- Spektrum-Anzeige: Ringpuffer des Ausgangs-Mixes (Mono) -----------------
+    // Der Audio-Thread schreibt den fertigen Stereo-Mix (gemittelt) hier hinein;
+    // die SpectrumPanel-Anzeige liest im Timer den juengsten Ausschnitt und rechnet
+    // die Frequenzbalken. Reine Anzeige, beeinflusst den Klang nicht. Groesse ist
+    // eine Zweierpotenz (Maske statt Modulo). feedScope wird im processBlock gerufen.
+    static constexpr int kScopeSize = 4096;
+    float scope[kScopeSize] = {};
+    std::atomic<int> scopePos { 0 };
+    void feedScope (const juce::AudioBuffer<float>& buffer);
+
 private:
     std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
 

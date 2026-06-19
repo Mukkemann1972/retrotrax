@@ -8,6 +8,7 @@
 #include "HelpPanel.h"
 #include "SidPanel.h"
 #include "AkaiPanel.h"
+#include "SpectrumPanel.h"
 #include "Localisation.h"
 
 class RetroTraxEditor : public juce::AudioProcessorEditor
@@ -46,6 +47,7 @@ private:
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton helpButton { "?" };
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
+    juce::TextButton spectrumButton { "SPEKTRUM" }; // Frequenz-Anzeige ein/aus
     juce::TextButton langButton { "DE" };
 
     // Song-Modus-Leiste
@@ -85,6 +87,7 @@ private:
     HelpPanel helpPanel;
     SidPanel sidPanel;
     AkaiPanel akaiPanel;
+    SpectrumPanel spectrumPanel;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;
     juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song

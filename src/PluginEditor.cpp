@@ -1,7 +1,8 @@
 #include "PluginEditor.h"
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p)
+    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p),
+      spectrumPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -12,6 +13,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
     addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
     addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
+    addChildComponent (spectrumPanel); // unsichtbar, bis SPEKTRUM gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadMenuButton);
@@ -20,6 +22,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (helpButton);
     addAndMakeVisible (liveHelpButton);
+    addAndMakeVisible (spectrumButton);
     addAndMakeVisible (langButton);
     addAndMakeVisible (patPrevButton);
     addAndMakeVisible (patNextButton);
@@ -159,6 +162,22 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     diskBrowser.onClose = [this]
     {
         diskBrowser.setVisible (false);
+        grid.grabKeyboardFocus();
+    };
+
+    // Spektrum-Anzeige (Frequenzbalken) als Overlay ein-/ausblenden.
+    spectrumButton.onClick = [this]
+    {
+        const bool show = ! spectrumPanel.isVisible();
+        spectrumPanel.setVisible (show);
+        spectrumButton.setToggleState (show, juce::dontSendNotification);
+        if (show) spectrumPanel.toFront (false);
+        else      grid.grabKeyboardFocus();
+    };
+    spectrumPanel.onClose = [this]
+    {
+        spectrumPanel.setVisible (false);
+        spectrumButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
     diskBrowser.onSampleLoaded = [this] (const juce::String& name, int slot)
@@ -586,6 +605,9 @@ void RetroTraxEditor::applyLanguage()
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
     liveHelpButton.setTooltip (loc::t ("Hilfe-Zeile an/aus - erklaert die Stelle unterm Cursor",
                                        "Help line on/off - explains the spot under the cursor"));
+    spectrumButton.setButtonText (loc::t ("SPEKTRUM", "SPECTRUM"));
+    spectrumButton.setTooltip (loc::t ("Frequenz-Anzeige ein/aus - die tanzenden Balken des Klangs",
+                                       "Frequency display on/off - the dancing bars of the sound"));
 
     songModeButton.setTooltip (loc::t ("LOOP = aktuelles Pattern wiederholen | SONG = die ganze Reihe abspielen",
                                        "LOOP = repeat current pattern | SONG = play the whole order"));
@@ -618,6 +640,7 @@ void RetroTraxEditor::applyLanguage()
     helpPanel.applyLanguage();
     sidPanel.applyLanguage();
     akaiPanel.applyLanguage();
+    spectrumPanel.applyLanguage();
     repaint();
 }
 
@@ -641,8 +664,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.37 | Ein LADEN-Menue: Sample/Song/Import gebuendelt",
-                        "v0.37 | One LOAD menu: sample/song/import bundled"),
+    g.drawText (loc::t ("v0.38 | Spektrum-Anzeige: tanzende Frequenzbalken",
+                        "v0.38 | Spectrum display: dancing frequency bars"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -671,6 +694,8 @@ void RetroTraxEditor::resized()
     langButton.setBounds (songRow.removeFromRight (46));
     songRow.removeFromRight (6);
     liveHelpButton.setBounds (songRow.removeFromRight (60));
+    songRow.removeFromRight (6);
+    spectrumButton.setBounds (songRow.removeFromRight (96));
     songRow.removeFromRight (12);
     saveSongButton.setBounds (songRow.removeFromRight (140));
 
@@ -724,4 +749,5 @@ void RetroTraxEditor::resized()
     helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     akaiPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
+    spectrumPanel.setBounds (gridArea); // ebenfalls Overlay ueber dem Grid
 }

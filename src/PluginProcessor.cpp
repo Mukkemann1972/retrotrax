@@ -41,6 +41,7 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             tfmx.render (buffer, 0, buffer.getNumSamples());
         else
             buffer.clear();
+        feedScope (buffer);
         return;
     }
 
@@ -53,6 +54,27 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     midi.clear();
 
     engine.process (buffer);
+    feedScope (buffer);
+}
+
+// Den fertigen Stereo-Mix (als Mono-Mittel) in den Ringpuffer schreiben, damit
+// die Spektrum-Anzeige im Timer den juengsten Ausschnitt lesen kann. Laeuft im
+// Audio-Thread; nur ein paar Kopien + ein atomarer Schreibzeiger, kein Lock.
+void RetroTraxProcessor::feedScope (const juce::AudioBuffer<float>& buffer)
+{
+    const int n  = buffer.getNumSamples();
+    const int ch = buffer.getNumChannels();
+    if (n <= 0 || ch <= 0)
+        return;
+    const float* L = buffer.getReadPointer (0);
+    const float* R = ch > 1 ? buffer.getReadPointer (1) : L;
+    int p = scopePos.load (std::memory_order_relaxed);
+    for (int i = 0; i < n; ++i)
+    {
+        scope[p] = 0.5f * (L[i] + R[i]);
+        p = (p + 1) & (kScopeSize - 1);
+    }
+    scopePos.store (p, std::memory_order_relaxed);
 }
 
 std::unique_ptr<TrackerEngine::Instrument> RetroTraxProcessor::createInstrument (const juce::File& file)

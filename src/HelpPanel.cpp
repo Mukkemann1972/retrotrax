@@ -627,6 +627,23 @@ void HelpPanel::rebuild()
             "(like the real SID chip for the SID synth) - but it can't be edited in\n"
             "the grid.") });
 
+    topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
+        loc::t (
+            "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"
+            "Balken aus den alten Trackern und Demos. Links stehen die tiefen, rechts\n"
+            "die hohen Frequenzen; je lauter ein Bereich klingt, desto hoeher der\n"
+            "Balken (eine weisse Kappe haelt kurz den hoechsten Wert).\n\n"
+            "Das ist reine Optik - es aendert nichts am Klang. Praktisch, um zu sehen,\n"
+            "ob dein Bass druckvoll ist oder die Hoehen fehlen. SCHLIESSEN (oder der\n"
+            "Knopf erneut) blendet es wieder aus.",
+            "The SPECTRUM button at the top opens the frequency display - the dancing\n"
+            "bars from the old trackers and demos. Lows are on the left, highs on the\n"
+            "right; the louder a range sounds, the higher its bar (a white cap briefly\n"
+            "holds the peak).\n\n"
+            "It's purely visual - it doesn't change the sound. Handy to see whether\n"
+            "your bass has punch or the highs are missing. CLOSE (or the button again)\n"
+            "hides it.") });
+
     topics.add ({ loc::t ("Sprache", "Language"),
         loc::t (
             "Der Knopf DE/EN oben schaltet zwischen Deutsch und Englisch um. Die\n"
