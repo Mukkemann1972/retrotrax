@@ -5,7 +5,7 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
     setWantsKeyboardFocus (true);
 
     titleLabel.setFont (rt::mono (16.0f, true));
-    titleLabel.setColour (juce::Label::textColourId, rt::text);
+    titleLabel.setColour (juce::Label::textColourId, juce::Colour (0xff39ff7a)); // Fairlight-Gruen
     addAndMakeVisible (titleLabel);
 
     for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
@@ -224,37 +224,56 @@ bool SampleEditPanel::keyPressed (const juce::KeyPress& key)
 
 void SampleEditPanel::paint (juce::Graphics& g)
 {
+    // Fairlight-CMI-Optik: leuchtendes Phosphor-Gruen auf fast schwarzem Grund
+    // (Page-R-/Vektor-Monitor-Look).
+    const juce::Colour crtBg    { 0xff03130a }; // sehr dunkles Gruen-Schwarz
+    const juce::Colour phosphor { 0xff39ff7a }; // helles Phosphor-Gruen
+    const juce::Colour phosDim   = phosphor.withAlpha (0.30f);
+    const juce::Colour phosFaint = phosphor.withAlpha (0.10f);
+
     g.fillAll (rt::bg);
-    g.setColour (rt::steel.withAlpha (0.7f));
+    g.setColour (phosphor.withAlpha (0.6f));
     g.drawRect (getLocalBounds(), 1);
 
-    // Wellenform-Feld.
-    g.setColour (rt::rowBeat);
+    // Wellenform-Feld = der gruene CRT.
+    g.setColour (crtBg);
     g.fillRect (waveRect);
-    g.setColour (rt::steel.withAlpha (0.4f));
-    g.drawRect (waveRect, 1);
 
     const int len = work.getNumSamples();
     if (len > 1 && waveRect.getWidth() > 2)
     {
-        // Auswahl markieren.
+        // Dezentes CRT-Raster (gruene Linien).
+        for (int gx = 1; gx < 8; ++gx)
+        {
+            const int x = waveRect.getX() + waveRect.getWidth() * gx / 8;
+            g.setColour (phosFaint);
+            g.drawVerticalLine (x, (float) waveRect.getY(), (float) waveRect.getBottom());
+        }
+        for (int gy = 1; gy < 4; ++gy)
+        {
+            const int y = waveRect.getY() + waveRect.getHeight() * gy / 4;
+            g.setColour (phosFaint);
+            g.drawHorizontalLine (y, (float) waveRect.getX(), (float) waveRect.getRight());
+        }
+
+        // Auswahl markieren (heller gruener Schleier).
         if (hasSel)
         {
             const int xa = waveRect.getX() + (int) (juce::jmin (selStart, selEnd) * waveRect.getWidth());
             const int xb = waveRect.getX() + (int) (juce::jmax (selStart, selEnd) * waveRect.getWidth());
-            g.setColour (rt::playBar.withAlpha (0.35f));
+            g.setColour (phosphor.withAlpha (0.22f));
             g.fillRect (xa, waveRect.getY(), juce::jmax (1, xb - xa), waveRect.getHeight());
         }
 
         // Mittellinie.
         const int mid = waveRect.getCentreY();
-        g.setColour (rt::steel.withAlpha (0.25f));
+        g.setColour (phosDim);
         g.drawHorizontalLine (mid, (float) waveRect.getX(), (float) waveRect.getRight());
 
-        // Wellenform als Min/Max pro Pixelspalte.
+        // Wellenform als Min/Max pro Pixelspalte - leuchtendes Gruen.
         const float half = waveRect.getHeight() * 0.5f;
         const auto* d = work.getReadPointer (0);
-        g.setColour (rt::cursor);
+        g.setColour (phosphor);
         for (int x = 0; x < waveRect.getWidth(); ++x)
         {
             const int i0 = (int) ((double) x       / waveRect.getWidth() * len);
@@ -271,6 +290,10 @@ void SampleEditPanel::paint (juce::Graphics& g)
                                 (float) juce::jmax (yTop, yBot) + 1.0f);
         }
     }
+
+    // Gruener CRT-Rahmen ueber allem.
+    g.setColour (phosphor.withAlpha (0.5f));
+    g.drawRect (waveRect, 1);
 }
 
 void SampleEditPanel::resized()

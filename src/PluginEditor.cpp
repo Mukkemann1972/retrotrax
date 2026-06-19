@@ -851,8 +851,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.45 | Fairlight-Sample-Werkzeug (choppen/zeichnen)",
-                        "v0.45 | Fairlight sample tool (chop/draw)"),
+    g.drawText (loc::t ("v0.46 | Fairlight in Gruen (CRT-Optik)",
+                        "v0.46 | Fairlight in green (CRT look)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
