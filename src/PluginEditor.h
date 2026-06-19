@@ -40,15 +40,10 @@ private:
 
     juce::TextButton playButton { "PLAY" };
     juce::TextButton stopButton { "STOP" };
-    juce::TextButton loadButton { "SAMPLE LADEN" };
-    juce::TextButton stDisksButton { "SAMPLES" };
+    juce::TextButton loadMenuButton { "LADEN" }; // Aufklapp-Menue: Sample/Song laden + Importieren
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
     juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
-    juce::TextButton modButton { "MOD" };  // klassisches Amiga-.mod importieren
-    juce::TextButton xmButton { "XM" };    // FastTracker-2-.xm importieren
-    juce::TextButton tfmxButton { "TFMX" };// TFMX (Chris Huelsbeck) abspielen
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
-    juce::TextButton loadSongButton { "SONG OEFFNEN" };
     juce::TextButton helpButton { "?" };
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton langButton { "DE" };

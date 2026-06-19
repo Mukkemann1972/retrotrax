@@ -14,15 +14,10 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
-    addAndMakeVisible (loadButton);
-    addAndMakeVisible (stDisksButton);
+    addAndMakeVisible (loadMenuButton);
     addAndMakeVisible (sidButton);
     addAndMakeVisible (akaiButton);
-    addAndMakeVisible (modButton);
-    addAndMakeVisible (xmButton);
-    addAndMakeVisible (tfmxButton);
     addAndMakeVisible (saveSongButton);
-    addAndMakeVisible (loadSongButton);
     addAndMakeVisible (helpButton);
     addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (langButton);
@@ -61,12 +56,37 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     playButton.onClick = [this] { proc.engine.play(); updateTransportButtons(); };
     stopButton.onClick = [this] { proc.engine.stop(); updateTransportButtons(); };
-    loadButton.onClick = [this] { loadSampleClicked(); };
     saveSongButton.onClick = [this] { saveSongClicked(); };
-    loadSongButton.onClick = [this] { loadSongClicked(); };
-    modButton.onClick = [this] { loadModClicked(); };
-    xmButton.onClick = [this] { loadXmClicked(); };
-    tfmxButton.onClick = [this] { loadTfmxClicked(); };
+    // EIN Lade-Knopf statt vieler: oeffnet ein Aufklapp-Menue mit allem zum Laden
+    // (Sample, Sample-Browser, Song) und einem Untermenue "Importieren" (MOD/XM/TFMX).
+    loadMenuButton.onClick = [this]
+    {
+        juce::PopupMenu m;
+        m.addItem (1, loc::t ("Sample laden ...", "Load sample ..."));
+        m.addItem (2, loc::t ("Sample-Browser (ST-Disks) ...", "Sample browser (ST-Disks) ..."));
+        m.addSeparator();
+        m.addItem (3, loc::t ("Song oeffnen ...", "Open song ..."));
+        m.addSeparator();
+        juce::PopupMenu imp;
+        imp.addItem (10, loc::t ("Amiga MOD (.mod) ...", "Amiga MOD (.mod) ..."));
+        imp.addItem (11, loc::t ("FastTracker XM (.xm) ...", "FastTracker XM (.xm) ..."));
+        imp.addItem (12, loc::t ("TFMX - Huelsbeck (.tfmx/.mdat) ...", "TFMX - Huelsbeck (.tfmx/.mdat) ..."));
+        m.addSubMenu (loc::t ("Importieren", "Import"), imp);
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&loadMenuButton),
+            [this] (int r)
+            {
+                switch (r)
+                {
+                    case 1:  loadSampleClicked(); break;
+                    case 2:  diskBrowser.setVisible (true); diskBrowser.toFront (false); break;
+                    case 3:  loadSongClicked(); break;
+                    case 10: loadModClicked(); break;
+                    case 11: loadXmClicked(); break;
+                    case 12: loadTfmxClicked(); break;
+                    default: break;
+                }
+            });
+    };
 
     helpButton.onClick = [this]
     {
@@ -134,18 +154,11 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         updateSongUi(); grid.grabKeyboardFocus();
     };
 
-    // Der Knopf OEFFNET nur - ein versehentlicher Doppelklick schliesst nichts.
-    // Zu ist der Browser erst per SCHLIESSEN-Knopf oder ESC.
-    stDisksButton.onClick = [this]
-    {
-        diskBrowser.setVisible (true);
-        stDisksButton.setToggleState (true, juce::dontSendNotification);
-        diskBrowser.toFront (false);
-    };
+    // Der Sample-Browser oeffnet ueber das LADEN-Menue; zu ist er erst per
+    // SCHLIESSEN-Knopf oder ESC.
     diskBrowser.onClose = [this]
     {
         diskBrowser.setVisible (false);
-        stDisksButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
     diskBrowser.onSampleLoaded = [this] (const juce::String& name, int slot)
@@ -564,18 +577,10 @@ void RetroTraxEditor::setDefaultHint()
 void RetroTraxEditor::applyLanguage()
 {
     langButton.setButtonText (loc::code()); // zeigt die aktuelle Sprache (DE/EN)
-    loadButton.setButtonText     (loc::t ("SAMPLE LADEN", "LOAD SAMPLE"));
+    loadMenuButton.setButtonText (loc::t ("LADEN", "LOAD"));
+    loadMenuButton.setTooltip (loc::t ("Sample oder Song laden, Sample-Browser, oder ein Modul importieren (MOD/XM/TFMX)",
+                                       "Load a sample or song, open the sample browser, or import a module (MOD/XM/TFMX)"));
     saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
-    loadSongButton.setButtonText (loc::t ("SONG OEFFNEN", "OPEN SONG"));
-    modButton.setButtonText      (loc::t ("MOD", "MOD"));
-    modButton.setTooltip (loc::t ("Klassisches Amiga-MOD (.mod) importieren - Samples, Patterns und Reihenfolge",
-                                  "Import a classic Amiga MOD (.mod) - samples, patterns and order"));
-    xmButton.setButtonText       (loc::t ("XM", "XM"));
-    xmButton.setTooltip (loc::t ("FastTracker-2-Modul (.xm) importieren - Samples, Patterns und Reihenfolge",
-                                 "Import a FastTracker 2 module (.xm) - samples, patterns and order"));
-    tfmxButton.setButtonText     (loc::t ("TFMX", "TFMX"));
-    tfmxButton.setTooltip (loc::t ("TFMX-Modul (Chris Huelsbeck, Amiga) oeffnen - .mdat + .smpl. Eigener Replayer, kein Grid-Import.",
-                                   "Open a TFMX module (Chris Huelsbeck, Amiga) - .mdat + .smpl. Own replayer, not a grid import."));
     instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
@@ -636,8 +641,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.36 | Stumm/Solo pro Spur (M/S im Spurkopf)",
-                        "v0.36 | Mute/Solo per track (M/S in track header)"),
+    g.drawText (loc::t ("v0.37 | Ein LADEN-Menue: Sample/Song/Import gebuendelt",
+                        "v0.37 | One LOAD menu: sample/song/import bundled"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -667,8 +672,6 @@ void RetroTraxEditor::resized()
     songRow.removeFromRight (6);
     liveHelpButton.setBounds (songRow.removeFromRight (60));
     songRow.removeFromRight (12);
-    loadSongButton.setBounds (songRow.removeFromRight (118));
-    songRow.removeFromRight (8);
     saveSongButton.setBounds (songRow.removeFromRight (140));
 
     area.removeFromTop (54); // Titelzeile (nur paint)
@@ -688,19 +691,11 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (4);
     instrumentBox.setBounds (controls.removeFromLeft (150));
     controls.removeFromLeft (10);
-    loadButton.setBounds (controls.removeFromLeft (130));
-    controls.removeFromLeft (6);
-    stDisksButton.setBounds (controls.removeFromLeft (84));
+    loadMenuButton.setBounds (controls.removeFromLeft (110));
     controls.removeFromLeft (6);
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
     akaiButton.setBounds (controls.removeFromLeft (70));
-    controls.removeFromLeft (6);
-    modButton.setBounds (controls.removeFromLeft (56));
-    controls.removeFromLeft (6);
-    xmButton.setBounds (controls.removeFromLeft (44));
-    controls.removeFromLeft (6);
-    tfmxButton.setBounds (controls.removeFromLeft (64));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
