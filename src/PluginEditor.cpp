@@ -2,7 +2,7 @@
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p),
-      spectrumPanel (p)
+      kitPanel (p), spectrumPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -13,12 +13,14 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
     addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
     addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
+    addChildComponent (kitPanel);    // unsichtbar, bis KIT gedrueckt wird
     addChildComponent (spectrumPanel); // unsichtbar, bis SPEKTRUM gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
     addAndMakeVisible (loadMenuButton);
     addAndMakeVisible (sidButton);
     addAndMakeVisible (akaiButton);
+    addAndMakeVisible (kitButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (wavButton);
     addAndMakeVisible (helpButton);
@@ -251,6 +253,21 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         akaiPanel.setVisible (false);
         akaiButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+
+    kitButton.onClick = [this]
+    {
+        kitPanel.refresh();
+        kitPanel.setVisible (true);
+        kitButton.setToggleState (true, juce::dontSendNotification);
+        kitPanel.toFront (false);
+        kitPanel.grabKeyboardFocus();
+    };
+    kitPanel.onClose = [this]
+    {
+        kitPanel.setVisible (false);
+        kitButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
 
@@ -776,6 +793,10 @@ void RetroTraxEditor::applyLanguage()
 
     sidButton.setTooltip (loc::t ("Aktuellen Slot zu einem SID-Synth machen (Wellenform + Huellkurve)",
                                   "Turn the current slot into a SID synth (waveform + envelope)"));
+    kitButton.setButtonText (loc::t ("KIT", "KIT"));
+    kitButton.setTooltip (loc::t ("Drum-Kit: 16 Pads im MPC60/SP-1200-Stil zum Trommeln (eigene Samples)",
+                                  "Drum kit: 16 pads in MPC60/SP-1200 style for finger drumming (own samples)"));
+    kitPanel.applyLanguage();
     akaiButton.setButtonText (loc::t ("AKAI", "AKAI"));
     akaiButton.setTooltip (loc::t ("Akai-Sampler-Filter fuer das aktuelle Sample (resonanter Tiefpass + 12-Bit-Crunch)",
                                    "Akai sampler filter for the current sample (resonant low-pass + 12-bit crunch)"));
@@ -809,8 +830,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.42 | Loop-Crossfade (smooth loopen)",
-                        "v0.42 | Loop crossfade (smooth loops)"),
+    g.drawText (loc::t ("v0.43 | Drum-Kit (16 Pads, MPC/SP-1200)",
+                        "v0.43 | Drum kit (16 pads, MPC/SP-1200)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -868,6 +889,8 @@ void RetroTraxEditor::resized()
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
     akaiButton.setBounds (controls.removeFromLeft (70));
+    controls.removeFromLeft (6);
+    kitButton.setBounds (controls.removeFromLeft (64));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
@@ -896,5 +919,6 @@ void RetroTraxEditor::resized()
     helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     akaiPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
+    kitPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     spectrumPanel.setBounds (gridArea); // ebenfalls Overlay ueber dem Grid
 }

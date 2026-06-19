@@ -314,6 +314,85 @@ void RetroTraxProcessor::editSample (int slot, std::function<void (TrackerEngine
     fn (*p);
 }
 
+// --- Drum-Kit -----------------------------------------------------------------
+
+bool RetroTraxProcessor::loadPad (int pad, const juce::File& file)
+{
+    if (pad < 0 || pad >= TrackerEngine::kPads)
+        return false;
+    auto inst = createInstrument (file);
+    if (inst == nullptr)
+        return false;
+    engine.setPad (pad, std::move (inst));
+    return true;
+}
+
+void RetroTraxProcessor::clearPad (int pad)
+{
+    engine.clearPad (pad);
+}
+
+bool RetroTraxProcessor::getPadName (int pad, juce::String& name) const
+{
+    const juce::ScopedLock sl (engine.lock);
+    const auto* p = engine.getPad (pad);
+    if (p == nullptr)
+        return false;
+    name = p->name;
+    return true;
+}
+
+bool RetroTraxProcessor::getPad (int pad, TrackerEngine::Instrument& out) const
+{
+    const juce::ScopedLock sl (engine.lock);
+    const auto* p = engine.getPad (pad);
+    if (p == nullptr)
+        return false;
+    out.name          = p->name;
+    out.akaiOn        = p->akaiOn;
+    out.akaiCutoff    = p->akaiCutoff;
+    out.akaiResonance = p->akaiResonance;
+    out.akai12bit     = p->akai12bit;
+    out.reverse       = p->reverse;
+    out.srReduction   = p->srReduction;
+    out.loopMode      = p->loopMode;
+    out.loopXfade     = p->loopXfade;
+    out.drive         = p->drive;
+    out.vintagePitch  = p->vintagePitch;
+    out.sourceRate    = p->sourceRate;
+    return true;
+}
+
+void RetroTraxProcessor::editPad (int pad, std::function<void (TrackerEngine::Instrument&)> fn)
+{
+    const juce::ScopedLock sl (engine.lock);
+    if (auto* p = const_cast<TrackerEngine::Instrument*> (engine.getPad (pad)))
+        fn (*p);
+}
+
+bool RetroTraxProcessor::padToSlot (int pad, int slot)
+{
+    const juce::ScopedLock sl (engine.lock);
+    const auto* src = engine.getPad (pad);
+    if (src == nullptr || slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    engine.setInstrument (slot, std::make_unique<TrackerEngine::Instrument> (*src)); // tiefe Kopie
+    return true;
+}
+
+bool RetroTraxProcessor::slotToPad (int slot, int pad)
+{
+    const juce::ScopedLock sl (engine.lock);
+    if (slot < 0 || slot >= TrackerEngine::kInstruments || pad < 0 || pad >= TrackerEngine::kPads)
+        return false;
+    const auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Sample
+        || p->data.getNumSamples() < 2)
+        return false;
+    engine.setPad (pad, std::make_unique<TrackerEngine::Instrument> (*p)); // tiefe Kopie
+    return true;
+}
+
 std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
 {
     auto xml = std::make_unique<juce::XmlElement> ("RETROTRAX");
@@ -391,6 +470,32 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         }
     }
 
+    // Drum-Kit-Pads (16). Wie bei den Sample-Slots per Dateipfad referenziert,
+    // plus der Sampler-Charakter (12-Bit/Loop/Drive...). Pads ohne Dateipfad
+    // (z.B. spaeter gezeichnete) bleiben hier vorerst aussen vor.
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+    {
+        const juce::ScopedLock sl (engine.lock);
+        const auto* pad = engine.getPad (p);
+        if (pad == nullptr || pad->filePath.isEmpty())
+            continue;
+        auto* e = xml->createNewChildElement ("PAD");
+        e->setAttribute ("idx", p);
+        e->setAttribute ("name", pad->name);
+        e->setAttribute ("path", pad->filePath);
+        e->setAttribute ("akon", pad->akaiOn ? 1 : 0);
+        e->setAttribute ("akcut", pad->akaiCutoff);
+        e->setAttribute ("akres", pad->akaiResonance);
+        e->setAttribute ("ak12", pad->akai12bit ? 1 : 0);
+        e->setAttribute ("rev", pad->reverse ? 1 : 0);
+        e->setAttribute ("srr", pad->srReduction);
+        e->setAttribute ("loop", (int) pad->loopMode);
+        e->setAttribute ("lxf", pad->loopXfade);
+        e->setAttribute ("drv", pad->drive);
+        e->setAttribute ("vint", pad->vintagePitch ? 1 : 0);
+        e->setAttribute ("rate", pad->sourceRate);
+    }
+
     for (int p = 0; p < TrackerEngine::kMaxPatterns; ++p)
     {
         for (int r = 0; r < TrackerEngine::kRows; ++r)
@@ -430,6 +535,8 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
     // Alte Instrumente leeren, damit Slots eines frueheren Songs nicht zurueckbleiben.
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
         engine.setInstrument (i, nullptr);
+    for (int p = 0; p < TrackerEngine::kPads; ++p) // Drum-Kit auch leeren
+        engine.clearPad (p);
 
     engine.clearAllCells();
 
@@ -500,6 +607,32 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                 if (name.isEmpty())
                     name = f.getFileNameWithoutExtension();
                 missingSamples->add (name);
+            }
+        }
+        else if (e->hasTagName ("PAD"))
+        {
+            const int idx = e->getIntAttribute ("idx", -1);
+            const juce::File f (e->getStringAttribute ("path"));
+            if (idx >= 0 && idx < TrackerEngine::kPads && f.existsAsFile() && loadPad (idx, f))
+            {
+                const juce::ScopedLock sl (engine.lock);
+                if (auto* pad = const_cast<TrackerEngine::Instrument*> (engine.getPad (idx)))
+                {
+                    pad->akaiOn        = e->getIntAttribute ("akon", 0) != 0;
+                    pad->akaiCutoff    = (float) e->getDoubleAttribute ("akcut", 1.0);
+                    pad->akaiResonance = (float) e->getDoubleAttribute ("akres", 0.12);
+                    pad->akai12bit     = e->getIntAttribute ("ak12", 0) != 0;
+                    pad->reverse       = e->getIntAttribute ("rev", 0) != 0;
+                    pad->srReduction   = (float) e->getDoubleAttribute ("srr", 0.0);
+                    pad->loopMode      = (TrackerEngine::Instrument::Loop)
+                                             juce::jlimit (0, 2, e->getIntAttribute ("loop", 0));
+                    pad->loopXfade     = (float) e->getDoubleAttribute ("lxf", 0.0);
+                    pad->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
+                    pad->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
+                    pad->sourceRate    = e->getDoubleAttribute ("rate", pad->sourceRate);
+                    if (e->getStringAttribute ("name").isNotEmpty())
+                        pad->name = e->getStringAttribute ("name");
+                }
             }
         }
         else if (e->hasTagName ("C"))

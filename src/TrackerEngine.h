@@ -14,6 +14,7 @@ public:
     static constexpr int kTracks      = 16;
     static constexpr int kRows        = 64;
     static constexpr int kInstruments = 31;  // 31 wie im Amiga-MOD (frei mischbar Sample/SID)
+    static constexpr int kPads        = 16;  // Drum-Kit: 4x4 Pads (MPC60/SP-1200-Stil), eigene Samples
     static constexpr int kMaxNote     = 119; // bis Oktave 9
     static constexpr int kMaxPatterns = 64;  // so viele eigene Patterns kann ein Song haben
     static constexpr int kMaxOrder    = 128; // so lang darf die Abspiel-Reihenfolge sein
@@ -250,6 +251,50 @@ public:
         preview = std::move (inst);
         if (preview != nullptr)
             startVoice (kTracks, 60, preview.get(), -1); // C-5 = Originaltonhoehe
+    }
+
+    // --- Drum-Kit (16 Pads, MPC60/SP-1200-Stil) -----------------------------
+    // Ein eigenstaendiges 16er-Sample-Bank NEBEN den Spur-Slots: zum Finger-
+    // Trommeln/Vorhoeren. Jedes Pad ist ein ganz normales Instrument (Sample),
+    // also frei zwischen Pad/Slot/Grabber/Editor schiebbar. Die Pads gehoeren der
+    // Engine (wie 'preview'), damit der Audio-Thread sicher darauf zugreift.
+    void setPad (int pad, std::unique_ptr<Instrument> inst)
+    {
+        const juce::ScopedLock sl (lock);
+        if (pad < 0 || pad >= kPads)
+            return;
+        for (auto& v : voices)               // alte Stimme auf diesem Pad stoppen
+            if (v.inst == kitPads[pad].get())
+                v.active = false;
+        kitPads[pad] = std::move (inst);
+    }
+
+    void clearPad (int pad)
+    {
+        setPad (pad, nullptr);
+    }
+
+    bool padHasSound (int pad) const
+    {
+        const juce::ScopedLock sl (lock);
+        return pad >= 0 && pad < kPads && kitPads[pad] != nullptr;
+    }
+
+    // Lese-Zugriff auf ein Pad (Speichern/Kopieren). Aufrufer sollte engine.lock
+    // halten, wenn parallel setPad laufen kann (JUCE-CriticalSection ist rekursiv).
+    const Instrument* getPad (int pad) const
+    {
+        return (pad >= 0 && pad < kPads) ? kitPads[pad].get() : nullptr;
+    }
+
+    // Pad anschlagen (Vorhoer-/MIDI-Stimme, Index kTracks) - blockiert keinen Slot.
+    void auditionPad (int pad, int note = 60, int gateSamples = -1)
+    {
+        const juce::ScopedLock sl (lock);
+        if (pad < 0 || pad >= kPads || kitPads[pad] == nullptr)
+            return;
+        startVoice (kTracks, note, kitPads[pad].get(), -1);
+        voices[kTracks].gate = gateSamples;
     }
 
     void clearAllCells()
@@ -1097,6 +1142,7 @@ private:
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme
     SidChip sidChips[kTracks + 1]; // ein echter reSIDfp-Chip pro Stimme (inkl. Vorhoeren)
     std::unique_ptr<Instrument> preview; // Sample der ST-Disks-Vorschau
+    std::unique_ptr<Instrument> kitPads[kPads]; // Drum-Kit: 16 Pads (eigene Samples)
     double sampleRate = 44100.0;
     double samplesUntilTick = 0.0;
     int    currentTick = 0; // 0 = Zeilenanfang, 1..speed-1 = Zwischenticks

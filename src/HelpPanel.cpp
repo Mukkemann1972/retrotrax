@@ -675,6 +675,39 @@ void HelpPanel::rebuild()
             "Note: every used region comes out - including tiny waveform snippets.\n"
             "Just leave or delete what you don't need.") });
 
+    topics.add ({ loc::t ("Drum-Kit (16 Pads)", "Drum kit (16 pads)"),
+        loc::t (
+            "Der KIT-Knopf oeffnet das Drum-Kit im Stil der klassischen Drum-Sampler\n"
+            "(MPC60, E-mu SP-1200): ein 4x4-Pad-Feld mit 16 EIGENEN Samples, getrennt\n"
+            "von den 16 Spur-Slots - zum Finger-Trommeln und Klang-Basteln.\n\n"
+            "- Pad anklicken spielt es (und leuchtet auf). Per Tastatur trommeln:\n"
+            "  1 2 3 4 / Q W E R / A S D F / Y X C V (oben links = Pad 13, unten\n"
+            "  links = Pad 1, wie auf einer echten MPC).\n"
+            "- LADEN legt ein Sample ins gewaehlte Pad (Doppelklick auf ein leeres\n"
+            "  Pad geht auch). LEEREN raeumt es wieder weg.\n"
+            "- -> SLOT kopiert das Pad in den aktuellen Spur-Slot, damit du es im\n"
+            "  Tracker benutzen kannst; SLOT -> holt umgekehrt das Sample aus dem\n"
+            "  aktuellen Slot ins Pad. So wandern Klaenge frei hin und her\n"
+            "  (auch TFMX-Grabber-Beute oder Browser-Sounds).\n\n"
+            "Das Kit wird im Song (.retrotrax) mitgespeichert. Jedes Pad ist ein\n"
+            "ganz normales Sample - der Akai-Filter, 12-Bit, Loop usw. lassen sich\n"
+            "spaeter genauso darauf anwenden.",
+            "The KIT button opens the drum kit in the style of the classic drum\n"
+            "samplers (MPC60, E-mu SP-1200): a 4x4 pad grid with 16 OWN samples,\n"
+            "separate from the 16 track slots - for finger drumming and sound design.\n\n"
+            "- Click a pad to play it (it lights up). Finger-drum on the keyboard:\n"
+            "  1 2 3 4 / Q W E R / A S D F / Z X C V (top left = pad 13, bottom left\n"
+            "  = pad 1, like a real MPC).\n"
+            "- LOAD puts a sample into the selected pad (double-clicking an empty pad\n"
+            "  works too). CLEAR removes it again.\n"
+            "- -> SLOT copies the pad into the current track slot so you can use it in\n"
+            "  the tracker; SLOT -> grabs the sample from the current slot into the\n"
+            "  pad. Sounds move freely both ways (TFMX-grabber loot or browser sounds\n"
+            "  included).\n\n"
+            "The kit is saved with the song (.retrotrax). Each pad is an ordinary\n"
+            "sample - the Akai filter, 12-bit, loop etc. can be applied to it later\n"
+            "just the same.") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

@@ -1,0 +1,274 @@
+#include "DrumKitPanel.h"
+
+DrumKitPanel::DrumKitPanel (RetroTraxProcessor& processor) : proc (processor)
+{
+    setWantsKeyboardFocus (true);
+
+    titleLabel.setFont (rt::mono (16.0f, true));
+    titleLabel.setColour (juce::Label::textColourId, rt::text);
+    addAndMakeVisible (titleLabel);
+
+    auto setupButton = [this] (juce::TextButton& b) { addAndMakeVisible (b); };
+    setupButton (loadButton);
+    setupButton (clearButton);
+    setupButton (toSlotButton);
+    setupButton (fromSlotBtn);
+    setupButton (closeButton);
+
+    loadButton.onClick   = [this] { loadIntoSelected(); };
+    clearButton.onClick  = [this] { proc.clearPad (selected); refresh(); repaint(); };
+    toSlotButton.onClick = [this]
+    {
+        const int slot = proc.currentInstrument.load();
+        if (proc.padToSlot (selected, slot))
+            setHint ("Pad " + juce::String (selected + 1) + " in Slot "
+                         + juce::String (slot + 1) + " kopiert.",
+                     "Pad " + juce::String (selected + 1) + " copied to slot "
+                         + juce::String (slot + 1) + ".");
+        else
+            setHint ("Dieses Pad ist leer.", "This pad is empty.");
+    };
+    fromSlotBtn.onClick = [this]
+    {
+        const int slot = proc.currentInstrument.load();
+        if (proc.slotToPad (slot, selected))
+        {
+            refresh(); repaint();
+            setHint ("Slot " + juce::String (slot + 1) + " in Pad "
+                         + juce::String (selected + 1) + " kopiert.",
+                     "Slot " + juce::String (slot + 1) + " copied to pad "
+                         + juce::String (selected + 1) + ".");
+        }
+        else
+            setHint ("Im aktuellen Slot liegt kein Sample.", "No sample in the current slot.");
+    };
+    closeButton.onClick = [this] { if (onClose) onClose(); };
+
+    hintLabel.setFont (rt::mono (12.0f, false));
+    hintLabel.setColour (juce::Label::textColourId, rt::textDim);
+    hintLabel.setJustificationType (juce::Justification::centredLeft);
+    addAndMakeVisible (hintLabel);
+
+    refresh();
+    applyLanguage();
+    startTimerHz (30);
+}
+
+DrumKitPanel::~DrumKitPanel()
+{
+    stopTimer();
+}
+
+void DrumKitPanel::applyLanguage()
+{
+    titleLabel.setText (loc::t ("DRUM-KIT (16 PADS)", "DRUM KIT (16 PADS)"),
+                        juce::dontSendNotification);
+    loadButton.setButtonText   (loc::t ("LADEN", "LOAD"));
+    loadButton.setTooltip (loc::t ("Sample-Datei in das gewaehlte Pad laden",
+                                   "Load a sample file into the selected pad"));
+    clearButton.setButtonText  (loc::t ("LEEREN", "CLEAR"));
+    toSlotButton.setButtonText (loc::t ("-> SLOT", "-> SLOT"));
+    toSlotButton.setTooltip (loc::t ("Pad-Sample in den aktuellen Spur-Slot kopieren (fuer den Tracker)",
+                                     "Copy the pad sample into the current track slot (for the tracker)"));
+    fromSlotBtn.setButtonText  (loc::t ("SLOT ->", "SLOT ->"));
+    fromSlotBtn.setTooltip (loc::t ("Sample aus dem aktuellen Spur-Slot in dieses Pad legen",
+                                    "Put the sample from the current track slot into this pad"));
+    closeButton.setButtonText  (loc::t ("SCHLIESSEN", "CLOSE"));
+    setHint ("Pad klicken oder per Tastatur (1234/QWER/ASDF/YXCV) trommeln.",
+             "Click a pad or finger-drum on the keyboard (1234/QWER/ASDF/ZXCV).");
+}
+
+void DrumKitPanel::refresh()
+{
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+    {
+        juce::String name;
+        padFilled[p] = proc.getPadName (p, name);
+        padNames[p]  = name;
+    }
+}
+
+void DrumKitPanel::setHint (const juce::String& de, const juce::String& en)
+{
+    hintLabel.setText (loc::t (de, en), juce::dontSendNotification);
+}
+
+// MPC-Layout: Pad 1 liegt UNTEN LINKS. Sichtzeile 0 (oben) zeigt Pad 13..16.
+int DrumKitPanel::padAtIndex (int visCol, int visRow) const
+{
+    return (3 - visRow) * 4 + visCol;
+}
+
+juce::Rectangle<int> DrumKitPanel::padBounds (int pad) const
+{
+    const int visCol = pad % 4;
+    const int visRow = 3 - (pad / 4);
+    const int cw = gridRect.getWidth()  / 4;
+    const int ch = gridRect.getHeight() / 4;
+    return { gridRect.getX() + visCol * cw, gridRect.getY() + visRow * ch, cw, ch };
+}
+
+int DrumKitPanel::padFromKey (const juce::KeyPress& key) const
+{
+    const auto c = (int) juce::CharacterFunctions::toLowerCase ((juce::juce_wchar) key.getTextCharacter());
+    static const char* const rows[4] = { "1234", "qwer", "asdf", "yxcv" };
+    for (int r = 0; r < 4; ++r)
+        for (int col = 0; col < 4; ++col)
+            if (c == (int) rows[r][col])
+                return padAtIndex (col, r);
+    if (c == (int) 'z') return padAtIndex (0, 3); // QWERTY-Variante fuer unten links
+    return -1;
+}
+
+void DrumKitPanel::triggerPad (int pad)
+{
+    if (pad < 0 || pad >= TrackerEngine::kPads)
+        return;
+    selected = pad;
+    proc.engine.auditionPad (pad, 60, -1); // C-5, einmal ganz durch (One-Shot)
+    padGlow[pad] = 1.0f;
+    repaint();
+}
+
+void DrumKitPanel::mouseDown (const juce::MouseEvent& e)
+{
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+    {
+        if (padBounds (p).contains (e.getPosition()))
+        {
+            selected = p;
+            if (padFilled[p])
+                triggerPad (p);
+            else if (e.getNumberOfClicks() >= 2)
+                loadIntoSelected();        // Doppelklick auf leeres Pad = laden
+            repaint();
+            return;
+        }
+    }
+}
+
+bool DrumKitPanel::keyPressed (const juce::KeyPress& key)
+{
+    if (key.getKeyCode() == juce::KeyPress::escapeKey)
+    {
+        if (onClose) onClose();
+        return true;
+    }
+    const int pad = padFromKey (key);
+    if (pad >= 0)
+    {
+        triggerPad (pad);
+        return true;
+    }
+    return false;
+}
+
+void DrumKitPanel::loadIntoSelected()
+{
+    chooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Sample fuer Pad ", "Sample for pad ") + juce::String (selected + 1),
+        juce::File::getSpecialLocation (juce::File::userMusicDirectory),
+        "*.wav;*.aiff;*.aif;*.flac;*.ogg;*.mp3;*.iff;*.8svx");
+
+    chooser->launchAsync (juce::FileBrowserComponent::openMode
+                              | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return;
+            if (proc.loadPad (selected, file))
+            {
+                refresh();
+                repaint();
+                triggerPad (selected); // gleich anspielen
+            }
+            else
+                setHint ("Konnte das Sample nicht laden.", "Could not load the sample.");
+        });
+}
+
+void DrumKitPanel::timerCallback()
+{
+    bool any = false;
+    for (auto& gphase : padGlow)
+    {
+        if (gphase > 0.0f)
+        {
+            gphase = juce::jmax (0.0f, gphase - 0.10f);
+            any = true;
+        }
+    }
+    if (any)
+        repaint (gridRect);
+}
+
+void DrumKitPanel::paint (juce::Graphics& g)
+{
+    g.fillAll (rt::bg);
+    g.setColour (rt::steel.withAlpha (0.7f));
+    g.drawRect (getLocalBounds(), 1);
+
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+    {
+        auto r = padBounds (p).toFloat().reduced (5.0f);
+
+        // Grundfarbe: dunkles Pad, leicht in der Instrument-Palettenfarbe getoent;
+        // belegte Pads etwas heller. Beim Anschlag in Richtung Bernstein aufleuchten.
+        auto base = (padFilled[p] ? rt::panel : rt::panel.darker (0.55f))
+                        .interpolatedWith (rt::instColour (p), padFilled[p] ? 0.22f : 0.09f);
+        if (padGlow[p] > 0.0f)
+            base = base.interpolatedWith (rt::cursor, 0.65f * padGlow[p]);
+
+        g.setColour (base);
+        g.fillRoundedRectangle (r, 7.0f);
+
+        // dezenter Hochglanz oben (Bevel) fuer das Geraete-Gefuehl.
+        g.setColour (juce::Colours::white.withAlpha (0.06f));
+        g.fillRoundedRectangle (r.withHeight (r.getHeight() * 0.45f).reduced (2.0f), 6.0f);
+
+        // Rahmen - gewaehltes Pad hell hervorheben.
+        const bool sel = (p == selected);
+        g.setColour (sel ? rt::steelHi : rt::steel.withAlpha (0.45f));
+        g.drawRoundedRectangle (r, 7.0f, sel ? 2.2f : 1.0f);
+
+        // Pad-Nummer oben links.
+        g.setColour (rt::textDim);
+        g.setFont (rt::mono (11.0f, true));
+        g.drawText (juce::String (p + 1),
+                    r.reduced (7.0f).removeFromTop (14.0f).toNearestInt(),
+                    juce::Justification::topLeft);
+
+        // Sample-Name (oder "leer") mittig.
+        g.setColour (padFilled[p] ? rt::text : rt::textDim);
+        g.setFont (rt::mono (12.0f, false));
+        const auto nm = padFilled[p] ? padNames[p] : loc::t ("leer", "empty");
+        g.drawFittedText (nm, r.reduced (8.0f).toNearestInt(),
+                          juce::Justification::centred, 2);
+    }
+}
+
+void DrumKitPanel::resized()
+{
+    auto area = getLocalBounds().reduced (14);
+
+    titleLabel.setBounds (area.removeFromTop (26));
+    area.removeFromTop (8);
+
+    // Unten: Knopfreihe + Hinweiszeile darueber.
+    auto bottom = area.removeFromBottom (34);
+    {
+        closeButton.setBounds (bottom.removeFromRight (140));
+        bottom.removeFromRight (10);
+        const int bw = (bottom.getWidth() - 3 * 8) / 4;
+        loadButton.setBounds   (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        clearButton.setBounds  (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        toSlotButton.setBounds (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        fromSlotBtn.setBounds  (bottom.removeFromLeft (bw));
+    }
+    area.removeFromBottom (6);
+    hintLabel.setBounds (area.removeFromBottom (20));
+    area.removeFromBottom (8);
+
+    gridRect = area; // der Rest ist das 4x4-Pad-Feld
+}

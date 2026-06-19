@@ -8,6 +8,7 @@
 #include "HelpPanel.h"
 #include "SidPanel.h"
 #include "AkaiPanel.h"
+#include "DrumKitPanel.h"
 #include "SpectrumPanel.h"
 #include "Localisation.h"
 
@@ -48,6 +49,7 @@ private:
     juce::TextButton loadMenuButton { "LADEN" }; // Aufklapp-Menue: Sample/Song laden + Importieren
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
     juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
+    juce::TextButton kitButton { "KIT" }; // Drum-Kit (16 Pads, MPC60/SP-1200-Stil)
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton wavButton { "WAV" }; // Song als WAV-Datei rausrendern
     juce::TextButton helpButton { "?" };
@@ -92,6 +94,7 @@ private:
     HelpPanel helpPanel;
     SidPanel sidPanel;
     AkaiPanel akaiPanel;
+    DrumKitPanel kitPanel;
     SpectrumPanel spectrumPanel;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;

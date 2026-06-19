@@ -59,6 +59,18 @@ public:
     // Veraendert die Parameter eines Sample-Slots in-place (legt nichts neu an).
     void editSample (int slot, std::function<void (TrackerEngine::Instrument&)> fn);
 
+    // --- Drum-Kit (16 Pads, MPC60/SP-1200-Stil) -----------------------------
+    // Eigenstaendige 16er-Sample-Bank, getrennt von den Spur-Slots, aber gebrueckt:
+    // ein Pad ist ein normales Instrument (Sample), frei zwischen Pad/Slot/Grabber
+    // verschiebbar. Geladen wird wie ein Sample (createInstrument).
+    bool loadPad (int pad, const juce::File& file);   // Datei in ein Pad laden
+    void clearPad (int pad);                          // Pad leeren
+    bool getPadName (int pad, juce::String& name) const;        // Anzeigename + ob belegt
+    bool getPad (int pad, TrackerEngine::Instrument& out) const; // Charakter lesen (wie getSample)
+    void editPad (int pad, std::function<void (TrackerEngine::Instrument&)> fn); // Charakter aendern
+    bool padToSlot (int pad, int slot);  // Pad-Sample in einen Spur-Slot kopieren
+    bool slotToPad (int slot, int pad);  // Spur-Slot-Sample in ein Pad kopieren
+
     // Den Song offline als Stereo-WAV (16 Bit) rausrendern: im Song-Modus die
     // ganze Reihenfolge einmal, sonst das aktuelle Pattern einmal. Laeuft schneller
     // als Echtzeit (Audio waehrenddessen ausgesetzt). 'message' = Zusammenfassung.

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MukkemannRetroTrax VERSION 0.42.0 LANGUAGES C CXX)
+project(MukkemannRetroTrax VERSION 0.43.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,6 +68,7 @@ target_sources(RetroTrax PRIVATE
     src/HelpPanel.cpp
     src/SidPanel.cpp
     src/AkaiPanel.cpp
+    src/DrumKitPanel.cpp
 )
 
 target_include_directories(RetroTrax PRIVATE src)
