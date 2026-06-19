@@ -353,7 +353,7 @@ public:
                 if (samplesUntilTick <= 0.5)
                 {
                     advanceTick();
-                    samplesUntilTick += samplesPerTick();
+                    samplesUntilTick += samplesPerTick() * swingFactor();
                 }
                 chunk = juce::jmin (numSamples, (int) std::ceil (samplesUntilTick));
                 samplesUntilTick -= chunk;
@@ -373,6 +373,10 @@ public:
 
     std::atomic<float> bpm { 125.0f };
     std::atomic<int>   speed { 6 }; // Ticks pro Zeile (Fxx mit Param < 0x20)
+    // Swing/Groove (das MPC-Geheimnis): verlaengert paarweise die geraden Zeilen
+    // und verkuerzt die ungeraden -> Shuffle-Feel; das Tempo bleibt gleich.
+    // 0 = gerade (aus), bis ~0.8 = starker Shuffle.
+    std::atomic<float> swing { 0.0f };
     std::atomic<bool>  playing { false };
     std::atomic<int>   currentRow { 0 };
 
@@ -481,6 +485,17 @@ private:
     double samplesPerTick() const
     {
         return sampleRate * 2.5 / juce::jmax (20.0f, bpm.load());
+    }
+
+    // Swing-Faktor fuer die GERADE klingende Zeile: paarweise laenger/kuerzer,
+    // Summe konstant (Tempo bleibt). Wird auf die Tick-Laenge multipliziert.
+    double swingFactor() const
+    {
+        const float s = juce::jlimit (0.0f, 0.8f, swing.load());
+        if (s <= 0.0f)
+            return 1.0;
+        return (currentRow.load() % 2 == 0) ? (1.0 + 0.5 * (double) s)
+                                            : (1.0 - 0.5 * (double) s);
     }
 
     // Abspielschritt fuer eine Note. Beim Sample: Samples pro Ausgabe-Sample

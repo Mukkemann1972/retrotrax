@@ -769,6 +769,23 @@ void HelpPanel::rebuild()
             "Both are off by default, so your sound stays unchanged until you turn MIX\n"
             "up. The settings are saved with the song (.retrotrax).") });
 
+    topics.add ({ loc::t ("Swing / Groove", "Swing / groove"),
+        loc::t (
+            "Der SWING-Regler (oben neben BPM) gibt deinem Beat den Groove - das\n"
+            "Geheimnis der alten MPC/SP-1200. Bei 0 % laeuft alles streng aufs Raster\n"
+            "(gerade). Drehst du auf, werden die geraden und ungeraden Zeilen leicht\n"
+            "gegeneinander versetzt (laenger/kuerzer im Wechsel) - der typische\n"
+            "Shuffle/Swing. Das Tempo bleibt dabei gleich.\n\n"
+            "Wenig (10-20 %) macht es schon lebendiger, mehr (30-50 %) ergibt den\n"
+            "deutlichen HipHop/Funk-Schwung. Wird im Song mitgespeichert.",
+            "The SWING slider (top, next to BPM) gives your beat its groove - the\n"
+            "secret of the old MPC/SP-1200. At 0 % everything is strictly on the grid\n"
+            "(straight). Turn it up and even/odd rows shift slightly against each\n"
+            "other (alternating longer/shorter) - the classic shuffle/swing. The\n"
+            "tempo stays the same.\n\n"
+            "A little (10-20 %) already feels more alive, more (30-50 %) gives the\n"
+            "clear hip-hop/funk swing. Saved with the song.") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

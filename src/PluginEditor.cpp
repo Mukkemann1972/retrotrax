@@ -311,6 +311,15 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     bpmSlider.setTextValueSuffix (" BPM");
     bpmSlider.onValueChange = [this] { proc.engine.bpm = (float) bpmSlider.getValue(); };
 
+    swingSlider.setSliderStyle (juce::Slider::LinearBar);
+    swingSlider.setRange (0.0, 80.0, 1.0);
+    swingSlider.setValue ((double) proc.engine.swing.load() * 100.0, juce::dontSendNotification);
+    swingSlider.setTextValueSuffix (" % Swing");
+    swingSlider.setTooltip (loc::t ("Swing/Groove: gerade/ungerade Zeilen versetzt - der MPC-Shuffle (0 = gerade)",
+                                    "Swing/groove: offsets even/odd rows - the MPC shuffle (0 = straight)"));
+    swingSlider.onValueChange = [this] { proc.engine.swing = (float) (swingSlider.getValue() / 100.0); };
+    addAndMakeVisible (swingSlider);
+
     for (int i = 1; i <= TrackerEngine::kInstruments; ++i)
         instrumentBox.addItem (juce::String::formatted ("%02d ", i) + loc::t ("(leer)", "(empty)"), i);
     instrumentBox.setSelectedId (proc.currentInstrument.load() + 1, juce::dontSendNotification);
@@ -746,6 +755,7 @@ void RetroTraxEditor::grabTfmxClicked()
 void RetroTraxEditor::syncUiFromState()
 {
     bpmSlider.setValue ((double) proc.engine.bpm.load(), juce::dontSendNotification);
+    swingSlider.setValue ((double) proc.engine.swing.load() * 100.0, juce::dontSendNotification);
     octaveBox.setSelectedId (proc.currentOctave.load(), juce::dontSendNotification);
     instrumentBox.setSelectedId (proc.currentInstrument.load() + 1, juce::dontSendNotification);
     refreshInstrumentBox();
@@ -872,8 +882,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.49 | Master-FX: Echo + Hall",
-                        "v0.49 | Master FX: echo + reverb"),
+    g.drawText (loc::t ("v0.50 | Swing/Groove (MPC-Shuffle)",
+                        "v0.50 | Swing/groove (MPC shuffle)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -917,6 +927,8 @@ void RetroTraxEditor::resized()
     stopButton.setBounds (controls.removeFromLeft (74));
     controls.removeFromLeft (14);
     bpmSlider.setBounds (controls.removeFromLeft (110));
+    controls.removeFromLeft (8);
+    swingSlider.setBounds (controls.removeFromLeft (110));
     controls.removeFromLeft (14);
     octLabel.setBounds (controls.removeFromLeft (52));
     octaveBox.setBounds (controls.removeFromLeft (58));

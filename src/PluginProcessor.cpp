@@ -611,6 +611,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
     auto xml = std::make_unique<juce::XmlElement> ("RETROTRAX");
     xml->setAttribute ("version", 1);
     xml->setAttribute ("bpm", (double) engine.bpm.load());
+    xml->setAttribute ("swing", (double) engine.swing.load());
     xml->setAttribute ("instrument", currentInstrument.load());
     xml->setAttribute ("octave", currentOctave.load());
     xml->setAttribute ("echoTime", (double) echoTimeMs.load());
@@ -748,6 +749,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
 void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::StringArray* missingSamples)
 {
     engine.bpm = (float) xml.getDoubleAttribute ("bpm", 125.0);
+    engine.swing = (float) xml.getDoubleAttribute ("swing", 0.0);
     currentInstrument = juce::jlimit (0, TrackerEngine::kInstruments - 1,
                                       xml.getIntAttribute ("instrument", 0));
     currentOctave = juce::jlimit (1, 8, xml.getIntAttribute ("octave", 5));

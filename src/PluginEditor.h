@@ -72,6 +72,7 @@ private:
     juce::Label patLabel;
     juce::Label orderLabel;
     juce::Slider bpmSlider;
+    juce::Slider swingSlider; // Swing/Groove (0..80 %)
     juce::ComboBox instrumentBox;
     juce::ComboBox octaveBox;
     juce::Label instLabel { {}, "INSTR" };
