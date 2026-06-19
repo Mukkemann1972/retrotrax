@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.54 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.55 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -141,6 +141,10 @@ Ein Projekt aus dem Mukkemann-Universum.
   Mix (wie Renoises Master-Track) — **Echo** (Delay mit Rückkopplung) und **Hall**
   (Reverb) **und ein 3-Band-EQ** (Bass/Mitten/Höhen), standardmäßig aus/flach, im
   Song gespeichert
+- **Wellenform-Generator** ✅: einfache Single-Cycle-Wellen (Sinus/Säge/Rechteck/
+  Dreieck/Puls) in einen Slot erzeugen — loopt als Oszillator, ganz ohne Sample
+- **Zufallsmelodie (WÜRFEL)** ✅: würfelt eine Moll-Pentatonik-Melodie in die
+  Cursor-Spur — sofort Inspiration gegen das leere Blatt (Strg+Z zurück)
 - **Swing / Groove** ✅: der **SWING**-Regler (neben BPM) versetzt gerade/ungerade
   Zeilen gegeneinander — der MPC/SP-1200-Shuffle, der den Beat lebendig macht
   (Tempo bleibt gleich, 0 % = gerade)

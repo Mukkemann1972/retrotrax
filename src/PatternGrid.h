@@ -28,6 +28,7 @@ public:
     // 'step' Zeilen schnappen (z.B. 2 = Achtel, 4 = Viertel). Rueckgaengig-faehig.
     // Vom Editor (QUANT-Knopf) aufgerufen.
     void quantize (int step);
+    void randomMelody(); // Cursor-Spur mit einer Moll-Pentatonik-Zufallsmelodie fuellen
 
 private:
     void timerCallback() override;

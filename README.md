@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.54 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.55 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -138,6 +138,10 @@ A project from the Mukkemann universe.
 - **Master FX (echo & reverb)** ✅: the **FX** button opens effects for the whole
   mix (like Renoise's master track) — **echo** (delay with feedback) and **reverb**,
   **and a 3-band EQ** (low/mid/high), off/flat by default, saved with the song
+- **Waveform generator** ✅: create simple single-cycle waves (sine/saw/square/
+  triangle/pulse) into a slot — loops as an oscillator, with no sample at all
+- **Random melody (DICE)** ✅: rolls a minor-pentatonic melody into the cursor
+  track — instant inspiration against the blank page (Ctrl+Z to undo)
 - **Swing / groove** ✅: the **SWING** slider (next to BPM) offsets even/odd rows
   against each other — the MPC/SP-1200 shuffle that brings the beat to life (tempo
   stays the same, 0 % = straight)

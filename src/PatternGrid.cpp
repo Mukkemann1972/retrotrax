@@ -354,6 +354,32 @@ void PatternGrid::quantize (int step)
     emitCursorInfo();
 }
 
+void PatternGrid::randomMelody()
+{
+    pushUndo(); // mit Strg+Z umkehrbar
+    static const int pent[10] = { 0, 3, 5, 7, 10, 12, 15, 17, 19, 22 }; // Moll-Pentatonik, 2 Oktaven
+    auto& rng = juce::Random::getSystemRandom();
+    const int inst = proc.currentInstrument.load();
+    const int root = juce::jlimit (0, 96, proc.currentOctave.load() * 12); // C der Oktave
+    {
+        const juce::ScopedLock sl (engine.lock);
+        const int t = juce::jlimit (0, TrackerEngine::kTracks - 1, cursorTrack);
+        for (int r = 0; r < TrackerEngine::kRows; ++r)
+            engine.cells[r][t] = TrackerEngine::Cell();
+        for (int r = 0; r < TrackerEngine::kRows; r += 2) // Achtel-Raster
+        {
+            if (rng.nextFloat() < 0.7f)
+            {
+                auto& c = engine.cells[r][t];
+                c.note       = juce::jlimit (0, TrackerEngine::kMaxNote, root + pent[rng.nextInt (10)]);
+                c.instrument = inst;
+            }
+        }
+    }
+    repaint();
+    emitCursorInfo();
+}
+
 void PatternGrid::pushUndo()
 {
     undoStack.push_back (takeSnapshot());

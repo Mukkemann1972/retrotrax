@@ -38,6 +38,15 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (orderDelButton);
     addAndMakeVisible (quantBox);
     addAndMakeVisible (quantButton);
+    addAndMakeVisible (randomButton);
+    randomButton.onClick = [this]
+    {
+        grid.randomMelody();
+        hintLabel.setText (loc::t ("Zufallsmelodie in die Spur gewuerfelt (Strg+Z macht es rueckgaengig)",
+                                   "Random melody rolled into the track (Ctrl+Z to undo)"),
+                           juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
     // Raster-Auswahl: ID = Schrittweite in Zeilen (4 Zeilen/Beat = 16tel-Standard).
     quantBox.addItem ("1/8", 2);
     quantBox.addItem ("1/4", 4);
@@ -832,6 +841,9 @@ void RetroTraxEditor::applyLanguage()
 
     songModeButton.setTooltip (loc::t ("LOOP = aktuelles Pattern wiederholen | SONG = die ganze Reihe abspielen",
                                        "LOOP = repeat current pattern | SONG = play the whole order"));
+    randomButton.setButtonText (loc::t ("WUERFEL", "DICE"));
+    randomButton.setTooltip (loc::t ("Wuerfelt eine Moll-Pentatonik-Melodie in die Cursor-Spur - sofort Inspiration (Strg+Z zurueck)",
+                                     "Rolls a minor-pentatonic melody into the cursor track - instant inspiration (Ctrl+Z to undo)"));
     quantButton.setButtonText (loc::t ("QUANT", "QUANT"));
     quantButton.setTooltip (loc::t ("Aufgenommene Noten im Pattern aufs gewaehlte Raster schnappen (Strg+Z macht es rueckgaengig)",
                                      "Snap the recorded notes in the pattern to the chosen grid (Ctrl+Z to undo)"));
@@ -897,8 +909,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.54 | Wellenform-Generator (Single-Cycle)",
-                        "v0.54 | Waveform generator (single-cycle)"),
+    g.drawText (loc::t ("v0.55 | WUERFEL: Zufallsmelodie (Pentatonik)",
+                        "v0.55 | DICE: random melody (pentatonic)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -982,6 +994,8 @@ void RetroTraxEditor::resized()
     quantBox.setBounds (song.removeFromLeft (72));
     song.removeFromLeft (4);
     quantButton.setBounds (song.removeFromLeft (72));
+    song.removeFromLeft (8);
+    randomButton.setBounds (song.removeFromLeft (84));
     song.removeFromLeft (12);
     orderLabel.setBounds (song);
 

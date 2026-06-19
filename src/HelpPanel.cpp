@@ -809,6 +809,19 @@ void HelpPanel::rebuild()
             "drive etc. (AKAI button), or draw your own with FREEHAND in the FAIRLIGHT\n"
             "tool.") });
 
+    topics.add ({ loc::t ("Zufallsmelodie (WUERFEL)", "Random melody (DICE)"),
+        loc::t (
+            "Der WUERFEL-Knopf wuerfelt eine kleine Melodie in die aktuelle Spur -\n"
+            "perfekt gegen das leere Blatt. Die Toene kommen aus einer Moll-\n"
+            "Pentatonik (klingt fast immer gut zusammen), gebaut mit dem aktuellen\n"
+            "Instrument rund um die gewaehlte Oktave. Gefaellt's nicht, einfach nochmal\n"
+            "wuerfeln; mit Strg+Z geht's zurueck. Danach in Ruhe von Hand verfeinern.",
+            "The DICE button rolls a little melody into the current track - perfect\n"
+            "against the blank page. The notes come from a minor pentatonic (almost\n"
+            "always sounds good together), built with the current instrument around the\n"
+            "selected octave. Don't like it? Just roll again; Ctrl+Z undoes it. Then\n"
+            "refine it by hand at your leisure.") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

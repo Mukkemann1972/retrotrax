@@ -69,6 +69,7 @@ private:
     juce::TextButton orderDelButton { "- PAT" }; // letzten Eintrag entfernen
     juce::ComboBox   quantBox;                    // Quantisierungs-Raster (Achtel/Viertel/...)
     juce::TextButton quantButton { "QUANT" };     // aktuelles Pattern aufs Raster schnappen
+    juce::TextButton randomButton { "WUERFEL" };  // Cursor-Spur mit Zufallsmelodie fuellen
     juce::Label patLabel;
     juce::Label orderLabel;
     juce::Slider bpmSlider;
