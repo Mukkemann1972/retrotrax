@@ -73,6 +73,13 @@ public:
         enum class Loop { Off, Forward, PingPong };
         Loop  loopMode      = Loop::Off;
 
+        // Loop-Crossfade: blendet beim Vorwaerts-Loop das Schleifen-Ende sanft in
+        // den Anfang ueber, statt hart umzuspringen -> kurze Samples loopen smooth
+        // statt abgehackt (Fairlight-Gefuehl). 0 = harter Sprung (wie bisher),
+        // 1 = lange Ueberblendung (bis halbe Sample-Laenge). Nur bei Loop::Forward.
+        // Standard 0 -> bestehende Songs klingen unveraendert.
+        float loopXfade     = 0.0f;
+
         // --- Analoge Waerme (nur bei kind == Sample) ---
         // Drive: weiche tanh-Saettigung wie die analogen Filter/Wandler alter
         // Sampler - hohe Resonanz/heisse Signale saettigen musikalisch statt
@@ -708,6 +715,17 @@ private:
         const bool  rev    = inst->reverse;
         const auto  loop   = inst->loopMode;
         const bool  vintage = inst->vintagePitch;
+        // Loop-Crossfade (nur Vorwaerts-Loop, nicht rueckwaerts): Laenge der
+        // Ueberblendung am Schleifen-Ende, bis halbe Sample-Laenge. xfLen<2 = aus.
+        int xfLen = 0;
+        if (loop == Instrument::Loop::Forward && ! rev && inst->loopXfade > 0.0f && len > 8)
+        {
+            const int maxXf = (len - 1) / 2 - 1;
+            xfLen = juce::jlimit (0, juce::jmax (0, maxXf),
+                                  (int) std::round (juce::jlimit (0.0f, 1.0f, inst->loopXfade)
+                                                    * 0.5f * (float) (len - 1)));
+            if (xfLen < 2) xfLen = 0;
+        }
         // Drive: Eingangs-Gain in die tanh-Saettigung; dry/wet ueber 'drive'
         // ueberblendet, damit drive=0 exakt der saubere Klang bleibt.
         const float drive   = juce::jlimit (0.0f, 1.0f, inst->drive);
@@ -790,6 +808,18 @@ private:
             // sonst den gehaltenen weiterreichen (Sample-and-Hold -> Decimator).
             const bool fresh = (v.srCount <= 0);
 
+            // Loop-Crossfade: liegt die Position im Ueberblend-Fenster kurz vor dem
+            // Schleifen-Ende, das Ende (Tail) gleitend in den Anfang (Head, [0..xfLen])
+            // ueberblenden -> nahtlose Schleife. xfTail < 0 = ausserhalb (kein Xfade).
+            float  xfTail  = -1.0f;
+            double headPos = 0.0;
+            if (xfLen > 0 && pos > (double) ((len - 1) - xfLen))
+            {
+                const double t = ((double) (len - 1) - pos) / (double) xfLen; // 1..0
+                xfTail  = (float) juce::jlimit (0.0, 1.0, t);
+                headPos = pos - (double) ((len - 1) - xfLen);                  // 0..xfLen
+            }
+
             // Quellsample je Kanal: lesen -> 12-Bit-Crunch -> Sample-and-Hold -> Akai-Tiefpass.
             float fs[2] = { 0.0f, 0.0f };
             for (int sc = 0; sc < srcCh; ++sc)
@@ -802,6 +832,16 @@ private:
                     // -> crunchy/aliasing wie bei langsamer Wandler-Clock.
                     s = vintage ? src[j0]
                                 : src[j0] + (src[j0 + 1] - src[j0]) * fr;
+                    if (xfTail >= 0.0f) // equal-power-Ueberblendung Tail<->Head
+                    {
+                        const int   hb   = (int) headPos;
+                        const float hf   = (float) (headPos - hb);
+                        const float head = vintage ? src[hb]
+                                                   : src[hb] + (src[hb + 1] - src[hb]) * hf;
+                        const float wt = std::sin (0.5f * juce::MathConstants<float>::pi * xfTail);
+                        const float wh = std::cos (0.5f * juce::MathConstants<float>::pi * xfTail);
+                        s = s * wt + head * wh;
+                    }
                     if (crunch)
                         s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 2047.0f) / 2047.0f; // 12 Bit
                     v.srHold[sc] = s;
@@ -850,8 +890,11 @@ private:
                 }
                 else // Forward: vorne wieder anfangen
                 {
-                    if (pos >= hi) pos -= hi;
-                    if (pos < 0.0) pos += hi;
+                    // Mit Crossfade ist [0..xfLen] schon ins Ende gemischt -> die
+                    // Schleife laeuft ab xfLen weiter (effektive Loop-Laenge hi-xfLen).
+                    const double loopLen = hi - (double) xfLen;
+                    if (pos >= hi)  pos -= loopLen;
+                    if (pos < 0.0)  pos += loopLen;
                 }
                 pos = juce::jlimit (0.0, hi - 1.0e-4, pos); // robust in den Grenzen halten
             }

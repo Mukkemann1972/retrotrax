@@ -809,8 +809,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.41 | TFMX-Grabber (Samples entnehmen)",
-                        "v0.41 | TFMX grabber (extract samples)"),
+    g.drawText (loc::t ("v0.42 | Loop-Crossfade (smooth loopen)",
+                        "v0.42 | Loop crossfade (smooth loops)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

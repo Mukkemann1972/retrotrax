@@ -51,8 +51,8 @@ private:
     juce::TextButton loopFwd  { "VORWAERTS" };
     juce::TextButton loopPing { "PING-PONG" };
 
-    juce::Label  cutoffLabel, resoLabel, grainLabel, driveLabel;
-    juce::Slider cutoffSlider, resoSlider, grainSlider, driveSlider; // grain = SR-Reduktion
+    juce::Label  cutoffLabel, resoLabel, grainLabel, driveLabel, crossLabel;
+    juce::Slider cutoffSlider, resoSlider, grainSlider, driveSlider, crossSlider; // grain = SR-Reduktion, cross = Loop-Crossfade
 
     juce::Label  hintLabel;
     juce::TextButton testButton  { "TEST" };

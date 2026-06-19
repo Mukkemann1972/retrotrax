@@ -112,6 +112,7 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     setupSlider (resoSlider,   resoLabel);
     setupSlider (grainSlider,  grainLabel);
     setupSlider (driveSlider,  driveLabel);
+    setupSlider (crossSlider,  crossLabel);
 
     hintLabel.setFont (rt::mono (12.0f, false));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
@@ -148,6 +149,9 @@ void AkaiPanel::applyLanguage()
     loopPing.setButtonText (loc::t ("PING-PONG", "PING-PONG"));
     loopPing.setTooltip (loc::t ("Sample laeuft vor und zurueck in der Schleife (knackfrei)",
                                  "Sample runs forward and back in a loop (click-free)"));
+    crossLabel.setText (loc::t ("GLAETTEN", "SMOOTH"), juce::dontSendNotification);
+    crossSlider.setTooltip (loc::t ("Loop-Crossfade: blendet das Schleifen-Ende in den Anfang - kurze Samples loopen smooth statt abgehackt (nur Vorwaerts-Loop)",
+                                    "Loop crossfade: blends the loop end into the start - short samples loop smoothly instead of choppy (forward loop only)"));
     vintButton.setButtonText (loc::t ("VINTAGE", "VINTAGE"));
     vintButton.setTooltip (loc::t ("Vintage-Pitch: rohe Wandlung ohne Glaettung - crunchy beim Pitchen (Fairlight/Emulator)",
                                    "Vintage pitch: raw conversion without smoothing - crunchy when pitched (Fairlight/Emulator)"));
@@ -182,6 +186,7 @@ void AkaiPanel::refresh()
     resoSlider.setValue   (have ? s.akaiResonance * 100.0 :  12.0, juce::dontSendNotification);
     grainSlider.setValue  (have ? s.srReduction   * 100.0 :   0.0, juce::dontSendNotification);
     driveSlider.setValue  (have ? s.drive         * 100.0 :   0.0, juce::dontSendNotification);
+    crossSlider.setValue  (have ? s.loopXfade     * 100.0 :   0.0, juce::dontSendNotification);
     onButton.setToggleState  (have && s.akaiOn,       juce::dontSendNotification);
     bitButton.setToggleState (have && s.akai12bit,    juce::dontSendNotification);
     revButton.setToggleState (have && s.reverse,      juce::dontSendNotification);
@@ -205,6 +210,9 @@ void AkaiPanel::updateButtons()
     loopOff.setToggleState  (m == Loop::Off,      juce::dontSendNotification);
     loopFwd.setToggleState  (m == Loop::Forward,  juce::dontSendNotification);
     loopPing.setToggleState (m == Loop::PingPong, juce::dontSendNotification);
+
+    // Loop-Crossfade wirkt nur beim Vorwaerts-Loop - sonst ausgrauen.
+    crossSlider.setEnabled (m == Loop::Forward);
 }
 
 void AkaiPanel::applyPreset (int index)
@@ -231,12 +239,14 @@ void AkaiPanel::writeParams()
     const float res   = (float) (resoSlider.getValue()   / 100.0);
     const float grain = (float) (grainSlider.getValue()  / 100.0);
     const float drv   = (float) (driveSlider.getValue()  / 100.0);
+    const float cross = (float) (crossSlider.getValue()  / 100.0);
     proc.editSample (slot, [=] (TrackerEngine::Instrument& i)
     {
         i.akaiCutoff    = cut;
         i.akaiResonance = res;
         i.srReduction   = grain;
         i.drive         = drv;
+        i.loopXfade     = cross;
     });
 }
 
@@ -339,6 +349,8 @@ void AkaiPanel::resized()
         row.removeFromLeft (8);
         loopPing.setBounds (row.removeFromLeft (130));
     }
+    area.removeFromTop (8);
+    sliderRow (crossLabel, crossSlider); // Loop-Crossfade (GLAETTEN)
     area.removeFromTop (14);
 
     hintLabel.setBounds (area.removeFromTop (40));
