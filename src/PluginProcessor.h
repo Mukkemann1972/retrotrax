@@ -44,6 +44,10 @@ public:
     // --- SID-Synth-Instrumente ------------------------------------------------
     // Macht aus dem Slot ein frisches SID-Synth-Instrument (ersetzt den Inhalt).
     void makeSidInstrument (int slot);
+    // Eine Single-Cycle-Wellenform (AKWF-Idee) in einen Slot erzeugen: ein kurzes
+    // Sample mit einer Schwingung (Sinus/Saege/Rechteck/Dreieck/Puls), auf Loop ->
+    // ein sofort spielbarer Oszillator-Sample. type 0..4.
+    void makeWaveform (int slot, int type);
     // true, wenn der Slot ein SID-Synth ist.
     bool isSid (int slot) const;
     // Liest die SID-Parameter eines Slots; false, wenn der Slot kein Synth ist.

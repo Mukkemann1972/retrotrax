@@ -794,6 +794,21 @@ void HelpPanel::rebuild()
             "A little (10-20 %) already feels more alive, more (30-50 %) gives the\n"
             "clear hip-hop/funk swing. Saved with the song.") });
 
+    topics.add ({ loc::t ("Wellenform erzeugen", "Generate waveform"),
+        loc::t (
+            "Im LADEN-Menue unter \"Wellenform erzeugen\" legst du eine einfache\n"
+            "Single-Cycle-Welle (Sinus / Saege / Rechteck / Dreieck / Puls) in den\n"
+            "aktuellen Slot. Sie ist auf Loop gestellt und klingt dauerhaft wie ein\n"
+            "Oszillator - so baust du dir Synth-Sounds ganz ohne Sample. Mit dem\n"
+            "Akai-Filter, Drive usw. (AKAI-Knopf) formst du sie weiter, oder du\n"
+            "zeichnest sie im FAIRLIGHT-Werkzeug mit FREIHAND selbst.",
+            "In the LOAD menu under \"Generate waveform\" you put a simple single-cycle\n"
+            "wave (sine / saw / square / triangle / pulse) into the current slot. It is\n"
+            "set to loop and sounds continuously like an oscillator - so you build\n"
+            "synth sounds with no sample at all. Shape it further with the Akai filter,\n"
+            "drive etc. (AKAI button), or draw your own with FREEHAND in the FAIRLIGHT\n"
+            "tool.") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

@@ -351,6 +351,39 @@ void RetroTraxProcessor::makeSidInstrument (int slot)
     engine.setInstrument (slot, std::move (inst));
 }
 
+void RetroTraxProcessor::makeWaveform (int slot, int type)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return;
+    const int len = 600; // eine Schwingung
+    auto inst = std::make_unique<TrackerEngine::Instrument>();
+    inst->kind       = TrackerEngine::Instrument::Kind::Sample;
+    inst->loopMode   = TrackerEngine::Instrument::Loop::Forward; // klingt dauerhaft
+    inst->loopXfade  = 0.0f;
+    inst->sourceRate = 261.63 * len; // Note 60 (C-5) ~ 261,6 Hz
+    inst->data.setSize (1, len);
+    auto* d = inst->data.getWritePointer (0);
+    const double twoPi = 2.0 * juce::MathConstants<double>::pi;
+    const char* names[5] = { "Sinus", "Saege", "Rechteck", "Dreieck", "Puls" };
+    for (int i = 0; i < len; ++i)
+    {
+        const double ph = (double) i / (double) len; // 0..1
+        float v = 0.0f;
+        switch (type)
+        {
+            case 1:  v = (float) (2.0 * ph - 1.0); break;            // Saege
+            case 2:  v = ph < 0.5 ? 1.0f : -1.0f; break;            // Rechteck
+            case 3:  v = (float) (1.0 - 4.0 * std::abs (ph - 0.5)); break; // Dreieck
+            case 4:  v = ph < 0.25 ? 1.0f : -1.0f; break;           // Puls 25%
+            case 0:
+            default: v = (float) std::sin (twoPi * ph); break;       // Sinus
+        }
+        d[i] = v * 0.9f;
+    }
+    inst->name = names[juce::jlimit (0, 4, type)];
+    engine.setInstrument (slot, std::move (inst));
+}
+
 bool RetroTraxProcessor::isSid (int slot) const
 {
     if (slot < 0 || slot >= TrackerEngine::kInstruments)
