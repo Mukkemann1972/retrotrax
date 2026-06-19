@@ -56,7 +56,7 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
     addAndMakeVisible (titleLabel);
 
     for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
-                     &chopButton, &previewButton, &applyButton, &closeButton })
+                     &chopButton, &chopPatButton, &previewButton, &applyButton, &closeButton })
         addAndMakeVisible (b);
 
     drawButton.setClickingTogglesState (true);
@@ -122,6 +122,13 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
             setHint (msg + " (im KIT zu sehen)", msg + " (see the KIT)");
     };
 
+    chopPatButton.onClick = [this]
+    {
+        juce::String msg;
+        proc.sliceToPattern (work, rate, 16, "Slice", msg);
+        setHint (msg, msg);
+    };
+
     previewButton.onClick = [this] { proc.previewBuffer (work, rate); };
 
     applyButton.onClick = [this]
@@ -184,6 +191,9 @@ void SampleEditPanel::applyLanguage()
     chopButton.setButtonText   (loc::t ("IN KIT (16)", "TO KIT (16)"));
     chopButton.setTooltip (loc::t ("Sample in 16 gleiche Scheiben schneiden und auf die Drum-Pads legen",
                                    "Slice the sample into 16 equal pieces onto the drum pads"));
+    chopPatButton.setButtonText (loc::t ("-> PATTERN", "-> PATTERN"));
+    chopPatButton.setTooltip (loc::t ("Sample in 16 Scheiben schneiden, in Slots legen UND als Noten ins Pattern (Break wird spielbar/umbaubar)",
+                                      "Slice into 16, put into slots AND as notes in the pattern (break becomes playable/rearrangeable)"));
     previewButton.setButtonText (loc::t ("VORHOEREN", "PREVIEW"));
     applyButton.setButtonText  (loc::t ("UEBERNEHMEN", "APPLY"));
     applyButton.setTooltip (loc::t ("Bearbeitetes Sample zurueck in den Slot legen (bleibt im Song)",
@@ -387,10 +397,10 @@ void SampleEditPanel::resized()
     {
         closeButton.setBounds (bottom.removeFromRight (130));
         bottom.removeFromRight (10);
-        const int n = 7; // trim, norm, rev, draw, chop, preview, apply
+        const int n = 8; // trim, norm, rev, draw, chop, chopPat, preview, apply
         const int bw = (bottom.getWidth() - (n - 1) * 6) / n;
         for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
-                         &chopButton, &previewButton, &applyButton })
+                         &chopButton, &chopPatButton, &previewButton, &applyButton })
         {
             b->setBounds (bottom.removeFromLeft (bw));
             bottom.removeFromLeft (6);

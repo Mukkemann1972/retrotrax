@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.47 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.48 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -129,6 +129,9 @@ A project from the Mukkemann universe.
   break → drum pads, the MPC/SP-1200 idea)
 - **Time-stretch** ✅: in the Fairlight tool, make a sample longer/shorter without
   changing its pitch (granular overlap-add) — for any sample
+- **Slice → Pattern** ✅: chop a break into 16 slices, put them into instrument
+  slots AND write them as notes into the pattern — the break becomes playable and
+  rearrangeable (Recycle/Page-R idea)
 - **Later:** more sampler effects (time-stretch), real beat detection,
   .sid player + .retrotrax replayer for your own demos, beginner mode
 

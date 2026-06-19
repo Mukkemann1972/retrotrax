@@ -470,6 +470,66 @@ int RetroTraxProcessor::chopToKit (const juce::AudioBuffer<float>& buf, double r
     return filled;
 }
 
+int RetroTraxProcessor::sliceToPattern (const juce::AudioBuffer<float>& buf, double rate, int slices,
+                                        const juce::String& baseName, juce::String& message)
+{
+    slices = juce::jlimit (2, 16, slices);
+    const int total = buf.getNumSamples();
+    if (total < slices * 2)
+    {
+        message = "Sample zu kurz zum Schneiden.";
+        return 0;
+    }
+
+    int base = currentInstrument.load();
+    if (base < 0 || base + slices > TrackerEngine::kInstruments)
+        base = 0; // genug aufeinanderfolgende Slots ab vorne
+    slices = juce::jmin (slices, TrackerEngine::kInstruments - base);
+
+    auto safe = juce::File::createLegalFileName (baseName);
+    if (safe.isEmpty()) safe = "Slice";
+    auto dir = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                   .getChildFile ("RetroTrax").getChildFile ("Chops").getChildFile (safe + " (Pattern)");
+    dir.createDirectory();
+
+    const int ch  = buf.getNumChannels();
+    const int len = total / slices;
+    int filled = 0;
+    for (int s = 0; s < slices; ++s)
+    {
+        const int start = s * len;
+        const int n     = (s == slices - 1) ? (total - start) : len;
+        juce::AudioBuffer<float> slice (ch, n);
+        for (int c = 0; c < ch; ++c)
+            slice.copyFrom (c, 0, buf, c, start, n);
+        const auto file = dir.getChildFile (juce::String::formatted ("%02d ", s + 1) + safe + ".wav");
+        if (writeWavBuffer (file, slice, rate) && loadInstrument (base + s, file))
+            ++filled;
+    }
+
+    // Noten ins aktuelle Pattern schreiben (Spur 1), gleichmaessig verteilt.
+    {
+        const juce::ScopedLock sl (engine.lock);
+        const int pat   = engine.editPattern.load();
+        const int track = 0;
+        for (int r = 0; r < TrackerEngine::kRows; ++r)
+            engine.patterns[pat][r][track] = TrackerEngine::Cell();
+        const int interval = juce::jmax (1, TrackerEngine::kRows / slices);
+        for (int s = 0; s < filled; ++s)
+        {
+            const int row = s * interval;
+            if (row >= TrackerEngine::kRows) break;
+            auto& c = engine.patterns[pat][row][track];
+            c.note       = 60;          // C-5 = Originaltonhoehe der Scheibe
+            c.instrument = base + s;
+        }
+    }
+
+    message = juce::String (filled) + " Scheiben in Slots " + juce::String (base + 1)
+            + ".." + juce::String (base + filled) + " + als Noten ins Pattern (Spur 1).";
+    return filled;
+}
+
 void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate)
 {
     if (buf.getNumSamples() < 2)

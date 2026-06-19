@@ -58,6 +58,7 @@ private:
     juce::TextButton revButton    { "UMKEHREN" };
     juce::TextButton drawButton   { "FREIHAND" };
     juce::TextButton chopButton   { "IN KIT (16)" };
+    juce::TextButton chopPatButton{ "-> PATTERN" };
     juce::TextButton previewButton{ "VORHOEREN" };
     juce::TextButton applyButton  { "UEBERNEHMEN" };
     juce::TextButton closeButton  { "SCHLIESSEN" };

@@ -82,6 +82,12 @@ public:
     // (als WAVs gesichert). Liefert die Anzahl gefuellter Pads.
     int chopToKit (const juce::AudioBuffer<float>& buf, double rate, int slices,
                    const juce::String& baseName, juce::String& message);
+    // Ein Sample in Scheiben schneiden, in aufeinanderfolgende Instrument-Slots
+    // legen (ab dem aktuellen) UND als Noten ins aktuelle Pattern schreiben
+    // (gleichmaessig verteilt, Spur 1) - der Break wird wieder spielbar/umbaubar
+    // (Recycle/Page-R-Idee). Liefert die Anzahl Scheiben.
+    int sliceToPattern (const juce::AudioBuffer<float>& buf, double rate, int slices,
+                        const juce::String& baseName, juce::String& message);
     // Eine Arbeitskopie sofort vorhoeren (ohne einen Slot zu belegen).
     void previewBuffer (const juce::AudioBuffer<float>& buf, double rate);
 
