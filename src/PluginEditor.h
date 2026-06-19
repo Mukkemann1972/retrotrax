@@ -33,6 +33,7 @@ private:
     void loadS3mClicked();
     void loadItClicked();
     void loadTfmxClicked();
+    void grabTfmxClicked();   // TFMX-Grabber: Samples entnehmen -> eigener Ordner
     void syncUiFromState();
     void applyLanguage();
     void setDefaultHint(); // Standard-Tastenkuerzel-Zeile unten

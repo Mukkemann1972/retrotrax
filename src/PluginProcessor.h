@@ -89,6 +89,13 @@ public:
     // nur den Datei-Inhalt (Diagnose), Wiedergabe folgt. 'message' = Zusammenfassung.
     bool loadTfmx (const juce::File& mdatFile, juce::String& message);
 
+    // TFMX-GRABBER: alle Samples (Instrumente) aus einem TFMX-Modul entnehmen und
+    // als einzelne 16-Bit-WAVs in 'outFolder' schreiben (Renoise-Plugin-Grabber-
+    // Idee). Stoert die laufende Wiedergabe NICHT (eigener Reader). Liefert die
+    // Anzahl geschriebener Samples; 'message' = Zusammenfassung/Fehler.
+    int grabTfmxSamples (const juce::File& mdatFile, const juce::File& outFolder,
+                         juce::String& message);
+
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };

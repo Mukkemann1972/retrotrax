@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.40 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.41 — Sampler + SID synthesizer (real reSIDfp chip)
 
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
@@ -110,6 +110,9 @@ A project from the Mukkemann universe.
 - **TFMX playback** ✅ (Chris Hülsbeck — Turrican, Apidya …): load .mdat/.smpl and
   hear the original songs. Uses a vendored open (GPL) TFMX replayer, wrapped by
   RetroTrax; the file reader, diagnostics and UI are RetroTrax's own
+- **TFMX grabber** ✅: extract the individual sounds from a TFMX module and save
+  them as WAVs (Renoise plugin-grabber idea). LOAD menu → *Grab samples from TFMX*;
+  the folder opens right away in the sample browser to preview/load/remember
 - **Later:** 16-pad drum grid, **Fairlight-style drawing tool** (paint waveforms
   with the mouse, light-pen style), more sampler effects (time-stretch),
   .sid player + .retrotrax replayer for your own demos, beginner mode

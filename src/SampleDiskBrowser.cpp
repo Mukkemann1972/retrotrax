@@ -382,6 +382,19 @@ void SampleDiskBrowser::selectLocationForFolder (const juce::File& dir)
     }
 }
 
+void SampleDiskBrowser::showFolder (const juce::File& dir)
+{
+    if (dir.isDirectory())
+    {
+        localFolders.addIfNotAlreadyThere (dir.getFullPathName());
+        saveFolders();
+        rebuildLocations();
+        selectLocationForFolder (dir);
+    }
+    setVisible (true);
+    toFront (false);
+}
+
 void SampleDiskBrowser::addFolderClicked()
 {
     chooser = std::make_unique<juce::FileChooser> (

@@ -79,6 +79,9 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         imp.addItem (14, loc::t ("Impulse Tracker (.it) ...", "Impulse Tracker (.it) ..."));
         imp.addItem (12, loc::t ("TFMX - Huelsbeck (.tfmx/.mdat) ...", "TFMX - Huelsbeck (.tfmx/.mdat) ..."));
         m.addSubMenu (loc::t ("Importieren", "Import"), imp);
+        m.addSeparator();
+        m.addItem (20, loc::t ("TFMX-Samples entnehmen (Grabber) ...",
+                               "Grab samples from TFMX ..."));
         m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&loadMenuButton),
             [this] (int r)
             {
@@ -92,6 +95,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                     case 12: loadTfmxClicked(); break;
                     case 13: loadS3mClicked(); break;
                     case 14: loadItClicked(); break;
+                    case 20: grabTfmxClicked(); break;
                     default: break;
                 }
             });
@@ -645,6 +649,49 @@ void RetroTraxEditor::loadTfmxClicked()
         });
 }
 
+void RetroTraxEditor::grabTfmxClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("TFMX-Modul fuer den Grabber waehlen (.mdat / .tfmx)",
+                "Choose TFMX module to grab from (.mdat / .tfmx)"),
+        start, "*.mdat;mdat.*;*.tfmx;*.tfx;*.tfm");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return; // abgebrochen
+
+            // Zielordner: Musik/RetroTrax/TFMX-Samples/<Titel> - wird als eigener
+            // Ordner im Sample-Browser angezeigt (preview, IN SLOT LADEN, MERKEN).
+            auto title = juce::File::createLegalFileName (file.getFileNameWithoutExtension());
+            if (file.getFileName().startsWithIgnoreCase ("mdat."))
+                title = juce::File::createLegalFileName (file.getFileName().substring (5));
+            if (title.isEmpty())
+                title = "TFMX";
+
+            const auto outFolder = songsFolder().getChildFile ("TFMX-Samples").getChildFile (title);
+
+            juce::String message;
+            const int n = proc.grabTfmxSamples (file, outFolder, message);
+            if (n <= 0)
+            {
+                hintLabel.setText (loc::t ("Grabber: ", "Grabber: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+
+            hintLabel.setText (loc::t ("TFMX-Grabber - ", "TFMX grabber - ") + message,
+                               juce::dontSendNotification);
+            diskBrowser.showFolder (outFolder); // gleich anzeigen
+        });
+}
+
 void RetroTraxEditor::syncUiFromState()
 {
     bpmSlider.setValue ((double) proc.engine.bpm.load(), juce::dontSendNotification);
@@ -762,8 +809,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.40 | IT/S3M-Import (Impulse/Scream Tracker)",
-                        "v0.40 | IT/S3M import (Impulse/Scream Tracker)"),
+    g.drawText (loc::t ("v0.41 | TFMX-Grabber (Samples entnehmen)",
+                        "v0.41 | TFMX grabber (extract samples)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

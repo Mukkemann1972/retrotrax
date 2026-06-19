@@ -644,6 +644,31 @@ void HelpPanel::rebuild()
             "(like the real SID chip for the SID synth) - but it can't be edited in\n"
             "the grid.") });
 
+    topics.add ({ loc::t ("TFMX-Samples entnehmen (Grabber)", "Grab TFMX samples"),
+        loc::t (
+            "Die einzelnen Klaenge aus einem TFMX-Modul kannst du herausziehen und\n"
+            "wie normale Samples weiterverwenden - die Idee vom Plugin-Grabber in\n"
+            "Renoise, nur fuer TFMX. Im LADEN-Menue: \"TFMX-Samples entnehmen\".\n\n"
+            "Du waehlst eine mdat-Datei; RetroTrax liest aus den Makros heraus, welche\n"
+            "Bereiche im Sample-Speicher wirklich benutzt werden, und speichert jeden\n"
+            "als eigene WAV unter Musik/RetroTrax/TFMX-Samples/NAME. Dieser Ordner\n"
+            "wird gleich im Sample-Browser geoeffnet: Anklicken hoert vor, IN SLOT\n"
+            "LADEN legt den Klang in ein Instrument, MERKEN nimmt ihn in \"Meine\n"
+            "Sounds\". Die laufende TFMX-Wiedergabe wird dabei nicht gestoert.\n\n"
+            "Hinweis: Es kommen alle benutzten Bereiche - auch winzige Wellenform-\n"
+            "Schnipsel. Was du nicht brauchst, einfach liegen lassen oder loeschen.",
+            "You can pull the individual sounds out of a TFMX module and reuse them\n"
+            "like normal samples - the plugin-grabber idea from Renoise, but for TFMX.\n"
+            "In the LOAD menu: \"Grab samples from TFMX\".\n\n"
+            "Pick an mdat file; RetroTrax reads from the macros which regions of the\n"
+            "sample memory are actually used and saves each as its own WAV under\n"
+            "Music/RetroTrax/TFMX-Samples/NAME. That folder opens right away in the\n"
+            "sample browser: click to preview, LOAD INTO SLOT puts the sound into an\n"
+            "instrument, REMEMBER adds it to \"My Sounds\". Ongoing TFMX playback is\n"
+            "not disturbed.\n\n"
+            "Note: every used region comes out - including tiny waveform snippets.\n"
+            "Just leave or delete what you don't need.") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

@@ -885,6 +885,66 @@ bool RetroTraxProcessor::loadTfmx (const juce::File& mdatFile, juce::String& mes
     return true;
 }
 
+// Schreibt einen Float-Puffer als 16-Bit-WAV (fuer den TFMX-Grabber).
+static bool writeWavBuffer (const juce::File& file, const juce::AudioBuffer<float>& buf, double rate)
+{
+    file.getParentDirectory().createDirectory();
+    file.deleteFile();
+
+    std::unique_ptr<juce::FileOutputStream> os (file.createOutputStream());
+    if (os == nullptr)
+        return false;
+
+    juce::WavAudioFormat fmt;
+    std::unique_ptr<juce::AudioFormatWriter> writer (
+        fmt.createWriterFor (os.get(), rate, (unsigned int) buf.getNumChannels(), 16, {}, 0));
+    if (writer == nullptr)
+        return false;
+
+    os.release(); // gehoert ab jetzt dem Writer
+    return writer->writeFromAudioSampleBuffer (buf, 0, buf.getNumSamples());
+}
+
+int RetroTraxProcessor::grabTfmxSamples (const juce::File& mdatFile, const juce::File& outFolder,
+                                         juce::String& message)
+{
+    const auto smplFile = findTfmxSmpl (mdatFile);
+    if (! smplFile.existsAsFile())
+    {
+        message = "Keine passende .smpl-Datei neben \"" + mdatFile.getFileName() + "\" gefunden.";
+        return 0;
+    }
+
+    // Eigener Reader, damit der laufende TFMX-Replayer ungestoert bleibt.
+    TfmxPlayer grabber;
+    if (! grabber.load (mdatFile, smplFile))
+    {
+        message = grabber.info().message;
+        return 0;
+    }
+
+    const auto grabs = grabber.grabSamples();
+    if (grabs.empty())
+    {
+        message = "Keine Samples in diesem TFMX gefunden.";
+        return 0;
+    }
+
+    outFolder.createDirectory();
+    const double rate = 8287.0; // Amiga-typische Sample-Rate (wie beim MOD-Import)
+    int written = 0;
+    for (size_t i = 0; i < grabs.size(); ++i)
+    {
+        const auto f = outFolder.getChildFile (juce::String::formatted ("%02d", (int) i + 1)
+                         + " " + outFolder.getFileName() + ".wav");
+        if (writeWavBuffer (f, grabs[i].audio, rate))
+            ++written;
+    }
+
+    message = juce::String (written) + " Samples entnommen nach \"" + outFolder.getFileName() + "\".";
+    return written;
+}
+
 void RetroTraxProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     copyXmlToBinary (*stateToXml(), destData);

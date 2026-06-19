@@ -3,6 +3,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <vector>
 #include <cstdint>
+#include <algorithm>
 #include "tfmxaudiodecoder.h" // vendored GPL-Decoder (libs/tfmxdecoder), C-API
 
 // =============================================================================
@@ -72,8 +73,16 @@ public:
             return false;
         }
 
+        // Sample-Speicher mitladen (fuer Wiedergabe-Diagnose UND den Grabber).
+        smpl_.clear();
         if (smplFile.existsAsFile())
-            info_.sampleBytes = (int) smplFile.getSize();
+        {
+            juce::MemoryBlock sb;
+            if (smplFile.loadFileAsData (sb))
+                smpl_.assign ((const uint8_t*) sb.getData(),
+                              (const uint8_t*) sb.getData() + sb.getSize());
+            info_.sampleBytes = (int) smpl_.size();
+        }
 
         trackTbl_ = be32 (0x1D0);
         patTbl_   = be32 (0x1D4);
@@ -115,6 +124,105 @@ public:
     const Info& info() const  { return info_; }
     bool isLoaded() const     { return info_.ok; }
     bool isPlayable() const   { return playable_.load(); }
+
+    // -------------------------------------------------------------------------
+    //  GRABBER: einzelne Samples (Instrumente) aus dem TFMX entnehmen.
+    //
+    //  TFMX legt alle Samples hintereinander in den .smpl-Speicher; WO ein
+    //  Sample beginnt und wie lang es ist, steht NICHT in einer Tabelle, sondern
+    //  in den Makro-Befehlen. Pro 4-Byte-Befehl: op, bb, cd, ee. Relevant
+    //  (Opcodes wie im vendorten Decoder, Macro.cpp):
+    //    0x01 StartSample (DMAon)  - aktuelles (Begin,Len) faengt an zu spielen
+    //    0x02 SetBegin   begin = bb<<16 | cd<<8 | ee   (Byte-Offset in .smpl)
+    //    0x03 SetLen     len   = cd<<8 | ee            (in WORTEN = 2 Byte)
+    //    0x07 Stop / 0x16 Return - Makro-Ende
+    //  Wir laufen jede Makro-Liste linear ab, merken den letzten Begin/Len und
+    //  sammeln so alle wirklich benutzten Sample-Bereiche (entdoppelt).
+    // -------------------------------------------------------------------------
+    struct Grab
+    {
+        juce::String name;
+        juce::AudioBuffer<float> audio; // mono, 8-Bit-signed -> float
+    };
+
+    std::vector<Grab> grabSamples() const
+    {
+        std::vector<Grab> out;
+        if (! info_.ok || smpl_.empty() || macTbl_ == 0)
+            return out;
+
+        const uint32_t fileSize = (uint32_t) mdat_.size();
+        struct Region { uint32_t begin; uint32_t bytes; };
+        std::vector<Region> regions;
+
+        auto record = [&] (int32_t begin, uint32_t words)
+        {
+            if (begin < 0 || words == 0)
+                return;
+            uint32_t bytes = words * 2;
+            if ((uint32_t) begin >= smpl_.size())
+                return;
+            if ((uint32_t) begin + bytes > smpl_.size())
+                bytes = (uint32_t) smpl_.size() - (uint32_t) begin;
+            if (bytes < 4)
+                return;
+            // Dasselbe Sample wird oft mit mehreren Abspiel-Laengen referenziert
+            // (z.B. kurz angetippt vs. ganz). Wir behalten je Startpunkt die
+            // laengste Variante = ein Eintrag pro echtem Sample.
+            for (auto& r : regions)
+                if (r.begin == (uint32_t) begin)
+                {
+                    r.bytes = juce::jmax (r.bytes, bytes);
+                    return;
+                }
+            regions.push_back ({ (uint32_t) begin, bytes });
+        };
+
+        for (int i = 0; i < info_.macros; ++i)
+        {
+            uint32_t p = be32At (macTbl_ + (uint32_t) i * 4);
+            if (p < 0x200 || p + 4 > fileSize)
+                continue;
+
+            int32_t  curBegin = -1;
+            uint32_t curLen   = 0;
+            for (int step = 0; step < 512 && p + 4 <= fileSize; ++step, p += 4)
+            {
+                const uint8_t op = mdat_[p];
+                const uint8_t bb = mdat_[p + 1];
+                const uint8_t cd = mdat_[p + 2];
+                const uint8_t ee = mdat_[p + 3];
+
+                if (op == 0x02)
+                    curBegin = (int32_t) (((uint32_t) bb << 16) | ((uint32_t) cd << 8) | ee);
+                else if (op == 0x03)
+                {
+                    curLen = ((uint32_t) cd << 8) | ee;
+                    record (curBegin, curLen);
+                }
+                else if (op == 0x01)
+                    record (curBegin, curLen);
+                else if (op == 0x07 || op == 0x16) // Stop / Return = Makro-Ende
+                    break;
+            }
+        }
+
+        std::sort (regions.begin(), regions.end(),
+                   [] (const Region& a, const Region& b) { return a.begin < b.begin; });
+
+        int idx = 1;
+        for (const auto& r : regions)
+        {
+            Grab g;
+            g.name = info_.title + " #" + juce::String (idx++);
+            g.audio.setSize (1, (int) r.bytes);
+            auto* w = g.audio.getWritePointer (0);
+            for (uint32_t s = 0; s < r.bytes; ++s)
+                w[s] = (float) (int8_t) smpl_[r.begin + s] / 128.0f;
+            out.push_back (std::move (g));
+        }
+        return out;
+    }
 
     void prepare (double sampleRate)
     {
@@ -207,6 +315,7 @@ private:
 
     Info info_;
     std::vector<uint8_t> mdat_;
+    std::vector<uint8_t> smpl_;   // roher 8-Bit-Sample-Speicher (fuer den Grabber)
     double sampleRate_ = 44100.0;
 
     uint32_t trackTbl_ = 0, patTbl_ = 0, macTbl_ = 0;

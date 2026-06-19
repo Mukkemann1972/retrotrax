@@ -31,6 +31,11 @@ public:
     // Nach einem Sprachwechsel aufrufen: Beschriftungen neu setzen.
     void applyLanguage();
 
+    // Browser oeffnen und (falls ein eigener Ordner uebergeben wird) diesen als
+    // Quelle aufnehmen + auswaehlen. Genutzt vom TFMX-Grabber, der seine
+    // entnommenen Samples in einen Ordner schreibt und ihn gleich anzeigt.
+    void showFolder (const juce::File& dir);
+
 private:
     // Eine Quelle in der linken Liste: entweder eine ST-Diskette oder ein
     // eigener Ordner.
