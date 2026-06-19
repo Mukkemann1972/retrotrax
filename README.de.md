@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.39 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.40 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
 
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
@@ -52,6 +52,9 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **Ein LADEN-Menü:** ein einziger **LADEN**-Knopf bündelt alles — Sample laden,
   Sample-Browser, Song öffnen und ein Untermenü **Importieren** (MOD/XM/TFMX).
   Hält den Streifen aufgeräumt, statt vieler Knöpfe nebeneinander
+- **IT/S3M-Import:** auch **Impulse Tracker** (`.it`) und **Scream Tracker 3**
+  (`.s3m`) lassen sich importieren (LADEN ▸ Importieren) — Samples, Patterns und
+  Reihenfolge. Gepackte IT-Samples/Hüllkurven bleiben (noch) außen vor
 - **MOD-Import:** klassische Amiga-`.mod`-Songs laden (LADEN ▸ Importieren) — Samples
   wandern in die Slots (bis zu 31), Patterns + Reihenfolge werden übernommen.
   Sofort abspielbar, weiterbaubar und als `.retrotrax` sicherbar

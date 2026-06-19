@@ -75,6 +75,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         juce::PopupMenu imp;
         imp.addItem (10, loc::t ("Amiga MOD (.mod) ...", "Amiga MOD (.mod) ..."));
         imp.addItem (11, loc::t ("FastTracker XM (.xm) ...", "FastTracker XM (.xm) ..."));
+        imp.addItem (13, loc::t ("Scream Tracker 3 (.s3m) ...", "Scream Tracker 3 (.s3m) ..."));
+        imp.addItem (14, loc::t ("Impulse Tracker (.it) ...", "Impulse Tracker (.it) ..."));
         imp.addItem (12, loc::t ("TFMX - Huelsbeck (.tfmx/.mdat) ...", "TFMX - Huelsbeck (.tfmx/.mdat) ..."));
         m.addSubMenu (loc::t ("Importieren", "Import"), imp);
         m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&loadMenuButton),
@@ -88,6 +90,8 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                     case 10: loadModClicked(); break;
                     case 11: loadXmClicked(); break;
                     case 12: loadTfmxClicked(); break;
+                    case 13: loadS3mClicked(); break;
+                    case 14: loadItClicked(); break;
                     default: break;
                 }
             });
@@ -549,6 +553,66 @@ void RetroTraxEditor::loadXmClicked()
         });
 }
 
+void RetroTraxEditor::loadS3mClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Scream-Tracker-S3M importieren", "Import Scream Tracker S3M"), start, "*.s3m;*.S3M");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return;
+
+            juce::String message;
+            if (! proc.loadS3m (file, message))
+            {
+                hintLabel.setText (loc::t ("S3M-Import fehlgeschlagen: ", "S3M import failed: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+            currentSongFile = juce::File();
+            syncUiFromState();
+            hintLabel.setText (loc::t ("S3M importiert - ", "S3M imported - ") + message,
+                               juce::dontSendNotification);
+        });
+}
+
+void RetroTraxEditor::loadItClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Impulse-Tracker-IT importieren", "Import Impulse Tracker IT"), start, "*.it;*.IT");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return;
+
+            juce::String message;
+            if (! proc.loadIt (file, message))
+            {
+                hintLabel.setText (loc::t ("IT-Import fehlgeschlagen: ", "IT import failed: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+            currentSongFile = juce::File();
+            syncUiFromState();
+            hintLabel.setText (loc::t ("IT importiert - ", "IT imported - ") + message,
+                               juce::dontSendNotification);
+        });
+}
+
 void RetroTraxEditor::loadTfmxClicked()
 {
     const auto start = currentSongFile.existsAsFile()
@@ -698,8 +762,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.39 | WAV-Export: Song als WAV rausrendern",
-                        "v0.39 | WAV export: render the song to WAV"),
+    g.drawText (loc::t ("v0.40 | IT/S3M-Import (Impulse/Scream Tracker)",
+                        "v0.40 | IT/S3M import (Impulse/Scream Tracker)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

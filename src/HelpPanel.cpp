@@ -581,7 +581,12 @@ void HelpPanel::rebuild()
             "Bruder des MOD. Mehr Kanaele, 16-Bit-Samples und Feinstimmung werden\n"
             "verstanden; pro Instrument wird das erste Sample geladen. Patterns mit\n"
             "mehr als 64 Zeilen werden auf 64 gekuerzt, Huellkurven/Loops bleiben\n"
-            "(noch) aussen vor. (Tausende XMs gibt es frei auf modarchive.org.)",
+            "(noch) aussen vor. (Tausende XMs gibt es frei auf modarchive.org.)\n\n"
+            "S3M / IT: Scream Tracker 3 (.s3m) und Impulse Tracker (.it) - zwei\n"
+            "weitere Klassiker (im LADEN-Menue unter Importieren). Gleiches Prinzip:\n"
+            "Samples in die Slots, Patterns und Reihenfolge werden uebernommen.\n"
+            "Gepackte IT-Samples und Huellkurven bleiben aussen vor. (Auch davon\n"
+            "Tausende frei auf modarchive.org.)",
             "Top right: SAVE SONG and OPEN SONG.\n\n"
             "Your songs are stored as a .retrotrax file (in the Music/RetroTrax\n"
             "folder). Saved are the tempo, all notes and which samples sit in the\n"
@@ -604,7 +609,11 @@ void HelpPanel::rebuild()
             "the MOD. More channels, 16-bit samples and finetuning are understood;\n"
             "the first sample of each instrument is loaded. Patterns longer than 64\n"
             "rows are clipped to 64, envelopes/loops are not handled yet. (Thousands\n"
-            "of XMs are free on modarchive.org.)") });
+            "of XMs are free on modarchive.org.)\n\n"
+            "S3M / IT: Scream Tracker 3 (.s3m) and Impulse Tracker (.it) - two more\n"
+            "classics (in the LOAD menu under Import). Same idea: samples go into the\n"
+            "slots, patterns and order are taken over. Packed IT samples and envelopes\n"
+            "are not handled. (Thousands of these are free on modarchive.org too.)") });
 
     topics.add ({ loc::t ("TFMX (Chris Huelsbeck)", "TFMX (Chris Huelsbeck)"),
         loc::t (

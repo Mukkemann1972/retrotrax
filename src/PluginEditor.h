@@ -30,6 +30,8 @@ private:
     void exportWavClicked();
     void loadModClicked();
     void loadXmClicked();
+    void loadS3mClicked();
+    void loadItClicked();
     void loadTfmxClicked();
     void syncUiFromState();
     void applyLanguage();
