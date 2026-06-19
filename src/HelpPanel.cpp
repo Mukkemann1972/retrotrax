@@ -752,6 +752,23 @@ void HelpPanel::rebuild()
             "- PREVIEW plays the working copy; APPLY puts it back into the slot (saved\n"
             "  as a WAV, kept with the song).") });
 
+    topics.add ({ loc::t ("Master-FX (Echo & Hall)", "Master FX (echo & reverb)"),
+        loc::t (
+            "Der FX-Knopf oeffnet die Master-Effekte - sie wirken auf den GANZEN Mix\n"
+            "(alle Spuren zusammen), wie der Master-Track in Renoise.\n\n"
+            "- ECHO (Delay): ZEIT = Verzoegerung, RUECKKOPPLUNG = wie oft es\n"
+            "  wiederholt, MIX = wie laut das Echo. MIX 0 = aus.\n"
+            "- HALL (Reverb): RAUM = Groesse des Raums, MIX = wie viel Hall. MIX 0 = aus.\n\n"
+            "Beide sind Standard AUS, dein Klang bleibt also unveraendert, bis du MIX\n"
+            "aufdrehst. Die Einstellungen werden im Song (.retrotrax) mitgespeichert.",
+            "The FX button opens the master effects - they affect the WHOLE mix (all\n"
+            "tracks together), like the master track in Renoise.\n\n"
+            "- ECHO (delay): TIME = delay length, FEEDBACK = how often it repeats,\n"
+            "  MIX = how loud the echo. MIX 0 = off.\n"
+            "- REVERB: ROOM = room size, MIX = how much reverb. MIX 0 = off.\n\n"
+            "Both are off by default, so your sound stays unchanged until you turn MIX\n"
+            "up. The settings are saved with the song (.retrotrax).") });
+
     topics.add ({ loc::t ("Spektrum-Anzeige", "Spectrum display"),
         loc::t (
             "Der Knopf SPEKTRUM oben oeffnet die Frequenz-Anzeige - die tanzenden\n"

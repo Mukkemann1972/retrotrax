@@ -20,6 +20,68 @@ void RetroTraxProcessor::prepareToPlay (double sampleRate, int)
 {
     engine.prepare (sampleRate);
     tfmx.prepare (sampleRate);
+
+    // Master-FX vorbereiten: Echo-Verzoegerungsspeicher (bis 2 s) + Hall.
+    fxSampleRate = sampleRate;
+    echoBuf.setSize (2, juce::jmax (1, (int) (sampleRate * 2.0)));
+    echoBuf.clear();
+    echoWrite = 0;
+    reverb.setSampleRate (sampleRate);
+    reverb.reset();
+}
+
+// Master-FX auf den fertigen Stereo-Mix: erst Echo (Delay mit Rueckkopplung),
+// dann Hall. Beide standardmaessig AUS (Mix 0) -> der Klang bleibt unveraendert.
+void RetroTraxProcessor::applyMasterFx (juce::AudioBuffer<float>& buffer)
+{
+    const int n  = buffer.getNumSamples();
+    const int ch = buffer.getNumChannels();
+    if (n <= 0 || ch <= 0)
+        return;
+
+    // --- Echo (Stereo-Delay mit Rueckkopplung) -------------------------------
+    const float mix = echoMix.load();
+    if (mix > 0.0001f && echoBuf.getNumSamples() > 1)
+    {
+        const int   size = echoBuf.getNumSamples();
+        const float fb   = juce::jlimit (0.0f, 0.95f, echoFeedback.load());
+        int   delay = (int) (echoTimeMs.load() * 0.001f * (float) fxSampleRate);
+        delay = juce::jlimit (1, size - 1, delay);
+
+        for (int c = 0; c < juce::jmin (ch, 2); ++c)
+        {
+            float* data = buffer.getWritePointer (c);
+            float* line = echoBuf.getWritePointer (c);
+            int    w    = echoWrite;
+            for (int i = 0; i < n; ++i)
+            {
+                int r = w - delay; if (r < 0) r += size;
+                const float echoed = line[r];
+                const float in     = data[i];
+                line[w] = in + echoed * fb;          // Rueckkopplung in die Leitung
+                data[i] = in * (1.0f - mix) + echoed * mix;
+                if (++w >= size) w = 0;
+            }
+            if (c == juce::jmin (ch, 2) - 1)
+                echoWrite = w; // Schreibzeiger nach dem letzten Kanal uebernehmen
+        }
+    }
+
+    // --- Hall (Reverb) -------------------------------------------------------
+    if (reverbMix.load() > 0.0001f)
+    {
+        juce::Reverb::Parameters p;
+        p.roomSize = juce::jlimit (0.0f, 1.0f, reverbSize.load());
+        p.damping  = 0.5f;
+        p.wetLevel = reverbMix.load();
+        p.dryLevel = 1.0f - reverbMix.load() * 0.5f;
+        p.width    = 1.0f;
+        reverb.setParameters (p);
+        if (ch >= 2)
+            reverb.processStereo (buffer.getWritePointer (0), buffer.getWritePointer (1), n);
+        else
+            reverb.processMono (buffer.getWritePointer (0), n);
+    }
 }
 
 bool RetroTraxProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -46,6 +108,7 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             tfmx.render (buffer, 0, buffer.getNumSamples());
         else
             buffer.clear();
+        applyMasterFx (buffer);
         feedScope (buffer);
         return;
     }
@@ -59,6 +122,7 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     midi.clear();
 
     engine.process (buffer);
+    applyMasterFx (buffer);
     feedScope (buffer);
 }
 
@@ -549,6 +613,11 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
     xml->setAttribute ("bpm", (double) engine.bpm.load());
     xml->setAttribute ("instrument", currentInstrument.load());
     xml->setAttribute ("octave", currentOctave.load());
+    xml->setAttribute ("echoTime", (double) echoTimeMs.load());
+    xml->setAttribute ("echoFb",   (double) echoFeedback.load());
+    xml->setAttribute ("echoMix",  (double) echoMix.load());
+    xml->setAttribute ("revSize",  (double) reverbSize.load());
+    xml->setAttribute ("revMix",   (double) reverbMix.load());
 
     // Song-Reihenfolge + Modus (Reihenfolge als Liste von Pattern-Nummern).
     {
@@ -682,6 +751,11 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
     currentInstrument = juce::jlimit (0, TrackerEngine::kInstruments - 1,
                                       xml.getIntAttribute ("instrument", 0));
     currentOctave = juce::jlimit (1, 8, xml.getIntAttribute ("octave", 5));
+    echoTimeMs   = (float) xml.getDoubleAttribute ("echoTime", 300.0);
+    echoFeedback = (float) xml.getDoubleAttribute ("echoFb",   0.35);
+    echoMix      = (float) xml.getDoubleAttribute ("echoMix",  0.0);
+    reverbSize   = (float) xml.getDoubleAttribute ("revSize",  0.5);
+    reverbMix    = (float) xml.getDoubleAttribute ("revMix",   0.0);
 
     // Alte Instrumente leeren, damit Slots eines frueheren Songs nicht zurueckbleiben.
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)

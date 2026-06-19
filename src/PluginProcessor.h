@@ -142,6 +142,14 @@ public:
     std::atomic<int> scopePos { 0 };
     void feedScope (const juce::AudioBuffer<float>& buffer);
 
+    // --- Master-FX (Echo + Hall): wirken auf den ganzen Mix, Standard AUS ------
+    void applyMasterFx (juce::AudioBuffer<float>& buffer);
+    std::atomic<float> echoTimeMs   { 300.0f }; // Verzoegerung in ms
+    std::atomic<float> echoFeedback { 0.35f };  // Rueckkopplung 0..0.95
+    std::atomic<float> echoMix      { 0.0f };   // 0 = aus
+    std::atomic<float> reverbSize   { 0.5f };   // Raumgroesse 0..1
+    std::atomic<float> reverbMix    { 0.0f };   // 0 = aus
+
 private:
     std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
 
@@ -154,6 +162,12 @@ private:
     static juce::File findTfmxSmpl (const juce::File& mdatFile);
 
     TfmxPlayer tfmx;
+
+    // Master-FX-Speicher (Audio-Thread).
+    juce::AudioBuffer<float> echoBuf;   // Echo-Verzoegerungsleitung (2 Kanaele)
+    int    echoWrite    = 0;
+    double fxSampleRate = 44100.0;
+    juce::Reverb reverb;                // juce::Reverb (in juce_audio_basics)
 
     // Wiedergabe-Pfad: normaler Tracker ODER der TFMX-Replayer. Laden eines TFMX
     // schaltet auf Tfmx, Laden von Song/MOD/XM/Sample zurueck auf Tracker.

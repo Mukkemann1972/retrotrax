@@ -10,6 +10,7 @@
 #include "AkaiPanel.h"
 #include "DrumKitPanel.h"
 #include "SampleEditPanel.h"
+#include "MasterFxPanel.h"
 #include "SpectrumPanel.h"
 #include "Localisation.h"
 
@@ -52,6 +53,7 @@ private:
     juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
     juce::TextButton kitButton { "KIT" }; // Drum-Kit (16 Pads, MPC60/SP-1200-Stil)
     juce::TextButton editButton { "FAIRLIGHT" }; // Sample-Werkzeug (trimmen/zeichnen/choppen)
+    juce::TextButton fxButton { "FX" }; // Master-FX (Echo + Hall)
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton wavButton { "WAV" }; // Song als WAV-Datei rausrendern
     juce::TextButton helpButton { "?" };
@@ -98,6 +100,7 @@ private:
     AkaiPanel akaiPanel;
     DrumKitPanel kitPanel;
     SampleEditPanel editPanel;
+    MasterFxPanel fxPanel;
     SpectrumPanel spectrumPanel;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;

@@ -2,7 +2,7 @@
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p),
-      kitPanel (p), editPanel (p), spectrumPanel (p)
+      kitPanel (p), editPanel (p), fxPanel (p), spectrumPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -15,6 +15,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
     addChildComponent (kitPanel);    // unsichtbar, bis KIT gedrueckt wird
     addChildComponent (editPanel);   // unsichtbar, bis FAIRLIGHT gedrueckt wird
+    addChildComponent (fxPanel);     // unsichtbar, bis FX gedrueckt wird
     addChildComponent (spectrumPanel); // unsichtbar, bis SPEKTRUM gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (stopButton);
@@ -23,6 +24,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (akaiButton);
     addAndMakeVisible (kitButton);
     addAndMakeVisible (editButton);
+    addAndMakeVisible (fxButton);
     addAndMakeVisible (saveSongButton);
     addAndMakeVisible (wavButton);
     addAndMakeVisible (helpButton);
@@ -285,6 +287,21 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         editPanel.setVisible (false);
         editButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+
+    fxButton.onClick = [this]
+    {
+        fxPanel.refresh();
+        fxPanel.setVisible (true);
+        fxButton.setToggleState (true, juce::dontSendNotification);
+        fxPanel.toFront (false);
+        fxPanel.grabKeyboardFocus();
+    };
+    fxPanel.onClose = [this]
+    {
+        fxPanel.setVisible (false);
+        fxButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
 
@@ -818,6 +835,10 @@ void RetroTraxEditor::applyLanguage()
     editButton.setTooltip (loc::t ("Sample-Werkzeug: trimmen, normalisieren, umkehren, Welle zeichnen, in 16 Kit-Scheiben choppen",
                                    "Sample tool: trim, normalise, reverse, draw the wave, chop into 16 kit slices"));
     editPanel.applyLanguage();
+    fxButton.setButtonText (loc::t ("FX", "FX"));
+    fxButton.setTooltip (loc::t ("Master-FX: Echo + Hall fuer den ganzen Mix",
+                                 "Master FX: echo + reverb for the whole mix"));
+    fxPanel.applyLanguage();
     akaiButton.setButtonText (loc::t ("AKAI", "AKAI"));
     akaiButton.setTooltip (loc::t ("Akai-Sampler-Filter fuer das aktuelle Sample (resonanter Tiefpass + 12-Bit-Crunch)",
                                    "Akai sampler filter for the current sample (resonant low-pass + 12-bit crunch)"));
@@ -851,8 +872,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.48 | Slice -> Pattern (Break zerlegen)",
-                        "v0.48 | Slice -> Pattern (chop a break)"),
+    g.drawText (loc::t ("v0.49 | Master-FX: Echo + Hall",
+                        "v0.49 | Master FX: echo + reverb"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -914,6 +935,8 @@ void RetroTraxEditor::resized()
     kitButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
     editButton.setBounds (controls.removeFromLeft (96));
+    controls.removeFromLeft (6);
+    fxButton.setBounds (controls.removeFromLeft (48));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
     auto song = area.removeFromTop (32).reduced (8, 3);
@@ -944,5 +967,6 @@ void RetroTraxEditor::resized()
     akaiPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     kitPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     editPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
+    fxPanel.setBounds (gridArea);     // ebenfalls Overlay ueber dem Grid
     spectrumPanel.setBounds (gridArea); // ebenfalls Overlay ueber dem Grid
 }
