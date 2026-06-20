@@ -398,11 +398,11 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     setResizeLimits (960, 520, 3840, 2160); // grosses Maximum, damit Maximieren den Schirm fuellt
     setSize (1240, 720); // etwas breiter: Platz fuer den AKAI-Knopf, Spalten gleich lesbar
 
-    juce::MessageManager::callAsync ([sp = juce::Component::SafePointer<PatternGrid> (&grid)]
-    {
-        if (sp != nullptr)
-            sp->grabKeyboardFocus();
-    });
+    // Start-Splash mit dem Logo ganz oben drueber; nach dem Wegblenden Fokus ins Grid.
+    addAndMakeVisible (splash);
+    splash.onDone = [this] { splash.setVisible (false); grid.grabKeyboardFocus(); };
+    splash.toFront (false);
+    splash.grabKeyboardFocus();
 }
 
 RetroTraxEditor::~RetroTraxEditor()
@@ -943,8 +943,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.62 | Drumsampler (umbenannt, aufgeraeumt)",
-                        "v0.62 | Drumsampler (renamed, tidied)"),
+    g.drawText (loc::t ("v0.64 | Start-Splash mit Logo",
+                        "v0.64 | Startup splash with logo"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -963,6 +963,8 @@ void RetroTraxEditor::parentHierarchyChanged()
 
 void RetroTraxEditor::resized()
 {
+    splash.setBounds (getLocalBounds()); // Start-Splash deckt das ganze Fenster
+
     auto area = getLocalBounds();
 
     // Titelzeile rechts: ganz aussen Hilfe + Sprache, dann die Song-Knoepfe

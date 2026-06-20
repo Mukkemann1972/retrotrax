@@ -12,6 +12,7 @@
 #include "SampleEditPanel.h"
 #include "MasterFxPanel.h"
 #include "SpectrumPanel.h"
+#include "SplashOverlay.h"
 #include "Localisation.h"
 
 class RetroTraxEditor : public juce::AudioProcessorEditor
@@ -105,6 +106,7 @@ private:
     SampleEditPanel editPanel;
     MasterFxPanel fxPanel;
     SpectrumPanel spectrumPanel;
+    SplashOverlay splash;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;
     juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song

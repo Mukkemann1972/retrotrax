@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MukkemannRetroTrax VERSION 0.63.0 LANGUAGES C CXX)
+project(MukkemannRetroTrax VERSION 0.64.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -75,6 +75,9 @@ target_sources(RetroTrax PRIVATE
 
 target_include_directories(RetroTrax PRIVATE src)
 
+# Logo/Bild fest ins Programm einbetten (Start-Splash). Erzeugt BinaryData::logo_png.
+juce_add_binary_data(RetroTraxAssets SOURCES assets/logo.png)
+
 target_compile_definitions(RetroTrax PUBLIC
     JUCE_WEB_BROWSER=0
     # curl wird fuer die ST-XX-Downloads gebraucht (HTTPS unter Linux)
@@ -88,6 +91,7 @@ target_link_libraries(RetroTrax
     PRIVATE
         residfp
         tfmxdecoder
+        RetroTraxAssets
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
