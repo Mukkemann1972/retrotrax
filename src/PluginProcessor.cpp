@@ -184,6 +184,10 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         const auto msg = metadata.getMessage();
         if (msg.isNoteOn())
             engine.audition (msg.getNoteNumber(), currentInstrument.load());
+        else if (msg.isChannelPressure())
+            engine.midiPressure (msg.getChannelPressureValue() / 127.0f);
+        else if (msg.isAftertouch())
+            engine.midiPressure (msg.getAfterTouchValue() / 127.0f);
     }
     midi.clear();
 

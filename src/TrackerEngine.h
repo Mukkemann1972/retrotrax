@@ -257,6 +257,17 @@ public:
         voices[kTracks].gate = gateSamples;
     }
 
+    // MIDI-Aftertouch/Druck: moduliert die Lautstaerke der live gespielten
+    // (Vorhoer-)Note 0..127 -> 50..100 %. Wirkt nur mit einem Controller, der
+    // Aftertouch sendet; ohne Druck bleibt die Note bei vollem Pegel.
+    void midiPressure (float p)
+    {
+        const juce::ScopedLock sl (lock);
+        auto& v = voices[kTracks];
+        if (v.active)
+            setVoiceVolume (v, (int) std::lround (juce::jlimit (0.0f, 1.0f, 0.5f + 0.5f * p) * 64.0f));
+    }
+
     // Vorschau ohne Instrument-Slot (ST-Disks-Browser): das Sample gehoert
     // nur der Vorschau und ueberschreibt keinen der 16 Slots.
     void previewInstrument (std::unique_ptr<Instrument> inst)

@@ -968,8 +968,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.69 | WAV-Export-Ordner + Info (Ueber)",
-                        "v0.69 | WAV export folder + About"),
+    g.drawText (loc::t ("v0.70 | Aftertouch (MIDI-Druck)",
+                        "v0.70 | Aftertouch (MIDI pressure)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
