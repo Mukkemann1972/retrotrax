@@ -260,6 +260,15 @@ public:
             startVoice (kTracks, 60, preview.get(), -1); // C-5 = Originaltonhoehe
     }
 
+    // Aktuelle Abspielposition der Vorschau-Stimme in Samples (-1 = spielt nicht).
+    // Fuer die Laufmarke im Fairlight-Werkzeug.
+    double previewPos() const
+    {
+        const juce::ScopedLock sl (lock);
+        const auto& v = voices[kTracks];
+        return (v.active && preview != nullptr && v.inst == preview.get()) ? v.pos : -1.0;
+    }
+
     // --- Drum-Kit (16 Pads, MPC60/SP-1200-Stil) -----------------------------
     // Ein eigenstaendiges 16er-Sample-Bank NEBEN den Spur-Slots: zum Finger-
     // Trommeln/Vorhoeren. Jedes Pad ist ein ganz normales Instrument (Sample),

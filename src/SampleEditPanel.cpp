@@ -55,12 +55,26 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
     titleLabel.setColour (juce::Label::textColourId, juce::Colour (0xff39ff7a)); // Fairlight-Gruen
     addAndMakeVisible (titleLabel);
 
-    for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
+    for (auto* b : { &waveButton, &trimButton, &cutButton, &normButton, &revButton, &drawButton,
                      &chopButton, &chopPatButton, &loopButton, &exportButton,
                      &previewButton, &applyButton, &closeButton })
         addAndMakeVisible (b);
 
+    cutButton.onClick = [this] { cutSelection(); };
+    waveButton.onClick = [this]
+    {
+        juce::PopupMenu m;
+        m.addItem (1, loc::t ("Sinus", "Sine"));
+        m.addItem (2, loc::t ("Saege", "Saw"));
+        m.addItem (3, loc::t ("Rechteck", "Square"));
+        m.addItem (4, loc::t ("Dreieck", "Triangle"));
+        m.addItem (5, loc::t ("Puls 25%", "Pulse 25%"));
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&waveButton),
+            [this] (int r) { if (r >= 1) fillWave (r - 1); });
+    };
+
     drawButton.setClickingTogglesState (true);
+    startTimerHz (30); // Laufmarke beim Vorhoeren
     loopButton.setClickingTogglesState (true);
     loopButton.onClick = [this]
     {
@@ -207,7 +221,15 @@ void SampleEditPanel::applyLanguage()
 {
     titleLabel.setText (loc::t ("FAIRLIGHT - SAMPLE-WERKZEUG", "FAIRLIGHT - SAMPLE TOOL"),
                         juce::dontSendNotification);
+    waveButton.setButtonText   (loc::t ("WELLE", "WAVE"));
+    waveButton.setTooltip (loc::t ("Eine Single-Cycle-Welle erzeugen (Sinus/Saege/Rechteck/Dreieck/Puls) zum Weiterbearbeiten",
+                                   "Generate a single-cycle wave (sine/saw/square/triangle/pulse) to edit further"));
     trimButton.setButtonText   (loc::t ("TRIMMEN", "TRIM"));
+    trimButton.setTooltip (loc::t ("Auf die Markierung zuschneiden (Rest verwerfen)",
+                                   "Crop to the selection (discard the rest)"));
+    cutButton.setButtonText    (loc::t ("AUSSCHNEIDEN", "CUT"));
+    cutButton.setTooltip (loc::t ("Den markierten Bereich herausschneiden (Rest zusammenfuegen)",
+                                  "Cut out the selected range (join the rest)"));
     normButton.setButtonText   (loc::t ("NORMAL.", "NORMAL."));
     normButton.setTooltip (loc::t ("Auf Vollpegel anheben", "Boost to full level"));
     revButton.setButtonText    (loc::t ("UMKEHREN", "REVERSE"));
@@ -254,6 +276,68 @@ void SampleEditPanel::refresh()
     hasSel = false;
     selStart = selEnd = 0.0;
     repaint();
+}
+
+void SampleEditPanel::cutSelection()
+{
+    const int len = work.getNumSamples();
+    if (! hasSel || len < 4)
+    {
+        setHint ("Erst einen Bereich markieren (ziehen).", "Select a range first (drag).");
+        return;
+    }
+    const int a = juce::jlimit (0, len - 1, (int) (juce::jmin (selStart, selEnd) * len));
+    const int b = juce::jlimit (a + 1, len, (int) (juce::jmax (selStart, selEnd) * len));
+    const int rest = len - (b - a);
+    if (rest < 2) { setHint ("Da bliebe nichts uebrig.", "Nothing would be left."); return; }
+
+    juce::AudioBuffer<float> out (work.getNumChannels(), rest);
+    for (int c = 0; c < work.getNumChannels(); ++c)
+    {
+        out.copyFrom (c, 0,    work, c, 0, a);          // vor der Auswahl
+        out.copyFrom (c, a,    work, c, b, len - b);    // nach der Auswahl
+    }
+    work = std::move (out);
+    hasSel = false;
+    setHint ("Auswahl herausgeschnitten.", "Selection cut out.");
+    repaint();
+}
+
+void SampleEditPanel::fillWave (int type)
+{
+    const int len = 600; // eine Schwingung
+    work.setSize (1, len);
+    auto* d = work.getWritePointer (0);
+    const double twoPi = 2.0 * juce::MathConstants<double>::pi;
+    for (int i = 0; i < len; ++i)
+    {
+        const double ph = (double) i / (double) len;
+        float v = 0.0f;
+        switch (type)
+        {
+            case 1:  v = (float) (2.0 * ph - 1.0); break;                   // Saege
+            case 2:  v = ph < 0.5 ? 1.0f : -1.0f; break;                   // Rechteck
+            case 3:  v = (float) (1.0 - 4.0 * std::abs (ph - 0.5)); break; // Dreieck
+            case 4:  v = ph < 0.25 ? 1.0f : -1.0f; break;                  // Puls 25%
+            case 0:
+            default: v = (float) std::sin (twoPi * ph); break;             // Sinus
+        }
+        d[i] = v * 0.9f;
+    }
+    rate = 261.63 * len; // Note 60 (C-5) ~ 261,6 Hz
+    loopOn = true;
+    loopButton.setToggleState (true, juce::dontSendNotification);
+    hasSel = false;
+    setHint ("Wellenform erzeugt - mit FREIHAND verformen, LOOP an = Oszillator.",
+             "Waveform generated - reshape with FREEHAND, LOOP on = oscillator.");
+    repaint();
+}
+
+void SampleEditPanel::timerCallback()
+{
+    // Laufmarke nur neu zeichnen, wenn die Vorschau gerade laeuft.
+    if (proc.engine.previewPos() >= 0.0)
+        repaint (waveRect);
 }
 
 void SampleEditPanel::setHint (const juce::String& de, const juce::String& en)
@@ -412,6 +496,19 @@ void SampleEditPanel::paint (juce::Graphics& g)
         }
     }
 
+    // Laufmarke: zeigt beim Vorhoeren, wo im Sample gerade gespielt wird.
+    {
+        const double pp = proc.engine.previewPos();
+        const int wl = work.getNumSamples();
+        if (pp >= 0.0 && wl > 1)
+        {
+            const int x = waveRect.getX()
+                        + (int) (juce::jlimit (0.0, 1.0, pp / (double) wl) * waveRect.getWidth());
+            g.setColour (juce::Colour (0xffffe080)); // helle Laufmarke
+            g.drawVerticalLine (x, (float) waveRect.getY(), (float) waveRect.getBottom());
+        }
+    }
+
     // Gruener CRT-Rahmen ueber allem.
     g.setColour (phosphor.withAlpha (0.5f));
     g.drawRect (waveRect, 1);
@@ -441,10 +538,10 @@ void SampleEditPanel::resized()
     // Darueber: Bearbeiten-Werkzeuge.
     auto rowA = area.removeFromBottom (30);
     {
-        const int n = 6; // trim, norm, rev, draw, loop, export
+        const int n = 8; // wave, trim, cut, norm, rev, draw, loop, export
         const int bw = (rowA.getWidth() - (n - 1) * 6) / n;
-        for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
-                         &loopButton, &exportButton })
+        for (auto* b : { &waveButton, &trimButton, &cutButton, &normButton, &revButton,
+                         &drawButton, &loopButton, &exportButton })
         {
             b->setBounds (rowA.removeFromLeft (bw));
             rowA.removeFromLeft (6);

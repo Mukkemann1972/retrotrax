@@ -111,14 +111,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         m.addSeparator();
         m.addItem (20, loc::t ("TFMX-Samples entnehmen (Grabber) ...",
                                "Grab samples from TFMX ..."));
-        m.addSeparator();
-        juce::PopupMenu wav;
-        wav.addItem (30, loc::t ("Sinus", "Sine"));
-        wav.addItem (31, loc::t ("Saege", "Saw"));
-        wav.addItem (32, loc::t ("Rechteck", "Square"));
-        wav.addItem (33, loc::t ("Dreieck", "Triangle"));
-        wav.addItem (34, loc::t ("Puls 25%", "Pulse 25%"));
-        m.addSubMenu (loc::t ("Wellenform erzeugen (in Slot)", "Generate waveform (into slot)"), wav);
         m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&loadMenuButton),
             [this] (int r)
             {
@@ -133,13 +125,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                     case 13: loadS3mClicked(); break;
                     case 14: loadItClicked(); break;
                     case 20: grabTfmxClicked(); break;
-                    case 30: case 31: case 32: case 33: case 34:
-                        proc.makeWaveform (proc.currentInstrument.load(), r - 30);
-                        refreshInstrumentBox();
-                        hintLabel.setText (loc::t ("Wellenform erzeugt (loopt als Oszillator).",
-                                                   "Waveform generated (loops as an oscillator)."),
-                                           juce::dontSendNotification);
-                        break;
                     default: break;
                 }
             });

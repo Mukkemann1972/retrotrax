@@ -11,7 +11,8 @@
 // Fairlight CMI) und vor allem: das Sample IN KIT schneiden (16 Scheiben auf die
 // Drum-Pads). Bearbeitet wird eine Arbeitskopie; UEBERNEHMEN sichert sie zurueck
 // in den Slot (als WAV, bleibt im Song erhalten). Overlay wie das AKAI-Panel.
-class SampleEditPanel : public juce::Component
+class SampleEditPanel : public juce::Component,
+                        private juce::Timer
 {
 public:
     explicit SampleEditPanel (RetroTraxProcessor& processor);
@@ -28,6 +29,9 @@ public:
     std::function<void()> onClose;
 
 private:
+    void timerCallback() override;             // Laufmarke (Vorhoer-Position) nachzeichnen
+    void cutSelection();                       // markierten Bereich herausschneiden
+    void fillWave (int type);                  // Single-Cycle-Welle in die Arbeitskopie
     void setHint (const juce::String& de, const juce::String& en);
     void drawAt (const juce::MouseEvent&);     // Freihand: Wellenwert unter der Maus setzen
     void selectAt (const juce::MouseEvent&);   // Bereich markieren (Ziehen)
@@ -54,7 +58,9 @@ private:
     juce::Slider     stretchSlider;
     juce::TextButton stretchButton { "DEHNEN" };
 
+    juce::TextButton waveButton   { "WELLE" };  // Single-Cycle-Welle erzeugen
     juce::TextButton trimButton   { "TRIMMEN" };
+    juce::TextButton cutButton    { "AUSSCHNEIDEN" }; // Auswahl herausschneiden
     juce::TextButton normButton   { "NORMAL." };
     juce::TextButton revButton    { "UMKEHREN" };
     juce::TextButton drawButton   { "FREIHAND" };
