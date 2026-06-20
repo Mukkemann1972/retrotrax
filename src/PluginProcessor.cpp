@@ -1268,6 +1268,18 @@ bool RetroTraxProcessor::loadXm (const juce::File& file, juce::String& message)
                     cell.effect      = mc.effect;
                     cell.effectParam = mc.effectParam;
                 }
+
+            // Kuerzer als 64 Zeilen? Impliziter Pattern-Break am letzten Takt auf
+            // einer freien Effekt-Zelle -> die Wiedergabe laeuft nicht durch leere
+            // Zeilen, sondern springt originalgetreu weiter (XM/S3M/IT mit <64).
+            if (prows > 0 && prows < TrackerEngine::kRows)
+                for (int c = 0; c < nch; ++c)
+                    if (engine.patterns[p][prows - 1][c].effect < 0)
+                    {
+                        engine.patterns[p][prows - 1][c].effect      = 0xD;
+                        engine.patterns[p][prows - 1][c].effectParam = 0;
+                        break;
+                    }
         }
 
         int nn = 0;
@@ -1360,6 +1372,18 @@ bool RetroTraxProcessor::applyImportedSong (const ImportCommon::Song& song, juce
                     cell.effect      = mc.effect;
                     cell.effectParam = mc.effectParam;
                 }
+
+            // Kuerzer als 64 Zeilen? Impliziter Pattern-Break am letzten Takt auf
+            // einer freien Effekt-Zelle -> die Wiedergabe laeuft nicht durch leere
+            // Zeilen, sondern springt originalgetreu weiter (XM/S3M/IT mit <64).
+            if (prows > 0 && prows < TrackerEngine::kRows)
+                for (int c = 0; c < nch; ++c)
+                    if (engine.patterns[p][prows - 1][c].effect < 0)
+                    {
+                        engine.patterns[p][prows - 1][c].effect      = 0xD;
+                        engine.patterns[p][prows - 1][c].effectParam = 0;
+                        break;
+                    }
         }
 
         int nn = 0;

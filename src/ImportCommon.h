@@ -46,6 +46,7 @@ namespace ImportCommon
     {
         if      (fx == 0x0 && fxp != 0)   { cell.effect = 0x0; cell.effectParam = fxp; }
         else if (fx == 0x1 || fx == 0x2 || fx == 0x3 || fx == 0x4
-              || fx == 0xA || fx == 0xF)  { cell.effect = fx;  cell.effectParam = fxp; }
+              || fx == 0xA || fx == 0xB || fx == 0xD || fx == 0xF)
+                                          { cell.effect = fx;  cell.effectParam = fxp; }
     }
 }

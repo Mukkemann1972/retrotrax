@@ -124,6 +124,8 @@ namespace ModImport
                     cell.instrument = (sample > 0 && sample <= 31) ? sample - 1 : -1;
                     // Nur die Effekte mit gleicher Nummerierung uebernehmen.
                     if (eff == 0x0 && par != 0)            { cell.effect = 0x0; cell.effectParam = par; }
+                    else if (eff == 0xB)                   { cell.effect = 0xB; cell.effectParam = par; } // Position-Jump
+                    else if (eff == 0xD)                   { cell.effect = 0xD; cell.effectParam = (par >> 4) * 10 + (par & 0xF); } // Pattern-Break (dezimal)
                     else if (eff == 0x1 || eff == 0x2 || eff == 0x3 || eff == 0x4
                           || eff == 0xA || eff == 0xC || eff == 0xF)
                                                             { cell.effect = eff; cell.effectParam = par; }

@@ -194,6 +194,8 @@ public:
         currentTick = speed.load() - 1; // ++ -> wickelt auf 0 und loest Zeile 0 aus
         samplesUntilTick = 0.0;
         songLoopCount = 0; // neuer Durchlauf beginnt (fuer den Offline-Export)
+        pendingBreakRow = -1; // Pattern-Break/Position-Jump zuruecksetzen
+        pendingPosJump  = -1;
         // Song-Modus: vorn in der Reihenfolge starten. Loop-Modus: aktuelles Pattern.
         if (songMode.load())
         {
@@ -392,6 +394,10 @@ public:
     // Zaehlt, wie oft die Reihenfolge komplett umgelaufen ist. Der Offline-WAV-
     // Export rendert, bis dieser Wert von 0 auf 1 springt = ein voller Durchlauf.
     std::atomic<int> songLoopCount { 0 };
+    // Pattern-Break (Dxx) / Position-Jump (Bxx) aus der gerade gespielten Zeile,
+    // wirken beim naechsten Zeilenwechsel (originalgetreue Modul-Wiedergabe).
+    int pendingBreakRow = -1; // Dxx: Zielzeile (-1 = keiner)
+    int pendingPosJump  = -1; // Bxx: Ziel-Position in der Reihenfolge (-1 = keiner)
 
     // --- Solo / Mute pro Spur (wie in jeder DAW und jedem alten Tracker) ------
     // Reine Wiedergabe-Schalter: der Sequencer laeuft weiter, nur der Ton einer
@@ -526,17 +532,40 @@ private:
 
     void advanceRow()
     {
-        int row = currentRow.load() + 1;
-        if (row >= kRows)
+        int row;
+        if (pendingPosJump >= 0 || pendingBreakRow >= 0)
         {
-            row = 0;
-            // Pattern zu Ende: im Song-Modus zum naechsten Eintrag der Reihenfolge.
+            // Position-Jump (Bxx) / Pattern-Break (Dxx) der vorherigen Zeile.
             if (songMode.load())
             {
-                int sp = songPos.load() + 1;
-                if (sp >= orderLen) { sp = 0; songLoopCount.fetch_add (1, std::memory_order_relaxed); } // Reihenfolge umgelaufen
+                int sp = (pendingPosJump >= 0) ? pendingPosJump   // Bxx: zu dieser Position
+                                               : songPos.load() + 1; // Dxx: naechste Position
+                if (sp >= orderLen) { sp = 0; songLoopCount.fetch_add (1, std::memory_order_relaxed); }
+                sp = juce::jlimit (0, juce::jmax (0, orderLen - 1), sp);
                 songPos = sp;
                 playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
+            }
+            // Loop-Modus (ein Pattern): Dxx springt zur Zielzeile im selben Pattern,
+            // Bxx faengt vorn an.
+            row = (pendingBreakRow >= 0) ? pendingBreakRow : 0;
+            row = juce::jlimit (0, kRows - 1, row);
+            pendingPosJump  = -1;
+            pendingBreakRow = -1;
+        }
+        else
+        {
+            row = currentRow.load() + 1;
+            if (row >= kRows)
+            {
+                row = 0;
+                // Pattern zu Ende: im Song-Modus zum naechsten Eintrag der Reihenfolge.
+                if (songMode.load())
+                {
+                    int sp = songPos.load() + 1;
+                    if (sp >= orderLen) { sp = 0; songLoopCount.fetch_add (1, std::memory_order_relaxed); } // Reihenfolge umgelaufen
+                    songPos = sp;
+                    playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
+                }
             }
         }
         currentRow = row;
@@ -560,6 +589,13 @@ private:
                 triggerVoice (t, c.note, c.instrument, c.volume);
 
             applyRowEffect (t, c); // Cxx/Fxx/3xx-Ziel: einmal pro Zeile (Tick 0)
+
+            // Position-Jump (Bxx) / Pattern-Break (Dxx) fuer den naechsten Zeilenwechsel
+            // vormerken (originalgetreue Modul-Wiedergabe; letzte Spur gewinnt).
+            if (c.effect == 0xB)
+                pendingPosJump = juce::jmax (0, c.effectParam);
+            else if (c.effect == 0xD)
+                pendingBreakRow = juce::jlimit (0, kRows - 1, c.effectParam);
         }
     }
 

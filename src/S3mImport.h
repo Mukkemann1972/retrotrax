@@ -26,6 +26,8 @@ namespace S3mImport
         switch (cmd)
         {
             case 1:  ImportCommon::mapTrackerEffect (0xF, info, cell); break; // A Speed
+            case 2:  ImportCommon::mapTrackerEffect (0xB, info, cell); break; // B Position-Jump
+            case 3:  ImportCommon::mapTrackerEffect (0xD, (info >> 4) * 10 + (info & 0xF), cell); break; // C Pattern-Break (dezimal)
             case 4:  ImportCommon::mapTrackerEffect (0xA, info, cell); break; // D Vol-Slide
             case 5:  ImportCommon::mapTrackerEffect (0x2, info, cell); break; // E Porta runter
             case 6:  ImportCommon::mapTrackerEffect (0x1, info, cell); break; // F Porta hoch

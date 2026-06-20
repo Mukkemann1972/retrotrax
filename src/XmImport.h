@@ -72,6 +72,8 @@ namespace XmImport
     inline void mapEffect (int fxt, int fxp, Cell& cell)
     {
         if      (fxt == 0x0 && fxp != 0)  { cell.effect = 0x0; cell.effectParam = fxp; }
+        else if (fxt == 0xB)              { cell.effect = 0xB; cell.effectParam = fxp; } // Position-Jump
+        else if (fxt == 0xD)             { cell.effect = 0xD; cell.effectParam = (fxp >> 4) * 10 + (fxp & 0xF); } // Pattern-Break (dezimal)
         else if (fxt == 0x1 || fxt == 0x2 || fxt == 0x3 || fxt == 0x4
               || fxt == 0xA || fxt == 0xC || fxt == 0xF)
                                           { cell.effect = fxt; cell.effectParam = fxp; }

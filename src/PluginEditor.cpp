@@ -931,8 +931,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.56 | REC-Knopf + Play/Stop-Umschalter",
-                        "v0.56 | REC button + Play/Stop toggle"),
+    g.drawText (loc::t ("v0.57 | Module originalgetreu (Break/Jump)",
+                        "v0.57 | Faithful module playback (break/jump)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
