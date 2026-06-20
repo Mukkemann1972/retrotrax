@@ -565,7 +565,9 @@ void RetroTraxEditor::exportWavClicked()
     const auto base = currentSongFile.existsAsFile()
                           ? currentSongFile.getFileNameWithoutExtension()
                           : loc::t ("Mein Song", "My Song");
-    const auto start = songsFolder().getChildFile (base + ".wav");
+    auto wavDir = songsFolder().getChildFile ("WAV-Export"); // eigener, aufgeraeumter Ordner
+    wavDir.createDirectory();
+    const auto start = wavDir.getChildFile (base + ".wav");
 
     songChooser = std::make_unique<juce::FileChooser> (
         loc::t ("Song als WAV exportieren", "Export song as WAV"), start, "*.wav");
@@ -966,8 +968,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.68 | Bildschirm-Tastatur (Taste = Note)",
-                        "v0.68 | On-screen keyboard (key = note)"),
+    g.drawText (loc::t ("v0.69 | WAV-Export-Ordner + Info (Ueber)",
+                        "v0.69 | WAV export folder + About"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

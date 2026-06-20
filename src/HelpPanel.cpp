@@ -56,6 +56,25 @@ void HelpPanel::rebuild()
             "No prior knowledge needed. Load a sound, type a few notes, hit the\n"
             "space bar - and there's your first beat.") });
 
+    topics.add ({ loc::t ("Ueber RetroTrax", "About RetroTrax"),
+        loc::t (
+            "Mukkemann RetroTrax - Free Open Source Music Tracker.\n\n"
+            "Amiga-Sampling und echter C64-SID-Klang in EINEM Werkzeug, gemischt in\n"
+            "einem Song - kostenlos, offen und fuer Windows, macOS und Linux. Gebaut\n"
+            "fuer alle, die ohne teure Hardware Musik machen wollen: Ideen von frueher,\n"
+            "Komfort von heute.\n\n"
+            "Projekt: github.com/Mukkemann1972/retrotrax  -  Ko-fi: ko-fi.com (Mukkemann)\n"
+            "Laeuft als VST3, CLAP und als eigenstaendiges Programm.\n"
+            "Das Logo erscheint beim Start (Klick/Taste ueberspringt).",
+            "Mukkemann RetroTrax - Free Open Source Music Tracker.\n\n"
+            "Amiga sampling and real C64 SID sound in ONE tool, mixed in a single\n"
+            "song - free, open and for Windows, macOS and Linux. Built for everyone\n"
+            "who wants to make music without expensive hardware: ideas from the past,\n"
+            "comfort of today.\n\n"
+            "Project: github.com/Mukkemann1972/retrotrax  -  Ko-fi: ko-fi.com (Mukkemann)\n"
+            "Runs as VST3, CLAP and a standalone app.\n"
+            "The logo shows on startup (click/key to skip).") });
+
     topics.add ({ loc::t ("Schnellstart", "Quick start"),
         loc::t (
             "1. Druecke SAMPLES und such dir einen Sound aus den ST-Disks aus\n"
