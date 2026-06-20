@@ -38,6 +38,7 @@ private:
     void loadS3mClicked();
     void loadItClicked();
     void loadTfmxClicked();
+    void loadSidClicked();   // C64-SID (.sid) laden + Diagnose
     void grabTfmxClicked();   // TFMX-Grabber: Samples entnehmen -> eigener Ordner
     void syncUiFromState();
     void hideAllOverlays(); // alle Overlay-Panels schliessen (immer nur eins offen)

@@ -109,6 +109,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         imp.addItem (13, loc::t ("Scream Tracker 3 (.s3m) ...", "Scream Tracker 3 (.s3m) ..."));
         imp.addItem (14, loc::t ("Impulse Tracker (.it) ...", "Impulse Tracker (.it) ..."));
         imp.addItem (12, loc::t ("TFMX - Huelsbeck (.tfmx/.mdat) ...", "TFMX - Huelsbeck (.tfmx/.mdat) ..."));
+        imp.addItem (15, loc::t ("C64-SID (.sid) ...", "C64 SID (.sid) ..."));
         m.addSubMenu (loc::t ("Importieren", "Import"), imp);
         m.addSeparator();
         m.addItem (20, loc::t ("TFMX-Samples entnehmen (Grabber) ...",
@@ -126,6 +127,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                     case 12: loadTfmxClicked(); break;
                     case 13: loadS3mClicked(); break;
                     case 14: loadItClicked(); break;
+                    case 15: loadSidClicked(); break;
                     case 20: grabTfmxClicked(); break;
                     default: break;
                 }
@@ -783,6 +785,35 @@ void RetroTraxEditor::loadTfmxClicked()
         });
 }
 
+void RetroTraxEditor::loadSidClicked()
+{
+    const auto start = currentSongFile.existsAsFile()
+                         ? currentSongFile.getParentDirectory() : songsFolder();
+
+    songChooser = std::make_unique<juce::FileChooser> (
+        loc::t ("C64-SID-Musik oeffnen (.sid)", "Open C64 SID music (.sid)"),
+        start, "*.sid;*.psid;*.rsid");
+
+    songChooser->launchAsync (juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File())
+                return; // abgebrochen
+
+            juce::String message;
+            if (! proc.loadSid (file, message))
+            {
+                hintLabel.setText (loc::t ("SID laden fehlgeschlagen: ", "SID load failed: ") + message,
+                                   juce::dontSendNotification);
+                return;
+            }
+            hintLabel.setText (loc::t ("SID gelesen - ", "SID read - ") + message,
+                               juce::dontSendNotification);
+        });
+}
+
 void RetroTraxEditor::grabTfmxClicked()
 {
     const auto start = currentSongFile.existsAsFile()
@@ -968,8 +999,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.70 | Aftertouch (MIDI-Druck)",
-                        "v0.70 | Aftertouch (MIDI pressure)"),
+    g.drawText (loc::t ("v0.71 | C64-SID-Player (.sid spielt!)",
+                        "v0.71 | C64 SID player (.sid plays!)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

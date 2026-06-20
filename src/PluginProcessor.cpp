@@ -64,6 +64,7 @@ void RetroTraxProcessor::prepareToPlay (double sampleRate, int)
 {
     engine.prepare (sampleRate);
     tfmx.prepare (sampleRate);
+    sid.prepareToPlay (sampleRate);
     for (auto& ch : eqZ) for (auto& f : ch) { f[0] = 0.0f; f[1] = 0.0f; }
 
     // Master-FX vorbereiten: Echo-Verzoegerungsspeicher (bis 2 s) + Hall.
@@ -172,6 +173,24 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
         if (playing)
             tfmx.render (buffer, 0, buffer.getNumSamples());
+        else
+            buffer.clear();
+        applyMasterFx (buffer);
+        feedScope (buffer);
+        return;
+    }
+
+    // C64-SID-Wiedergabe: der eigene 6502+reSIDfp-Kern ersetzt die Tracker-Engine.
+    if (playbackMode.load() == PlaybackMode::Sid)
+    {
+        midi.clear();
+        const bool playing = engine.playing.load();
+        if (playing && ! sidWasPlaying)
+            sid.restart();
+        sidWasPlaying = playing;
+
+        if (playing)
+            sid.renderBlock (buffer, 0, buffer.getNumSamples());
         else
             buffer.clear();
         applyMasterFx (buffer);
@@ -1617,6 +1636,33 @@ bool RetroTraxProcessor::loadTfmx (const juce::File& mdatFile, juce::String& mes
             + juce::String (in.tracksteps) + " Tracksteps, " + juce::String (in.sampleBytes / 1024) + " KB Samples.";
     message += tfmx.isPlayable() ? "  PLAY startet die Wiedergabe."
                                  : "  (Wiedergabe nicht moeglich - .smpl gefunden?)";
+    return true;
+}
+
+bool RetroTraxProcessor::loadSid (const juce::File& file, juce::String& message)
+{
+    if (! sid.load (file))
+    {
+        message = sid.info().message;
+        return false;
+    }
+    const auto& in = sid.info();
+    auto hx = [] (int v) { return juce::String::toHexString (v).toUpperCase().paddedLeft ('0', 4); };
+    message = "\"" + in.title + "\"";
+    if (in.author.isNotEmpty())   message += " - " + in.author;
+    if (in.released.isNotEmpty()) message += " (" + in.released + ")";
+    message += ": " + in.magic + " v" + juce::String (in.version) + ", "
+             + juce::String (in.songs) + " Song(s), Load $" + hx (in.loadAddr)
+             + " Init $" + hx (in.initAddr) + " Play $" + hx (in.playAddr)
+             + ", " + juce::String (in.dataBytes) + " Bytes.";
+
+    engine.stop();
+    sid.prepareToPlay (getSampleRate() > 0.0 ? getSampleRate() : 44100.0);
+    sid.start (in.startSong);
+    sidWasPlaying = false;
+    playbackMode = PlaybackMode::Sid;   // ab jetzt spielt der C64-SID-Kern
+    message += sid.isPlayable() ? "  PLAY startet die Wiedergabe."
+                                : "  (Chip nicht bereit - Wiedergabe nicht moeglich.)";
     return true;
 }
 

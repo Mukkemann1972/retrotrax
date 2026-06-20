@@ -4,6 +4,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "TrackerEngine.h"
 #include "TfmxPlayer.h"
+#include "SidPlayer.h"
 #include "ImportCommon.h"
 
 class RetroTraxProcessor : public juce::AudioProcessor
@@ -131,6 +132,7 @@ public:
     // wird per Namens-Konvention neben der .mdat gesucht. STUFE 1: liest + meldet
     // nur den Datei-Inhalt (Diagnose), Wiedergabe folgt. 'message' = Zusammenfassung.
     bool loadTfmx (const juce::File& mdatFile, juce::String& message);
+    bool loadSid (const juce::File& file, juce::String& message); // C64-.sid (Stufe 1: Diagnose)
 
     // TFMX-GRABBER: alle Samples (Instrumente) aus einem TFMX-Modul entnehmen und
     // als einzelne 16-Bit-WAVs in 'outFolder' schreiben (Renoise-Plugin-Grabber-
@@ -177,6 +179,7 @@ private:
     static juce::File findTfmxSmpl (const juce::File& mdatFile);
 
     TfmxPlayer tfmx;
+    SidPlayer sid;
 
     // Master-FX-Speicher (Audio-Thread).
     juce::AudioBuffer<float> echoBuf;   // Echo-Verzoegerungsleitung (2 Kanaele)
@@ -187,9 +190,10 @@ private:
 
     // Wiedergabe-Pfad: normaler Tracker ODER der TFMX-Replayer. Laden eines TFMX
     // schaltet auf Tfmx, Laden von Song/MOD/XM/Sample zurueck auf Tracker.
-    enum class PlaybackMode { Tracker, Tfmx };
+    enum class PlaybackMode { Tracker, Tfmx, Sid };
     std::atomic<PlaybackMode> playbackMode { PlaybackMode::Tracker };
     bool tfmxWasPlaying = false; // nur Audio-Thread: Flanke fuer Neustart bei PLAY
+    bool sidWasPlaying = false;  // dito fuer den C64-SID-Player
 
     // Gemeinsames Song-Format fuer Host-State und .retrotrax-Dateien.
     std::unique_ptr<juce::XmlElement> stateToXml();
