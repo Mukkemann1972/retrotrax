@@ -2,7 +2,7 @@
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p),
-      kitPanel (p), editPanel (p), fxPanel (p), spectrumPanel (p)
+      kitPanel (p), editPanel (p), fxPanel (p), spectrumPanel (p), kbPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
 
@@ -17,6 +17,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (editPanel);   // unsichtbar, bis FAIRLIGHT gedrueckt wird
     addChildComponent (fxPanel);     // unsichtbar, bis FX gedrueckt wird
     addChildComponent (spectrumPanel); // unsichtbar, bis SPEKTRUM gedrueckt wird
+    addChildComponent (kbPanel);     // unsichtbar, bis TASTEN gedrueckt wird
     addAndMakeVisible (playButton);
     addAndMakeVisible (recButton);
     addAndMakeVisible (loadMenuButton);
@@ -30,6 +31,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (helpButton);
     addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (spectrumButton);
+    addAndMakeVisible (kbButton);
     addAndMakeVisible (langButton);
     addAndMakeVisible (patPrevButton);
     addAndMakeVisible (patNextButton);
@@ -219,6 +221,21 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         spectrumPanel.setVisible (false);
         spectrumButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+
+    kbButton.onClick = [this]
+    {
+        hideAllOverlays();
+        kbPanel.setVisible (true);
+        kbButton.setToggleState (true, juce::dontSendNotification);
+        kbPanel.toFront (false);
+        kbPanel.grabKeyboardFocus();
+    };
+    kbPanel.onClose = [this]
+    {
+        kbPanel.setVisible (false);
+        kbButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
     diskBrowser.onSampleLoaded = [this] (const juce::String& name, int slot)
@@ -432,12 +449,14 @@ void RetroTraxEditor::hideAllOverlays()
     editPanel.setVisible (false);
     fxPanel.setVisible (false);
     spectrumPanel.setVisible (false);
+    kbPanel.setVisible (false);
     sidButton.setToggleState (false, juce::dontSendNotification);
     akaiButton.setToggleState (false, juce::dontSendNotification);
     kitButton.setToggleState (false, juce::dontSendNotification);
     editButton.setToggleState (false, juce::dontSendNotification);
     fxButton.setToggleState (false, juce::dontSendNotification);
     spectrumButton.setToggleState (false, juce::dontSendNotification);
+    kbButton.setToggleState (false, juce::dontSendNotification);
 }
 
 void RetroTraxEditor::refreshInstrumentBox()
@@ -864,6 +883,9 @@ void RetroTraxEditor::applyLanguage()
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
     liveHelpButton.setTooltip (loc::t ("Hilfe-Zeile an/aus - erklaert die Stelle unterm Cursor",
                                        "Help line on/off - explains the spot under the cursor"));
+    kbButton.setButtonText (loc::t ("TASTEN", "KEYS"));
+    kbButton.setTooltip (loc::t ("Bildschirm-Tastatur: zeigt welche Taste welche Note ist (anklicken spielt an)",
+                                 "On-screen keyboard: shows which key is which note (click to play)"));
     spectrumButton.setButtonText (loc::t ("SPEKTRUM", "SPECTRUM"));
     spectrumButton.setTooltip (loc::t ("Frequenz-Anzeige ein/aus - die tanzenden Balken des Klangs",
                                        "Frequency display on/off - the dancing bars of the sound"));
@@ -920,6 +942,7 @@ void RetroTraxEditor::applyLanguage()
     sidPanel.applyLanguage();
     akaiPanel.applyLanguage();
     spectrumPanel.applyLanguage();
+    kbPanel.applyLanguage();
     repaint();
 }
 
@@ -943,8 +966,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.67 | VU-Pegel pro Spur (Spektrum verteilt)",
-                        "v0.67 | VU level per track"),
+    g.drawText (loc::t ("v0.68 | Bildschirm-Tastatur (Taste = Note)",
+                        "v0.68 | On-screen keyboard (key = note)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -977,6 +1000,8 @@ void RetroTraxEditor::resized()
     liveHelpButton.setBounds (songRow.removeFromRight (60));
     songRow.removeFromRight (6);
     spectrumButton.setBounds (songRow.removeFromRight (96));
+    songRow.removeFromRight (6);
+    kbButton.setBounds (songRow.removeFromRight (70));       // Bildschirm-Tastatur
     songRow.removeFromRight (12);
     wavButton.setBounds (songRow.removeFromRight (60));      // WAV gehoert zu SONG SPEICHERN
     songRow.removeFromRight (6);
@@ -1046,4 +1071,5 @@ void RetroTraxEditor::resized()
     editPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     fxPanel.setBounds (gridArea);     // ebenfalls Overlay ueber dem Grid
     spectrumPanel.setBounds (gridArea); // ebenfalls Overlay ueber dem Grid
+    kbPanel.setBounds (gridArea);     // ebenfalls Overlay ueber dem Grid
 }

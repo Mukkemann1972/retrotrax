@@ -12,6 +12,7 @@
 #include "SampleEditPanel.h"
 #include "MasterFxPanel.h"
 #include "SpectrumPanel.h"
+#include "KeyboardPanel.h"
 #include "SplashOverlay.h"
 #include "Localisation.h"
 
@@ -61,6 +62,7 @@ private:
     juce::TextButton helpButton { "?" };
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton spectrumButton { "SPEKTRUM" }; // Frequenz-Anzeige ein/aus
+    juce::TextButton kbButton { "TASTEN" }; // Bildschirm-Tastatur (welche Taste = welche Note)
     juce::TextButton langButton { "DE" };
 
     // Song-Modus-Leiste
@@ -106,6 +108,7 @@ private:
     SampleEditPanel editPanel;
     MasterFxPanel fxPanel;
     SpectrumPanel spectrumPanel;
+    KeyboardPanel kbPanel;
     SplashOverlay splash;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::FileChooser> songChooser;
