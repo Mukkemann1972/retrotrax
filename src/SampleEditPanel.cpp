@@ -433,11 +433,37 @@ void SampleEditPanel::mouseDrag (const juce::MouseEvent& e)
     else          selectAt (e);
 }
 
+// Computertaste -> Halbton-Offset 0..28 (gleiche Belegung wie im Pattern-Grid),
+// damit man im Fairlight jede Note des bearbeiteten Samples per Taste vorhoeren kann.
+static int fairlightCharOffset (juce::juce_wchar c)
+{
+    switch (c)
+    {
+        case 'y': case 'Y': return 0;  case 's': case 'S': return 1;  case 'x': case 'X': return 2;
+        case 'd': case 'D': return 3;  case 'c': case 'C': return 4;  case 'v': case 'V': return 5;
+        case 'g': case 'G': return 6;  case 'b': case 'B': return 7;  case 'h': case 'H': return 8;
+        case 'n': case 'N': return 9;  case 'j': case 'J': return 10; case 'm': case 'M': return 11;
+        case 'q': case 'Q': return 12; case '2': return 13; case 'w': case 'W': return 14;
+        case '3': return 15; case 'e': case 'E': return 16; case 'r': case 'R': return 17;
+        case '5': return 18; case 't': case 'T': return 19; case '6': return 20;
+        case 'z': case 'Z': return 21; case '7': return 22; case 'u': case 'U': return 23;
+        case 'i': case 'I': return 24; case '9': return 25; case 'o': case 'O': return 26;
+        case '0': return 27; case 'p': case 'P': return 28;
+        default: return -1;
+    }
+}
+
 bool SampleEditPanel::keyPressed (const juce::KeyPress& key)
 {
     if (key.getKeyCode() == juce::KeyPress::escapeKey && onClose != nullptr)
     {
         onClose();
+        return true;
+    }
+    const int off = fairlightCharOffset (key.getTextCharacter());
+    if (off >= 0 && work.getNumSamples() > 1)
+    {
+        proc.previewBuffer (work, rate, loopOn, (float) loopStartFrac, 60 + off);
         return true;
     }
     return false;

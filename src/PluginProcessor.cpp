@@ -830,7 +830,7 @@ int RetroTraxProcessor::sliceToPattern (const juce::AudioBuffer<float>& buf, dou
 }
 
 void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop,
-                                        float loopStart)
+                                        float loopStart, int note)
 {
     if (buf.getNumSamples() < 2)
         return;
@@ -842,7 +842,7 @@ void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, dou
     inst->loopMode   = loop ? TrackerEngine::Instrument::Loop::Forward
                             : TrackerEngine::Instrument::Loop::Off;
     inst->loopStart  = juce::jlimit (0.0f, 0.99f, loopStart);
-    engine.previewInstrument (std::move (inst));
+    engine.previewInstrument (std::move (inst), note);
 }
 
 // --- Selbst-enthaltenes .retrotrax: Sample-Daten einbetten -------------------

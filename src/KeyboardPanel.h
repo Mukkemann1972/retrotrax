@@ -9,7 +9,8 @@
 // Klaviatur), so wie die zwei Tastenreihen im Tracker. Anklicken spielt die Note
 // im aktuellen Instrument an - gut zum Ausprobieren, ohne die Belegung auswendig zu
 // koennen. Overlay wie die anderen Panels; ESC schliesst.
-class KeyboardPanel : public juce::Component
+class KeyboardPanel : public juce::Component,
+                      private juce::Timer
 {
 public:
     explicit KeyboardPanel (RetroTraxProcessor& processor) : proc (processor)
@@ -36,7 +37,20 @@ public:
             onClose();
             return true;
         }
+        const int off = charToOffset (key.getTextCharacter());
+        if (off >= 0)
+        {
+            playKey (off);
+            return true;
+        }
         return false;
+    }
+
+    // Auch von aussen aufrufbar: Taste optisch+klanglich ausloesen (Buchstabe).
+    void triggerChar (juce::juce_wchar c)
+    {
+        const int off = charToOffset (c);
+        if (off >= 0) playKey (off);
     }
 
     void resized() override
@@ -71,9 +85,7 @@ public:
             for (int o = 0; o < kKeys; ++o)
                 if (isWhite (o) == (pass == 1) && keyRect[o].contains (e.position))
                 {
-                    const int note = juce::jlimit (0, 119, proc.currentOctave.load() * 12 + o);
-                    double srate = proc.getSampleRate(); if (srate <= 0.0) srate = 44100.0;
-                    proc.engine.audition (note, proc.currentInstrument.load(), (int) (1.0 * srate));
+                    playKey (o);
                     return;
                 }
     }
@@ -91,7 +103,7 @@ public:
         for (int o = 0; o < kKeys; ++o)
             if (isWhite (o))
             {
-                g.setColour (juce::Colour (0xfff0f3fa));
+                g.setColour (o == activeKey ? rt::cursor : juce::Colour (0xfff0f3fa));
                 g.fillRect (keyRect[o].reduced (1.0f));
                 g.setColour (rt::steel.withAlpha (0.6f));
                 g.drawRect (keyRect[o].reduced (1.0f), 1.0f);
@@ -103,7 +115,7 @@ public:
         for (int o = 0; o < kKeys; ++o)
             if (! isWhite (o))
             {
-                g.setColour (juce::Colour (0xff14171d));
+                g.setColour (o == activeKey ? rt::cursor.darker (0.2f) : juce::Colour (0xff14171d));
                 g.fillRect (keyRect[o]);
                 g.setColour (rt::cursor.withAlpha (0.8f));
                 g.setFont (rt::mono (11.0f, true));
@@ -114,6 +126,38 @@ public:
 
 private:
     static constexpr int kKeys = 29; // Halbtoene 0..28 (wie noteOffsetForChar)
+
+    // Eine Taste spielen + kurz aufleuchten lassen (vom Klick oder per Tastendruck).
+    void playKey (int off)
+    {
+        if (off < 0 || off >= kKeys) return;
+        const int note = juce::jlimit (0, 119, proc.currentOctave.load() * 12 + off);
+        double srate = proc.getSampleRate(); if (srate <= 0.0) srate = 44100.0;
+        proc.engine.audition (note, proc.currentInstrument.load(), (int) (0.7 * srate));
+        activeKey = off;
+        startTimer (200); // Aufleuchten kurz halten, dann wieder loeschen
+        repaint();
+    }
+    void timerCallback() override { activeKey = -1; stopTimer(); repaint(); }
+
+    // Computertaste -> Halbton-Offset 0..28 (gleiche Belegung wie im Pattern-Grid).
+    static int charToOffset (juce::juce_wchar c)
+    {
+        switch (c)
+        {
+            case 'y': case 'Y': return 0;  case 's': case 'S': return 1;  case 'x': case 'X': return 2;
+            case 'd': case 'D': return 3;  case 'c': case 'C': return 4;  case 'v': case 'V': return 5;
+            case 'g': case 'G': return 6;  case 'b': case 'B': return 7;  case 'h': case 'H': return 8;
+            case 'n': case 'N': return 9;  case 'j': case 'J': return 10; case 'm': case 'M': return 11;
+            case 'q': case 'Q': return 12; case '2': return 13; case 'w': case 'W': return 14;
+            case '3': return 15; case 'e': case 'E': return 16; case 'r': case 'R': return 17;
+            case '5': return 18; case 't': case 'T': return 19; case '6': return 20;
+            case 'z': case 'Z': return 21; case '7': return 22; case 'u': case 'U': return 23;
+            case 'i': case 'I': return 24; case '9': return 25; case 'o': case 'O': return 26;
+            case '0': return 27; case 'p': case 'P': return 28;
+            default: return -1;
+        }
+    }
 
     static bool isWhite (int o)
     {
@@ -131,6 +175,7 @@ private:
     juce::TextButton closeButton { "SCHLIESSEN" };
     juce::Rectangle<float> keyRect[kKeys];
     juce::String titleText;
+    int activeKey = -1; // gerade aufleuchtende Taste
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeyboardPanel)
 };

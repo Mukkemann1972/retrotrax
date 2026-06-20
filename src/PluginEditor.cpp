@@ -567,9 +567,11 @@ void RetroTraxEditor::exportWavClicked()
     const auto base = currentSongFile.existsAsFile()
                           ? currentSongFile.getFileNameWithoutExtension()
                           : loc::t ("Mein Song", "My Song");
-    auto wavDir = songsFolder().getChildFile ("WAV-Export"); // eigener, aufgeraeumter Ordner
-    wavDir.createDirectory();
-    const auto start = wavDir.getChildFile (base + ".wav");
+    // WAV gehoert zum Song -> in denselben Ordner, in dem der Song gespeichert wird
+    // (bzw. zuletzt gespeichert/geoeffnet wurde), sonst in den Standard-Songordner.
+    auto dir = currentSongFile.existsAsFile() ? currentSongFile.getParentDirectory()
+                                              : songsFolder();
+    const auto start = dir.getChildFile (base + ".wav");
 
     songChooser = std::make_unique<juce::FileChooser> (
         loc::t ("Song als WAV exportieren", "Export song as WAV"), start, "*.wav");
@@ -999,8 +1001,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.71 | C64-SID-Player (.sid spielt!)",
-                        "v0.71 | C64 SID player (.sid plays!)"),
+    g.drawText (loc::t ("v0.72 | Tasten klingen + WAV in Song-Ordner",
+                        "v0.72 | Keys play + WAV in song folder"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

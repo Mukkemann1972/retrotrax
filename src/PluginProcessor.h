@@ -101,7 +101,7 @@ public:
                         const juce::String& baseName, juce::String& message);
     // Eine Arbeitskopie sofort vorhoeren (ohne einen Slot zu belegen).
     void previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop = false,
-                        float loopStart = 0.0f);
+                        float loopStart = 0.0f, int note = 60);
 
     // Den Song offline als Stereo-WAV (16 Bit) rausrendern: im Song-Modus die
     // ganze Reihenfolge einmal, sonst das aktuelle Pattern einmal. Laeuft schneller

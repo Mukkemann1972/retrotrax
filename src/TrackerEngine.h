@@ -270,7 +270,7 @@ public:
 
     // Vorschau ohne Instrument-Slot (ST-Disks-Browser): das Sample gehoert
     // nur der Vorschau und ueberschreibt keinen der 16 Slots.
-    void previewInstrument (std::unique_ptr<Instrument> inst)
+    void previewInstrument (std::unique_ptr<Instrument> inst, int note = 60)
     {
         const juce::ScopedLock sl (lock);
         for (auto& v : voices)
@@ -278,7 +278,7 @@ public:
                 v.active = false;
         preview = std::move (inst);
         if (preview != nullptr)
-            startVoice (kTracks, 60, preview.get(), -1); // C-5 = Originaltonhoehe
+            startVoice (kTracks, note, preview.get(), -1); // 60 = C-5 (Originaltonhoehe)
     }
 
     // Aktuelle Abspielposition der Vorschau-Stimme in Samples (-1 = spielt nicht).
