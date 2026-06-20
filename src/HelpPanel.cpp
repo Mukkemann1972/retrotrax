@@ -91,11 +91,13 @@ void HelpPanel::rebuild()
             "Vertippt? Kein Problem - Strg+Z nimmt jeden Schritt zurueck (bis zu\n"
             "64). Mit Strg+C/V kopierst du eine ganze Spur z.B. von Spur 1 nach 5:\n"
             "Cursor in die Quellspur, Strg+C, dann in die Zielspur und Strg+V.\n\n"
-            "LIVE EINSPIELEN: Druecke Play und spiel auf der Tastatur mit - die\n"
-            "Noten werden direkt an der gerade laufenden Stelle aufgenommen, in der\n"
-            "Spur, in der dein Cursor steht (wie ein mitgeschnittenes Klavierspiel).\n"
-            "Im Stopp dagegen tippst du die Noten Schritt fuer Schritt an die\n"
-            "Cursor-Zeile (der Cursor springt dann von selbst weiter).",
+            "TESTEN vs. AUFNEHMEN: Mit Play (oder Leertaste) laeuft der Song und du\n"
+            "kannst frei mitspielen, OHNE etwas zu veraendern - perfekt zum Ausprobieren\n"
+            "einer Melodie. Erst wenn du REC drueckst (leuchtet rot), werden die live\n"
+            "gespielten Noten an der laufenden Stelle in deiner Cursor-Spur\n"
+            "aufgenommen. Nur bei REC reitet der Cursor auf dem Play-Balken mit.\n"
+            "Im Stopp tippst du die Noten Schritt fuer Schritt an die Cursor-Zeile\n"
+            "(der Cursor springt dann von selbst weiter).",
             "Your keyboard is the piano (German QWERTZ layout):\n\n"
             "  Y X C V B N M        notes in the current octave\n"
             "  S D   G H J          the black keys (semitones)\n"
@@ -112,9 +114,11 @@ void HelpPanel::rebuild()
             "Typo? No problem - Ctrl+Z takes back every step (up to 64). With\n"
             "Ctrl+C/V you copy a whole track, e.g. from track 1 to 5: cursor into\n"
             "the source track, Ctrl+C, then into the target track and Ctrl+V.\n\n"
-            "LIVE RECORDING: press play and play along on the keyboard - the notes\n"
-            "are recorded straight onto the row that's currently playing, in the\n"
-            "track your cursor is on (like a captured piano performance). When\n"
+            "TEST vs. RECORD: with Play (or space) the song runs and you can jam\n"
+            "along WITHOUT changing anything - perfect for trying out a melody. Only\n"
+            "when you press REC (lit red) are your live notes recorded onto the\n"
+            "current row in your cursor track. Only during REC does the cursor ride\n"
+            "the play bar. When\n"
             "stopped you instead type notes step by step at the cursor row (the\n"
             "cursor then advances on its own).") });
 

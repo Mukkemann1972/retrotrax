@@ -379,6 +379,7 @@ public:
     // 0 = gerade (aus), bis ~0.8 = starker Shuffle.
     std::atomic<float> swing { 0.0f };
     std::atomic<bool>  playing { false };
+    std::atomic<bool>  recording { false }; // REC scharf: nur dann landen Live-Noten im Pattern
     std::atomic<int>   currentRow { 0 };
 
     // --- Song-Modus: mehrere Patterns in einer Reihenfolge abspielen ---

@@ -18,7 +18,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (fxPanel);     // unsichtbar, bis FX gedrueckt wird
     addChildComponent (spectrumPanel); // unsichtbar, bis SPEKTRUM gedrueckt wird
     addAndMakeVisible (playButton);
-    addAndMakeVisible (stopButton);
+    addAndMakeVisible (recButton);
     addAndMakeVisible (loadMenuButton);
     addAndMakeVisible (sidButton);
     addAndMakeVisible (akaiButton);
@@ -73,8 +73,22 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (instDot);
     instDot.colour = rt::instColour (proc.currentInstrument.load());
 
-    playButton.onClick = [this] { proc.engine.play(); updateTransportButtons(); };
-    stopButton.onClick = [this] { proc.engine.stop(); updateTransportButtons(); };
+    // EIN Umschalter: spielt bzw. stoppt. (Leertaste tut im Grid dasselbe.)
+    playButton.onClick = [this]
+    {
+        if (proc.engine.playing.load()) proc.engine.stop();
+        else                            proc.engine.play();
+        updateTransportButtons();
+        grid.grabKeyboardFocus();
+    };
+    // REC schaltet die Aufnahme scharf: nur dann landen live gespielte Noten im
+    // Pattern. Ohne REC kann man bei Play frei testen, ohne etwas zu ueberschreiben.
+    recButton.onClick = [this]
+    {
+        proc.engine.recording = ! proc.engine.recording.load();
+        updateTransportButtons();
+        grid.grabKeyboardFocus();
+    };
     saveSongButton.onClick = [this] { saveSongClicked(); };
     wavButton.onClick = [this] { exportWavClicked(); };
     // EIN Lade-Knopf statt vieler: oeffnet ein Aufklapp-Menue mit allem zum Laden
@@ -407,8 +421,11 @@ RetroTraxEditor::~RetroTraxEditor()
 void RetroTraxEditor::updateTransportButtons()
 {
     const bool playing = proc.engine.playing.load();
+    playButton.setButtonText (playing ? loc::t ("STOP", "STOP") : loc::t ("PLAY", "PLAY"));
     playButton.setToggleState (playing, juce::dontSendNotification);
-    stopButton.setToggleState (! playing, juce::dontSendNotification);
+    const bool rec = proc.engine.recording.load();
+    recButton.setToggleState (rec, juce::dontSendNotification);
+    recButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffd03030)); // rot bei REC
 }
 
 void RetroTraxEditor::refreshInstrumentBox()
@@ -872,6 +889,11 @@ void RetroTraxEditor::applyLanguage()
     editButton.setTooltip (loc::t ("Sample-Werkzeug: trimmen, normalisieren, umkehren, Welle zeichnen, in 16 Kit-Scheiben choppen",
                                    "Sample tool: trim, normalise, reverse, draw the wave, chop into 16 kit slices"));
     editPanel.applyLanguage();
+    playButton.setTooltip (loc::t ("Abspielen / Stop (Leertaste) - zum Testen, ohne aufzunehmen",
+                                   "Play / stop (space) - to test, without recording"));
+    recButton.setButtonText (loc::t ("REC", "REC"));
+    recButton.setTooltip (loc::t ("Aufnahme scharf schalten: nur dann landen live gespielte Noten im Pattern",
+                                  "Arm recording: only then do live-played notes land in the pattern"));
     fxButton.setButtonText (loc::t ("FX", "FX"));
     fxButton.setTooltip (loc::t ("Master-FX: Echo + Hall fuer den ganzen Mix",
                                  "Master FX: echo + reverb for the whole mix"));
@@ -909,8 +931,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.55 | WUERFEL: Zufallsmelodie (Pentatonik)",
-                        "v0.55 | DICE: random melody (pentatonic)"),
+    g.drawText (loc::t ("v0.56 | REC-Knopf + Play/Stop-Umschalter",
+                        "v0.56 | REC button + Play/Stop toggle"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -944,14 +966,16 @@ void RetroTraxEditor::resized()
     songRow.removeFromRight (12);
     saveSongButton.setBounds (songRow.removeFromRight (140));
     songRow.removeFromRight (6);
-    wavButton.setBounds (songRow.removeFromRight (60));
+    loadMenuButton.setBounds (songRow.removeFromRight (110)); // LADEN oben neben SONG SPEICHERN
 
     area.removeFromTop (54); // Titelzeile (nur paint)
 
     auto controls = area.removeFromTop (40).reduced (8, 5);
+    wavButton.setBounds (controls.removeFromRight (60)); // WAV unter SONG SPEICHERN (rechts)
+    controls.removeFromRight (10);
     playButton.setBounds (controls.removeFromLeft (74));
     controls.removeFromLeft (6);
-    stopButton.setBounds (controls.removeFromLeft (74));
+    recButton.setBounds (controls.removeFromLeft (60));
     controls.removeFromLeft (14);
     bpmSlider.setBounds (controls.removeFromLeft (110));
     controls.removeFromLeft (8);
@@ -965,8 +989,6 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (4);
     instrumentBox.setBounds (controls.removeFromLeft (150));
     controls.removeFromLeft (10);
-    loadMenuButton.setBounds (controls.removeFromLeft (110));
-    controls.removeFromLeft (6);
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
     akaiButton.setBounds (controls.removeFromLeft (70));

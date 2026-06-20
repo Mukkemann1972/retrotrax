@@ -14,11 +14,12 @@ void PatternGrid::timerCallback()
 {
     if (engine.playing.load())
     {
-        // Der orange Eingabe-Cursor reitet live auf dem blauen Play-Balken mit:
-        // er folgt der gerade abspielenden Zeile, damit man beim Live-Aufnehmen
-        // sieht, wo in der Spur man landet (nicht mehr blind tippen). Mit </> waehlt
-        // man weiterhin Spur/Spalte. Beim Stopp bleibt er an der letzten Stelle.
-        cursorRow = engine.currentRow.load();
+        // Nur bei scharfer AUFNAHME (REC) reitet der orange Eingabe-Cursor auf dem
+        // Play-Balken mit, damit man sieht, wo man aufnimmt. Beim reinen Abspielen
+        // (Testen) bleibt der Cursor stehen, wo der Nutzer ihn hat - so springt
+        // nichts mehr auf den Anfang/eine andere Stelle.
+        if (engine.recording.load())
+            cursorRow = engine.currentRow.load();
         repaint();
     }
 }
@@ -121,15 +122,19 @@ bool PatternGrid::handleNoteKey (juce::juce_wchar c)
     // Spur des Cursors. Der Cursor bleibt stehen - der Abspielkopf wandert selbst.
     if (engine.playing.load())
     {
-        engine.audition (note, proc.currentInstrument.load());
-        const int rrow = engine.currentRow.load();
-        const int ppat = engine.displayPattern();
-        if (rrow >= 0 && rrow < TrackerEngine::kRows
-            && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+        engine.audition (note, proc.currentInstrument.load()); // immer hoerbar (zum Testen)
+        // Nur mit scharfer Aufnahme (REC) landet die Note auch im Pattern.
+        if (engine.recording.load())
         {
-            auto& cell = engine.patterns[ppat][rrow][cursorTrack];
-            cell.note       = note;
-            cell.instrument = proc.currentInstrument.load();
+            const int rrow = engine.currentRow.load();
+            const int ppat = engine.displayPattern();
+            if (rrow >= 0 && rrow < TrackerEngine::kRows
+                && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+            {
+                auto& cell = engine.patterns[ppat][rrow][cursorTrack];
+                cell.note       = note;
+                cell.instrument = proc.currentInstrument.load();
+            }
         }
         repaint();
         return true;
@@ -664,15 +669,18 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
         {
             if (engine.playing.load())
             {
-                // Live-Aufnahme: Note-Aus an der gerade laufenden Stelle setzen.
-                const int rrow = engine.currentRow.load();
-                const int ppat = engine.displayPattern();
-                if (rrow >= 0 && rrow < TrackerEngine::kRows
-                    && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+                // Live-Aufnahme nur bei scharfer Aufnahme (REC).
+                if (engine.recording.load())
                 {
-                    auto& cell = engine.patterns[ppat][rrow][cursorTrack];
-                    cell.note = TrackerEngine::kNoteOff;
-                    cell.instrument = -1;
+                    const int rrow = engine.currentRow.load();
+                    const int ppat = engine.displayPattern();
+                    if (rrow >= 0 && rrow < TrackerEngine::kRows
+                        && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+                    {
+                        auto& cell = engine.patterns[ppat][rrow][cursorTrack];
+                        cell.note = TrackerEngine::kNoteOff;
+                        cell.instrument = -1;
+                    }
                 }
                 repaint();
                 return true;

@@ -46,8 +46,8 @@ private:
     RetroTraxProcessor& proc;
     RetroLookAndFeel lnf;
 
-    juce::TextButton playButton { "PLAY" };
-    juce::TextButton stopButton { "STOP" };
+    juce::TextButton playButton { "PLAY" }; // Umschalter: PLAY <-> STOP
+    juce::TextButton recButton  { "REC" };  // Aufnahme scharf schalten (rot, wenn aktiv)
     juce::TextButton loadMenuButton { "LADEN" }; // Aufklapp-Menue: Sample/Song laden + Importieren
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
     juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
