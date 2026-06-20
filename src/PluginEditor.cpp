@@ -27,7 +27,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (editButton);
     addAndMakeVisible (fxButton);
     addAndMakeVisible (saveSongButton);
-    addAndMakeVisible (wavButton);
     addAndMakeVisible (helpButton);
     addAndMakeVisible (liveHelpButton);
     addAndMakeVisible (spectrumButton);
@@ -92,7 +91,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         grid.grabKeyboardFocus();
     };
     saveSongButton.onClick = [this] { saveSongClicked(); };
-    wavButton.onClick = [this] { exportWavClicked(); };
     // EIN Lade-Knopf statt vieler: oeffnet ein Aufklapp-Menue mit allem zum Laden
     // (Sample, Sample-Browser, Song) und einem Untermenue "Importieren" (MOD/XM/TFMX).
     loadMenuButton.onClick = [this]
@@ -531,8 +529,12 @@ void RetroTraxEditor::saveSongClicked()
                            ? currentSongFile
                            : songsFolder().getChildFile (loc::t ("Mein Song", "My Song") + ".retrotrax");
 
+    // Hier waehlt man das Format: unser .retrotrax ODER .wav. Beides landet im
+    // selben Ordner, den man im Dialog aussucht. Tippt man einen Namen mit .wav,
+    // wird der Song als WAV exportiert; sonst als .retrotrax gespeichert.
     songChooser = std::make_unique<juce::FileChooser> (
-        loc::t ("Song speichern", "Save song"), start, "*.retrotrax");
+        loc::t ("Song speichern (RetroTrax oder WAV)", "Save song (RetroTrax or WAV)"),
+        start, "*.retrotrax;*.wav");
 
     songChooser->launchAsync (juce::FileBrowserComponent::saveMode
                                   | juce::FileBrowserComponent::warnAboutOverwriting,
@@ -541,6 +543,17 @@ void RetroTraxEditor::saveSongClicked()
             auto file = fc.getResult();
             if (file == juce::File())
                 return; // abgebrochen
+
+            // WAV gewuenscht? (Endung .wav getippt) -> als Audio exportieren.
+            if (file.getFileExtension().toLowerCase() == ".wav")
+            {
+                juce::String msg;
+                const bool ok = proc.renderSongToWav (file, msg);
+                hintLabel.setText (ok ? msg
+                                      : loc::t ("WAV-Export fehlgeschlagen: ", "WAV export failed: ") + msg,
+                                   juce::dontSendNotification);
+                return;
+            }
 
             if (file.getFileExtension().isEmpty())
                 file = file.withFileExtension ("retrotrax");
@@ -558,39 +571,6 @@ void RetroTraxEditor::saveSongClicked()
                                            "Could not save the song - check write permissions."),
                                    juce::dontSendNotification);
             }
-        });
-}
-
-void RetroTraxEditor::exportWavClicked()
-{
-    // Vorschlag: Songname (falls gespeichert), sonst Standardname, als .wav.
-    const auto base = currentSongFile.existsAsFile()
-                          ? currentSongFile.getFileNameWithoutExtension()
-                          : loc::t ("Mein Song", "My Song");
-    // WAV gehoert zum Song -> in denselben Ordner, in dem der Song gespeichert wird
-    // (bzw. zuletzt gespeichert/geoeffnet wurde), sonst in den Standard-Songordner.
-    auto dir = currentSongFile.existsAsFile() ? currentSongFile.getParentDirectory()
-                                              : songsFolder();
-    const auto start = dir.getChildFile (base + ".wav");
-
-    songChooser = std::make_unique<juce::FileChooser> (
-        loc::t ("Song als WAV exportieren", "Export song as WAV"), start, "*.wav");
-
-    songChooser->launchAsync (juce::FileBrowserComponent::saveMode
-                                  | juce::FileBrowserComponent::warnAboutOverwriting,
-        [this] (const juce::FileChooser& fc)
-        {
-            auto file = fc.getResult();
-            if (file == juce::File())
-                return; // abgebrochen
-            if (file.getFileExtension().isEmpty())
-                file = file.withFileExtension ("wav");
-
-            juce::String msg;
-            const bool ok = proc.renderSongToWav (file, msg);
-            hintLabel.setText (ok ? msg
-                                  : loc::t ("WAV-Export fehlgeschlagen: ", "WAV export failed: ") + msg,
-                               juce::dontSendNotification);
         });
 }
 
@@ -910,9 +890,6 @@ void RetroTraxEditor::applyLanguage()
     loadMenuButton.setTooltip (loc::t ("Sample oder Song laden, Sample-Browser, oder ein Modul importieren (MOD/XM/TFMX)",
                                        "Load a sample or song, open the sample browser, or import a module (MOD/XM/TFMX)"));
     saveSongButton.setButtonText (loc::t ("SONG SPEICHERN", "SAVE SONG"));
-    wavButton.setButtonText (loc::t ("WAV", "WAV"));
-    wavButton.setTooltip (loc::t ("Song als WAV-Datei rausrendern - zum Teilen, Hochladen (Ko-fi/YouTube)",
-                                  "Render the song to a WAV file - to share or upload (Ko-fi/YouTube)"));
     instLabel.setText (loc::t ("INSTR", "INSTR"), juce::dontSendNotification);
     octLabel.setText  (loc::t ("OKTAVE", "OCTAVE"), juce::dontSendNotification);
     liveHelpButton.setButtonText (loc::t ("TIPP", "TIP"));
@@ -1001,8 +978,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.72 | Tasten klingen + WAV in Song-Ordner",
-                        "v0.72 | Keys play + WAV in song folder"),
+    g.drawText (loc::t ("v0.73 | Speichern=RetroTrax/WAV, REC schreibt erst",
+                        "v0.73 | Save=RetroTrax/WAV, REC to write"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -1038,8 +1015,6 @@ void RetroTraxEditor::resized()
     songRow.removeFromRight (6);
     kbButton.setBounds (songRow.removeFromRight (70));       // Bildschirm-Tastatur
     songRow.removeFromRight (12);
-    wavButton.setBounds (songRow.removeFromRight (60));      // WAV gehoert zu SONG SPEICHERN
-    songRow.removeFromRight (6);
     saveSongButton.setBounds (songRow.removeFromRight (140));
     songRow.removeFromRight (6);
     loadMenuButton.setBounds (songRow.removeFromRight (110)); // LADEN oben neben SONG SPEICHERN

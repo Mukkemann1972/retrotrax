@@ -140,6 +140,17 @@ bool PatternGrid::handleNoteKey (juce::juce_wchar c)
         return true;
     }
 
+    // Gestoppt: ohne REC nur testen (Note hoeren); erst mit REC landet sie als
+    // Step-Eingabe im Pattern. So kann man Melodien/Samples frei ausprobieren.
+    if (! engine.recording.load())
+    {
+        engine.audition (note, proc.currentInstrument.load());
+        if (onCursorInfo)
+            onCursorInfo (loc::t ("Vorhoeren - zum Aufnehmen REC druecken",
+                                  "Preview - press REC to record"));
+        return true;
+    }
+
     pushUndo();
     auto& cell = engine.cells[cursorRow][cursorTrack];
     cell.note = note;
@@ -394,6 +405,8 @@ void PatternGrid::enterDrum (int pad)
         repaint();
         return;
     }
+    if (! engine.recording.load())
+        return; // ohne REC nur vorhoeren (oben schon angespielt), nicht schreiben
     pushUndo();
     auto& cell = engine.cells[cursorRow][cursorTrack];
     cell.note       = 60;

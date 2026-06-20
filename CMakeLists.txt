@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(MukkemannRetroTrax VERSION 0.72.0 LANGUAGES C CXX)
+project(MukkemannRetroTrax VERSION 0.73.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
