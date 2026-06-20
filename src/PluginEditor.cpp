@@ -943,8 +943,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.66 | Sample-Huellkurve (ADSR) + Lautstaerke",
-                        "v0.66 | Sample envelope (ADSR) + volume"),
+    g.drawText (loc::t ("v0.67 | VU-Pegel pro Spur (Spektrum verteilt)",
+                        "v0.67 | VU level per track"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

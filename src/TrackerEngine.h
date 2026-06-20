@@ -363,6 +363,7 @@ public:
     {
         const juce::ScopedLock sl (lock);
         buffer.clear();
+        for (auto& tl : trackLevel) tl.store (0.0f, std::memory_order_relaxed); // VU-Block-Peak
 
         int numSamples = buffer.getNumSamples();
         int offset = 0;
@@ -402,6 +403,7 @@ public:
     std::atomic<bool>  playing { false };
     std::atomic<bool>  recording { false }; // REC scharf: nur dann landen Live-Noten im Pattern
     std::atomic<int>   currentRow { 0 };
+    std::atomic<float> trackLevel[kTracks] = {}; // VU-Spitzenpegel pro Spur (Anzeige)
 
     // --- Song-Modus: mehrere Patterns in einer Reihenfolge abspielen ---
     std::atomic<int>  editPattern { 0 }; // welches Pattern der Editor zeigt
@@ -790,6 +792,13 @@ private:
         }
     }
 
+    // VU-Spitzenpegel einer Spur hochziehen (max im aktuellen Block).
+    void bumpTrackLevel (int vi, float pk)
+    {
+        if (vi >= 0 && vi < kTracks && pk > trackLevel[vi].load (std::memory_order_relaxed))
+            trackLevel[vi].store (pk, std::memory_order_relaxed);
+    }
+
     void render (juce::AudioBuffer<float>& buffer, int offset, int num)
     {
         const int outCh = buffer.getNumChannels();
@@ -834,6 +843,7 @@ private:
         const int len  = d.getNumSamples();
         const int srcCh = juce::jmin (d.getNumChannels(), 2); // Filter-Speicher fasst 2 Kanaele
         double pos = v.pos;
+        float trackPk = 0.0f; // Spitzenpegel dieser Spur (VU-Anzeige)
 
         // Akai-Filter: Koeffizienten einmal pro Block (TPT-SVF, identische Mathe
         // wie der SID-Filter, hier aber in 2 Stufen kaskadiert = 24 dB/Okt).
@@ -1028,7 +1038,9 @@ private:
                 const float  g   = (ch == 0 ? v.gainL
                                   : ch == 1 ? v.gainR
                                             : 0.5f * (v.gainL + v.gainR));
-                buffer.addSample (ch, offset + i, s * g * env * 0.5f);
+                const float  out = s * g * env * 0.5f;
+                buffer.addSample (ch, offset + i, out);
+                if (ch == 0) trackPk = juce::jmax (trackPk, std::abs (out)); // VU-Pegel pro Spur
             }
             // Position weiterfahren - je nach Loop-Modus.
             if (loop == Instrument::Loop::Off)
@@ -1064,6 +1076,7 @@ private:
             }
         }
         v.pos = pos;
+        bumpTrackLevel (v.voiceIdx, trackPk);
     }
 
     // KLASSISCH (selbstgebaut): Oszillator (Dreieck/Saege/Puls/Rauschen) + ADSR-
@@ -1071,6 +1084,7 @@ private:
     void renderSynthClassic (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
     {
         const auto* inst = v.inst;
+        float trackPk = 0.0f; // VU-Pegel pro Spur
         const float sr     = (float) sampleRate;
         const float atkInc = inst->attack  > 0.0f ? 1.0f / (inst->attack  * sr) : 1.0f;
         const float decInc = inst->decay   > 0.0f ? (1.0f - inst->sustain) / (inst->decay * sr) : 1.0f;
@@ -1201,7 +1215,9 @@ private:
             for (int ch = 0; ch < outCh; ++ch)
             {
                 const float g = (ch == 0 ? v.gainL : ch == 1 ? v.gainR : 0.5f * (v.gainL + v.gainR));
-                buffer.addSample (ch, offset + i, s * g * 0.42f);
+                const float out = s * g * 0.42f;
+                buffer.addSample (ch, offset + i, out);
+                if (ch == 0) trackPk = juce::jmax (trackPk, std::abs (out)); // VU-Pegel
             }
 
             ph += mainStep;
@@ -1239,6 +1255,7 @@ private:
         v.pwmPhase = pwmPh;
         v.uniPhase[0] = uph0;
         v.uniPhase[1] = uph1;
+        bumpTrackLevel (v.voiceIdx, trackPk);
     }
 
     // ECHTER CHIP: laeuft ueber die reSIDfp-Emulation dieser Stimme. Die Tonhoehe
@@ -1250,6 +1267,8 @@ private:
         const double freqHz = v.step * sampleRate;
         if (! sidChips[v.voiceIdx].render (buffer, offset, num, freqHz, v.gainL, v.gainR, outCh))
             v.active = false;
+        else
+            bumpTrackLevel (v.voiceIdx, 0.5f * v.vol); // grober VU-Pegel fuer den echten Chip
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme

@@ -66,6 +66,10 @@ public:
         auto area = r.reduced (14, 0);
         area.removeFromTop (44);
         area.removeFromBottom (16);
+        // Untere ~90 px: VU-Pegel PRO SPUR (wie die Kanal-Meter alter Tracker).
+        auto trackStrip = area.removeFromBottom (94);
+        area.removeFromBottom (10);
+        drawTrackMeters (g, trackStrip);
         const int   n   = kBands;
         const float gap = 3.0f;
         const float bw  = (area.getWidth() - gap * (n - 1)) / (float) n;
@@ -92,6 +96,33 @@ public:
 private:
     static constexpr int kBands = 32;
     static constexpr int kFFT   = 1024; // Analysefenster (Zweierpotenz)
+
+    // 16 kleine VU-Balken, einer pro Spur - "Spektrum auf die Spuren verteilt".
+    void drawTrackMeters (juce::Graphics& g, juce::Rectangle<int> area)
+    {
+        g.setColour (rt::textDim);
+        g.setFont (rt::mono (11.0f, true));
+        g.drawText (loc::t ("PEGEL PRO SPUR", "LEVEL PER TRACK"),
+                    area.removeFromTop (14), juce::Justification::centredLeft);
+        const int n = TrackerEngine::kTracks;
+        const float gap = 3.0f;
+        const float bw  = (area.getWidth() - gap * (n - 1)) / (float) n;
+        const float baseY = (float) area.getBottom() - 12.0f; // Platz fuer die Nummer
+        const float maxH  = (float) area.getHeight() - 14.0f;
+        for (int t = 0; t < n; ++t)
+        {
+            const float lvl = juce::jlimit (0.0f, 1.0f, trk[t]);
+            const float x = area.getX() + t * (bw + gap);
+            g.setColour (rt::rowBeat);
+            g.fillRect (x, baseY - maxH, bw, maxH); // Hintergrund-Schiene
+            g.setColour (rt::instColour (t).withAlpha (0.5f + 0.5f * lvl));
+            g.fillRect (x, baseY - lvl * maxH, bw, lvl * maxH);
+            g.setColour (rt::textDim);
+            g.setFont (rt::mono (9.0f, false));
+            g.drawText (juce::String (t + 1), (int) x, (int) baseY + 1, (int) bw, 11,
+                        juce::Justification::centred);
+        }
+    }
 
     void timerCallback() override
     {
@@ -126,6 +157,12 @@ private:
             bars[b]  = juce::jmax (level, bars[b] * 0.78f);
             peaks[b] = juce::jmax (bars[b], peaks[b] - 0.02f);
         }
+        // VU pro Spur: schnell hoch, langsam runter (lebendige Meter).
+        for (int t = 0; t < TrackerEngine::kTracks; ++t)
+        {
+            const float lvl = juce::jlimit (0.0f, 1.0f, proc.engine.trackLevel[t].load (std::memory_order_relaxed) * 1.4f);
+            trk[t] = juce::jmax (lvl, trk[t] * 0.80f);
+        }
         repaint();
     }
 
@@ -151,6 +188,7 @@ private:
     juce::TextButton closeButton { "SCHLIESSEN" };
     float bars[kBands]  = {};
     float peaks[kBands] = {};
+    float trk[TrackerEngine::kTracks] = {}; // geglaettete VU-Pegel pro Spur
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectrumPanel)
 };
