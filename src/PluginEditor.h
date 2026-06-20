@@ -71,7 +71,6 @@ private:
     juce::ComboBox   quantBox;                    // Quantisierungs-Raster (Achtel/Viertel/...)
     juce::TextButton quantButton { "QUANT" };     // aktuelles Pattern aufs Raster schnappen
     juce::TextButton randomButton { "WUERFEL" };  // Cursor-Spur mit Zufallsmelodie fuellen
-    juce::TextButton drumButton { "DRUM" };       // Drum-Eingabe-Modus (Pad-Tasten -> Spur)
     juce::Label patLabel;
     juce::Label orderLabel;
     juce::Slider bpmSlider;

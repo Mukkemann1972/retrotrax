@@ -8,6 +8,18 @@ DrumKitPanel::DrumKitPanel (RetroTraxProcessor& processor) : proc (processor)
     titleLabel.setColour (juce::Label::textColourId, rt::text);
     addAndMakeVisible (titleLabel);
 
+    addAndMakeVisible (drumInputButton);
+    drumInputButton.setClickingTogglesState (true);
+    drumInputButton.onClick = [this]
+    {
+        const bool on = drumInputButton.getToggleState();
+        proc.drumInput = on;
+        setHint (on ? "Drum-Eingabe AN: Tasten 1234/QWER/ASDF/YXCV legen die Pads in die Spur (Panel schliessen). Erst ALLE IN SLOTS!"
+                    : "Drum-Eingabe AUS: die Tasten sind wieder normale Noten.",
+                 on ? "Drum input ON: keys 1234/QWER/ASDF/ZXCV put pads into the track (close the panel). First ALL TO SLOTS!"
+                    : "Drum input OFF: the keys are normal notes again.");
+    };
+
     addAndMakeVisible (kitsButton);
     kitsButton.onClick = [this]
     {
@@ -108,24 +120,27 @@ DrumKitPanel::~DrumKitPanel()
 
 void DrumKitPanel::applyLanguage()
 {
-    titleLabel.setText (loc::t ("DRUM-KIT (16 PADS)", "DRUM KIT (16 PADS)"),
+    titleLabel.setText (loc::t ("DRUMSAMPLER (16 PADS)", "DRUMSAMPLER (16 PADS)"),
                         juce::dontSendNotification);
     kitsButton.setButtonText (loc::t ("KITS", "KITS"));
     kitsButton.setTooltip (loc::t ("Ganzes Kit speichern/laden (.retrokit, mit Samples)",
                                    "Save/load the whole kit (.retrokit, with samples)"));
+    drumInputButton.setButtonText (loc::t ("DRUM-EINGABE", "DRUM INPUT"));
+    drumInputButton.setTooltip (loc::t ("Tasten 1234/QWER/ASDF/YXCV legen die Pads direkt in die Spur (Panel schliessen, dann tippen). Erst ALLE IN SLOTS.",
+                                        "Keys 1234/QWER/ASDF/ZXCV put the pads straight into the track (close the panel, then type). Do ALL TO SLOTS first."));
     loadButton.setButtonText   (loc::t ("LADEN", "LOAD"));
     loadButton.setTooltip (loc::t ("Sample-Datei in das gewaehlte Pad laden",
                                    "Load a sample file into the selected pad"));
     clearButton.setButtonText  (loc::t ("LEEREN", "CLEAR"));
-    allSlotsButton.setButtonText (loc::t ("KIT -> SLOTS", "KIT -> SLOTS"));
-    allSlotsButton.setTooltip (loc::t ("Alle 16 Pads in die Instrument-Slots 1-16 - dann mit DRUM-Eingabe als eine Spur spielen",
-                                       "All 16 pads into instrument slots 1-16 - then play as one track with DRUM input"));
-    toSlotButton.setButtonText (loc::t ("-> SLOT", "-> SLOT"));
-    toSlotButton.setTooltip (loc::t ("Pad-Sample in den aktuellen Spur-Slot kopieren (fuer den Tracker)",
-                                     "Copy the pad sample into the current track slot (for the tracker)"));
-    fromSlotBtn.setButtonText  (loc::t ("SLOT ->", "SLOT ->"));
-    fromSlotBtn.setTooltip (loc::t ("Sample aus dem aktuellen Spur-Slot in dieses Pad legen",
-                                    "Put the sample from the current track slot into this pad"));
+    allSlotsButton.setButtonText (loc::t ("ALLE IN SLOTS", "ALL TO SLOTS"));
+    allSlotsButton.setTooltip (loc::t ("Alle 16 Pads in die Instrument-Slots 1-16 legen - dann mit DRUM-Eingabe als eine Spur spielen",
+                                       "Put all 16 pads into instrument slots 1-16 - then play as one track with DRUM input"));
+    toSlotButton.setButtonText (loc::t ("PAD IN SLOT", "PAD TO SLOT"));
+    toSlotButton.setTooltip (loc::t ("Das gewaehlte Pad in den aktuellen Spur-Slot kopieren (fuer den Tracker)",
+                                     "Copy the selected pad into the current track slot (for the tracker)"));
+    fromSlotBtn.setButtonText  (loc::t ("SLOT IN PAD", "SLOT TO PAD"));
+    fromSlotBtn.setTooltip (loc::t ("Das Sample aus dem aktuellen Spur-Slot in dieses Pad holen",
+                                    "Take the sample from the current track slot into this pad"));
     closeButton.setButtonText  (loc::t ("SCHLIESSEN", "CLOSE"));
     tuneLabel.setText (loc::t ("STIMMUNG", "TUNE"), juce::dontSendNotification);
     tuneSlider.setTooltip (loc::t ("Stimmung des Pads in Halbtoenen (wie SP-1200/MPC) - runter = dicker/crunchy",
@@ -152,6 +167,7 @@ void DrumKitPanel::refresh()
         padFilled[p] = proc.getPadName (p, name);
         padNames[p]  = name;
     }
+    drumInputButton.setToggleState (proc.drumInput.load(), juce::dontSendNotification);
     refreshPadControls();
 }
 
@@ -425,7 +441,9 @@ void DrumKitPanel::resized()
 
     {
         auto top = area.removeFromTop (26);
-        kitsButton.setBounds (top.removeFromRight (110));
+        kitsButton.setBounds (top.removeFromRight (90));
+        top.removeFromRight (8);
+        drumInputButton.setBounds (top.removeFromRight (150));
         titleLabel.setBounds (top);
     }
     area.removeFromTop (8);

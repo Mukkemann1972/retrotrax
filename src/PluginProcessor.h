@@ -141,6 +141,7 @@ public:
     TrackerEngine engine;
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
+    std::atomic<bool> drumInput { false }; // Drum-Eingabe (Pad-Tasten -> Spur), im Drumsampler geschaltet
 
     // --- Spektrum-Anzeige: Ringpuffer des Ausgangs-Mixes (Mono) -----------------
     // Der Audio-Thread schreibt den fertigen Stereo-Mix (gemittelt) hier hinein;

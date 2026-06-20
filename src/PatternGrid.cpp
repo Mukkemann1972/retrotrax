@@ -359,13 +359,6 @@ void PatternGrid::quantize (int step)
     emitCursorInfo();
 }
 
-void PatternGrid::setDrumInput (bool on)
-{
-    drumInput = on;
-    repaint();
-    emitCursorInfo();
-}
-
 // 4x4-Pad-Layout wie im KIT-Panel: 1234 / QWER / ASDF / YXCV (unten links = Pad 1).
 int PatternGrid::drumPadFromChar (juce::juce_wchar c) const
 {
@@ -712,7 +705,7 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
     if (c == '-') { proc.currentOctave = juce::jmax (1, proc.currentOctave.load() - 1); repaint(); return true; }
 
     // Drum-Eingabe: die Pad-Tasten schreiben das Pad/Slot direkt in die Spur.
-    if (drumInput)
+    if (proc.drumInput.load())
     {
         const int pad = drumPadFromChar (c);
         if (pad >= 0) { enterDrum (pad); return true; }

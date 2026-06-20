@@ -52,6 +52,7 @@ private:
 
     juce::Label titleLabel;
     juce::TextButton kitsButton { "KITS" }; // Kit speichern / laden (.retrokit)
+    juce::TextButton drumInputButton { "DRUM-EINGABE" }; // Pad-Tasten -> Spur (Umschalter)
 
     // Charakter-Regler fuer das GEWAEHLTE Pad (SP-1200/Emu-Klang).
     juce::Label      selLabel;                      // "PAD n"

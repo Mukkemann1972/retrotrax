@@ -39,19 +39,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (quantBox);
     addAndMakeVisible (quantButton);
     addAndMakeVisible (randomButton);
-    addAndMakeVisible (drumButton);
-    drumButton.setClickingTogglesState (true);
-    drumButton.onClick = [this]
-    {
-        const bool on = drumButton.getToggleState();
-        grid.setDrumInput (on);
-        hintLabel.setText (on ? loc::t ("Drum-Eingabe AN: Tasten 1-16 (4x4) legen die Kit-Pads in die Spur. (Erst 'Kit -> Slots' im KIT.)",
-                                        "Drum input ON: keys 1-16 (4x4) put the kit pads into the track. (First 'Kit -> Slots' in KIT.)")
-                              : loc::t ("Drum-Eingabe AUS: Tasten sind wieder normale Noten.",
-                                        "Drum input OFF: keys are normal notes again."),
-                           juce::dontSendNotification);
-        grid.grabKeyboardFocus();
-    };
     randomButton.onClick = [this]
     {
         grid.randomMelody();
@@ -898,9 +885,6 @@ void RetroTraxEditor::applyLanguage()
 
     songModeButton.setTooltip (loc::t ("LOOP = aktuelles Pattern wiederholen | SONG = die ganze Reihe abspielen",
                                        "LOOP = repeat current pattern | SONG = play the whole order"));
-    drumButton.setButtonText (loc::t ("DRUM", "DRUM"));
-    drumButton.setTooltip (loc::t ("Drum-Eingabe: die Pad-Tasten (1234/QWER/ASDF/YXCV) legen die Kit-Pads direkt in die Spur (erst 'Kit -> Slots' im KIT)",
-                                   "Drum input: the pad keys (1234/QWER/ASDF/ZXCV) put the kit pads straight into the track (first 'Kit -> Slots' in KIT)"));
     randomButton.setButtonText (loc::t ("WUERFEL", "DICE"));
     randomButton.setTooltip (loc::t ("Wuerfelt eine Moll-Pentatonik-Melodie in die Cursor-Spur - sofort Inspiration (Strg+Z zurueck)",
                                      "Rolls a minor-pentatonic melody into the cursor track - instant inspiration (Ctrl+Z to undo)"));
@@ -924,9 +908,9 @@ void RetroTraxEditor::applyLanguage()
 
     sidButton.setTooltip (loc::t ("Aktuellen Slot zu einem SID-Synth machen (Wellenform + Huellkurve)",
                                   "Turn the current slot into a SID synth (waveform + envelope)"));
-    kitButton.setButtonText (loc::t ("KIT", "KIT"));
-    kitButton.setTooltip (loc::t ("Drum-Kit: 16 Pads im MPC60/SP-1200-Stil zum Trommeln (eigene Samples)",
-                                  "Drum kit: 16 pads in MPC60/SP-1200 style for finger drumming (own samples)"));
+    kitButton.setButtonText (loc::t ("DRUMSAMPLER", "DRUMSAMPLER"));
+    kitButton.setTooltip (loc::t ("Drumsampler: 16 Pads im MPC60/SP-1200-Stil - trommeln, Drum-Eingabe in die Spur, Samples in Slots",
+                                  "Drumsampler: 16 pads MPC60/SP-1200 style - drum, drum-input to track, samples to slots"));
     kitPanel.applyLanguage();
     editButton.setButtonText (loc::t ("FAIRLIGHT", "FAIRLIGHT"));
     editButton.setTooltip (loc::t ("Sample-Werkzeug: trimmen, normalisieren, umkehren, Welle zeichnen, in 16 Kit-Scheiben choppen",
@@ -974,8 +958,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.61 | Aufgeraeumt: ein Panel, ESC, WAV oben",
-                        "v0.61 | Tidied: one panel, ESC, WAV on top"),
+    g.drawText (loc::t ("v0.62 | Drumsampler (umbenannt, aufgeraeumt)",
+                        "v0.62 | Drumsampler (renamed, tidied)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -1036,7 +1020,7 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (6);
     akaiButton.setBounds (controls.removeFromLeft (70));
     controls.removeFromLeft (6);
-    kitButton.setBounds (controls.removeFromLeft (64));
+    kitButton.setBounds (controls.removeFromLeft (118));
     controls.removeFromLeft (6);
     editButton.setBounds (controls.removeFromLeft (96));
     controls.removeFromLeft (6);
@@ -1061,8 +1045,6 @@ void RetroTraxEditor::resized()
     quantButton.setBounds (song.removeFromLeft (72));
     song.removeFromLeft (8);
     randomButton.setBounds (song.removeFromLeft (84));
-    song.removeFromLeft (8);
-    drumButton.setBounds (song.removeFromLeft (64));
     song.removeFromLeft (12);
     orderLabel.setBounds (song);
 
