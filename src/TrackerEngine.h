@@ -100,6 +100,12 @@ public:
         // Stimmung wie SP-1200/MPC), wirkt aber auf jedes Instrument. Standard 0.
         float tuneSemis     = 0.0f;
 
+        // Sampler-Huellkurve (ADSR) + Lautstaerke: wie an einem echten Sampler den
+        // Klang formen. ampEnv=false -> Sample spielt unveraendert (nur Anti-Knack).
+        // Bei ampEnv nutzt das Sample die unten stehenden attack/decay/sustain/release.
+        bool  ampEnv        = false;
+        float gain          = 1.0f;   // Lautstaerke 0..2 (1 = unveraendert)
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
@@ -669,7 +675,9 @@ private:
         }
         else
         {
-            v.envStage = 0;
+            // Sample: optionale ADSR-Huellkurve (sonst envStage 0 = keine).
+            v.envStage = inst->ampEnv ? 1 : 0;
+            v.envLevel = 0.0f;
             v.fadeIn   = kFade;
             for (auto& chState : v.akaiLp) // Akai-Filter-Speicher leeren -> kein Knack
                 for (auto& x : chState) x = 0.0f;
@@ -692,6 +700,8 @@ private:
             else
                 v.envStage = 4;                 // Klassisch: Release-Phase
         }
+        else if (v.inst->ampEnv)
+            v.envStage = 4;             // Sample mit Huellkurve -> Release-Phase
         else if (v.fadeOut == 0)
             v.fadeOut = kFade;
     }
@@ -861,6 +871,12 @@ private:
         const float srAmt   = juce::jlimit (0.0f, 1.0f, inst->srReduction);
         const int   holdLen = srAmt > 0.0f ? 1 + (int) std::round (srAmt * srAmt * 47.0f) : 1;
         const float sr = (float) sampleRate;
+        // Sampler-Huellkurve (ADSR) + Lautstaerke.
+        const bool  ampEnv  = inst->ampEnv;
+        const float gainAmp = inst->gain;
+        const float atkInc  = inst->attack  > 0.0f ? 1.0f / (inst->attack  * sr) : 1.0f;
+        const float decInc  = inst->decay   > 0.0f ? (1.0f - inst->sustain) / (inst->decay * sr) : 1.0f;
+        const float relInc  = inst->release > 0.0f ? 1.0f / (inst->release * sr) : 1.0f;
         float fa1 = 0.0f, fa2 = 0.0f, fa3 = 0.0f;
         if (akaiOn)
         {
@@ -917,6 +933,21 @@ private:
                 if (--v.fadeOut == 0)
                     finish = true;
             }
+
+            // Sampler-Huellkurve (ADSR), falls aktiv: Attack/Decay/Sustain/Release.
+            if (ampEnv)
+            {
+                switch (v.envStage)
+                {
+                    case 1: v.envLevel += atkInc; if (v.envLevel >= 1.0f)          { v.envLevel = 1.0f;          v.envStage = 2; } break;
+                    case 2: v.envLevel -= decInc; if (v.envLevel <= inst->sustain) { v.envLevel = inst->sustain; v.envStage = 3; } break;
+                    case 3: break; // Sustain halten, bis Note-Aus
+                    case 4: v.envLevel -= relInc; if (v.envLevel <= 0.0f)          { v.envLevel = 0.0f;          finish = true; } break;
+                    default: break;
+                }
+                env *= v.envLevel;
+            }
+            env *= gainAmp; // Instrument-Lautstaerke
 
             // Lesezeiger: bei Reverse vom Ende her. j0..j0+1 sind immer aufsteigend,
             // 'fr' ist der passende Bruchteil dazwischen.

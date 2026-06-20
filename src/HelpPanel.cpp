@@ -483,6 +483,8 @@ void HelpPanel::rebuild()
             "  Druck und Punch; hohe Resonanz saettigt musikalisch statt zu clippen.\n"
             "- VINTAGE: pitcht roh ohne Glaettung (wie die langsame Wandler-Clock\n"
             "  alter Sampler) - crunchy, lebendig, besonders tief gespielt.\n"
+            "- HUELLKURVE (ADSR) + LAUTSTAERKE: das Sample wie an einem echten Sampler\n"
+            "  formen - Attack/Decay/Sustain/Release und die Lautstaerke pro Klang.\n"
             "- MODELL: fertige Startklaenge - S900/S950 koerniger, S1000 sanfter.\n\n"
             "Standard ist AUS, dein Sample bleibt also unveraendert, bis du den\n"
             "Filter einschaltest. Die Einstellung wird im Song (.retrotrax)\n"

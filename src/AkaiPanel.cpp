@@ -114,6 +114,23 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     setupSlider (driveSlider,  driveLabel);
     setupSlider (crossSlider,  crossLabel);
 
+    // ADSR-Huellkurve + Lautstaerke.
+    envButton.setClickingTogglesState (true);
+    envButton.onClick = [this]
+    {
+        const bool on = envButton.getToggleState();
+        proc.editSample (slot, [on] (TrackerEngine::Instrument& i) { i.ampEnv = on; });
+        updateButtons();
+        previewNote();
+    };
+    addAndMakeVisible (envButton);
+    setupSlider (attSlider, attLabel);
+    setupSlider (decSlider, decLabel);
+    setupSlider (susSlider, susLabel);
+    setupSlider (relSlider, relLabel);
+    setupSlider (volSlider, volLabel);
+    volSlider.setRange (0.0, 200.0, 1.0); // Lautstaerke 0..200 %
+
     hintLabel.setFont (rt::mono (12.0f, false));
     hintLabel.setColour (juce::Label::textColourId, rt::textDim);
     hintLabel.setJustificationType (juce::Justification::centredLeft);
@@ -152,6 +169,14 @@ void AkaiPanel::applyLanguage()
     crossLabel.setText (loc::t ("GLAETTEN", "SMOOTH"), juce::dontSendNotification);
     crossSlider.setTooltip (loc::t ("Loop-Crossfade: blendet das Schleifen-Ende in den Anfang - kurze Samples loopen smooth statt abgehackt (nur Vorwaerts-Loop)",
                                     "Loop crossfade: blends the loop end into the start - short samples loop smoothly instead of choppy (forward loop only)"));
+    envButton.setButtonText (loc::t ("HUELLKURVE", "ENVELOPE"));
+    envButton.setTooltip (loc::t ("Huellkurve (ADSR) fuers Sample an/aus - Klang formen wie an einem Sampler",
+                                  "Amplitude envelope (ADSR) for the sample on/off - shape it like a sampler"));
+    attLabel.setText (loc::t ("ATTACK", "ATTACK"), juce::dontSendNotification);
+    decLabel.setText (loc::t ("DECAY", "DECAY"), juce::dontSendNotification);
+    susLabel.setText (loc::t ("SUSTAIN", "SUSTAIN"), juce::dontSendNotification);
+    relLabel.setText (loc::t ("RELEASE", "RELEASE"), juce::dontSendNotification);
+    volLabel.setText (loc::t ("LAUTSTAERKE", "VOLUME"), juce::dontSendNotification);
     vintButton.setButtonText (loc::t ("VINTAGE", "VINTAGE"));
     vintButton.setTooltip (loc::t ("Vintage-Pitch: rohe Wandlung ohne Glaettung - crunchy beim Pitchen (Fairlight/Emulator)",
                                    "Vintage pitch: raw conversion without smoothing - crunchy when pitched (Fairlight/Emulator)"));
@@ -187,10 +212,16 @@ void AkaiPanel::refresh()
     grainSlider.setValue  (have ? s.srReduction   * 100.0 :   0.0, juce::dontSendNotification);
     driveSlider.setValue  (have ? s.drive         * 100.0 :   0.0, juce::dontSendNotification);
     crossSlider.setValue  (have ? s.loopXfade     * 100.0 :   0.0, juce::dontSendNotification);
+    attSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.attack  / 2.0 * 100.0) :   2.0, juce::dontSendNotification);
+    decSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.decay   / 2.0 * 100.0) :   9.0, juce::dontSendNotification);
+    susSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.sustain * 100.0)        :  65.0, juce::dontSendNotification);
+    relSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.release / 3.0 * 100.0)  :   8.0, juce::dontSendNotification);
+    volSlider.setValue (have ? juce::jlimit (0.0, 200.0, s.gain    * 100.0)        : 100.0, juce::dontSendNotification);
     onButton.setToggleState  (have && s.akaiOn,       juce::dontSendNotification);
     bitButton.setToggleState (have && s.akai12bit,    juce::dontSendNotification);
     revButton.setToggleState (have && s.reverse,      juce::dontSendNotification);
     vintButton.setToggleState(have && s.vintagePitch, juce::dontSendNotification);
+    envButton.setToggleState (have && s.ampEnv,       juce::dontSendNotification);
     loading = false;
 
     updateButtons();
@@ -213,6 +244,13 @@ void AkaiPanel::updateButtons()
 
     // Loop-Crossfade wirkt nur beim Vorwaerts-Loop - sonst ausgrauen.
     crossSlider.setEnabled (m == Loop::Forward);
+
+    // ADSR-Regler nur aktiv, wenn die Huellkurve an ist; Lautstaerke immer.
+    const bool env = envButton.getToggleState();
+    attSlider.setEnabled (env);
+    decSlider.setEnabled (env);
+    susSlider.setEnabled (env);
+    relSlider.setEnabled (env);
 }
 
 void AkaiPanel::applyPreset (int index)
@@ -240,8 +278,14 @@ void AkaiPanel::writeParams()
     const float grain = (float) (grainSlider.getValue()  / 100.0);
     const float drv   = (float) (driveSlider.getValue()  / 100.0);
     const float cross = (float) (crossSlider.getValue()  / 100.0);
+    const float att = (float) (attSlider.getValue() / 100.0 * 2.0);
+    const float dec = (float) (decSlider.getValue() / 100.0 * 2.0);
+    const float sus = (float) (susSlider.getValue() / 100.0);
+    const float rel = (float) (relSlider.getValue() / 100.0 * 3.0);
+    const float vol = (float) (volSlider.getValue() / 100.0);
     proc.editSample (slot, [=] (TrackerEngine::Instrument& i)
     {
+        i.attack = att; i.decay = dec; i.sustain = sus; i.release = rel; i.gain = vol;
         i.akaiCutoff    = cut;
         i.akaiResonance = res;
         i.srReduction   = grain;
@@ -351,6 +395,20 @@ void AkaiPanel::resized()
     }
     area.removeFromTop (8);
     sliderRow (crossLabel, crossSlider); // Loop-Crossfade (GLAETTEN)
+    area.removeFromTop (14);
+
+    // Huellkurve (ADSR) + Lautstaerke.
+    { auto row = area.removeFromTop (30); envButton.setBounds (row.removeFromLeft (150)); }
+    area.removeFromTop (8);
+    sliderRow (attLabel, attSlider);
+    area.removeFromTop (8);
+    sliderRow (decLabel, decSlider);
+    area.removeFromTop (8);
+    sliderRow (susLabel, susSlider);
+    area.removeFromTop (8);
+    sliderRow (relLabel, relSlider);
+    area.removeFromTop (8);
+    sliderRow (volLabel, volSlider);
     area.removeFromTop (14);
 
     hintLabel.setBounds (area.removeFromTop (40));

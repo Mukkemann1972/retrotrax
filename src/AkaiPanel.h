@@ -54,6 +54,11 @@ private:
     juce::Label  cutoffLabel, resoLabel, grainLabel, driveLabel, crossLabel;
     juce::Slider cutoffSlider, resoSlider, grainSlider, driveSlider, crossSlider; // grain = SR-Reduktion, cross = Loop-Crossfade
 
+    // Sampler-Huellkurve (ADSR) + Lautstaerke - eigenen Sound formen.
+    juce::TextButton envButton { "HUELLKURVE" };
+    juce::Label  attLabel, decLabel, susLabel, relLabel, volLabel;
+    juce::Slider attSlider, decSlider, susSlider, relSlider, volSlider;
+
     juce::Label  hintLabel;
     juce::TextButton testButton  { "TEST" };
     juce::TextButton closeButton { "SCHLIESSEN" };

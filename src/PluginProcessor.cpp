@@ -468,6 +468,12 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.drive         = p->drive;
     out.vintagePitch  = p->vintagePitch;
     out.tuneSemis     = p->tuneSemis;
+    out.ampEnv        = p->ampEnv;
+    out.gain          = p->gain;
+    out.attack        = p->attack;
+    out.decay         = p->decay;
+    out.sustain       = p->sustain;
+    out.release       = p->release;
     return true;
 }
 
@@ -938,7 +944,8 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             if (ip->akaiOn || ip->akai12bit || ip->reverse || ip->srReduction > 0.0f
                 || ip->loopMode != TrackerEngine::Instrument::Loop::Off
                 || ip->loopXfade > 0.0f
-                || ip->drive > 0.0f || ip->vintagePitch || ip->tuneSemis != 0.0f)
+                || ip->drive > 0.0f || ip->vintagePitch || ip->tuneSemis != 0.0f
+                || ip->ampEnv || ip->gain != 1.0f)
             {
                 e->setAttribute ("akon", ip->akaiOn ? 1 : 0);
                 e->setAttribute ("akcut", ip->akaiCutoff);
@@ -952,6 +959,12 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("drv", ip->drive);
                 e->setAttribute ("vint", ip->vintagePitch ? 1 : 0);
                 e->setAttribute ("tune", ip->tuneSemis);
+                e->setAttribute ("aenv", ip->ampEnv ? 1 : 0);
+                e->setAttribute ("gain", ip->gain);
+                e->setAttribute ("a", ip->attack);
+                e->setAttribute ("d", ip->decay);
+                e->setAttribute ("s", ip->sustain);
+                e->setAttribute ("rel", ip->release);
             }
         }
     }
@@ -1131,6 +1144,12 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
                     ip->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
                     ip->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);
+                    ip->ampEnv        = e->getIntAttribute ("aenv", 0) != 0;
+                    ip->gain          = (float) e->getDoubleAttribute ("gain", 1.0);
+                    ip->attack        = (float) e->getDoubleAttribute ("a", 0.004);
+                    ip->decay         = (float) e->getDoubleAttribute ("d", 0.18);
+                    ip->sustain       = (float) e->getDoubleAttribute ("s", 0.65);
+                    ip->release       = (float) e->getDoubleAttribute ("rel", 0.25);
                 }
             }
         }
