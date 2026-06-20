@@ -755,6 +755,8 @@ void HelpPanel::rebuild()
             "  DEHNEN anwenden - die Tonhoehe bleibt gleich (granulare Dehnung).\n"
             "- LOOP/One-Shot: legt fest, ob das Sample einmal spielt oder in der\n"
             "  Schleife laeuft (wirkt beim Vorhoeren und Uebernehmen).\n"
+            "- LOOP-PUNKT: Bereich markieren, dann klicken - die Schleife startet ab\n"
+            "  dem Markierungs-Anfang (cyan markiert), nicht mehr von vorn.\n"
             "- SPEICHERN sichert das (bearbeitete) Sample als WAV-Datei auf die Platte\n"
             "  - auch wenn du es gar nicht im Song nutzt.\n"
             "- VORHOEREN spielt die Arbeitskopie; UEBERNEHMEN legt sie zurueck in den\n"

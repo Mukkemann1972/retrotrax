@@ -84,7 +84,7 @@ public:
     // Eine bearbeitete Arbeitskopie als WAV sichern und in den Slot laden (so
     // bleibt sie im Song erhalten - wie beim Grabber, ueber Dateipfad).
     bool applyEditedSample (int slot, const juce::AudioBuffer<float>& buf, double rate,
-                            juce::String& message, bool loop = false);
+                            juce::String& message, bool loop = false, float loopStart = 0.0f);
     // Eine bearbeitete Arbeitskopie als WAV-Datei auf die Platte exportieren.
     bool exportSample (const juce::AudioBuffer<float>& buf, double rate,
                        const juce::File& file, juce::String& message);
@@ -99,7 +99,8 @@ public:
     int sliceToPattern (const juce::AudioBuffer<float>& buf, double rate, int slices,
                         const juce::String& baseName, juce::String& message);
     // Eine Arbeitskopie sofort vorhoeren (ohne einen Slot zu belegen).
-    void previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop = false);
+    void previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop = false,
+                        float loopStart = 0.0f);
 
     // Den Song offline als Stereo-WAV (16 Bit) rausrendern: im Song-Modus die
     // ganze Reihenfolge einmal, sonst das aktuelle Pattern einmal. Laeuft schneller

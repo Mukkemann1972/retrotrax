@@ -81,6 +81,10 @@ public:
         // Standard 0 -> bestehende Songs klingen unveraendert.
         float loopXfade     = 0.0f;
 
+        // Loop-Punkt: Bruchteil 0..1, ab dem die Vorwaerts-Schleife wieder einsetzt
+        // (statt immer ab 0). >0 schaltet den Crossfade aus (eigener Punkt). Std 0.
+        float loopStart     = 0.0f;
+
         // --- Analoge Waerme (nur bei kind == Sample) ---
         // Drive: weiche tanh-Saettigung wie die analogen Filter/Wandler alter
         // Sampler - hohe Resonanz/heisse Signale saettigen musikalisch statt
@@ -839,6 +843,14 @@ private:
                                                     * 0.5f * (float) (len - 1)));
             if (xfLen < 2) xfLen = 0;
         }
+        // Loop-Punkt: ab hier setzt die Vorwaerts-Schleife wieder ein (statt ab 0).
+        // Ein eigener Loop-Punkt schaltet den Crossfade aus (Kopf laege sonst falsch).
+        int loopStartSamp = 0;
+        if (loop == Instrument::Loop::Forward && ! rev && inst->loopStart > 0.0f && len > 4)
+        {
+            loopStartSamp = juce::jlimit (0, len - 2, (int) (inst->loopStart * (float) (len - 1)));
+            if (loopStartSamp > 0) xfLen = 0;
+        }
         // Drive: Eingangs-Gain in die tanh-Saettigung; dry/wet ueber 'drive'
         // ueberblendet, damit drive=0 exakt der saubere Klang bleibt.
         const float drive   = juce::jlimit (0.0f, 1.0f, inst->drive);
@@ -1001,13 +1013,15 @@ private:
                     if (pos >= hi)      { pos = hi - (pos - hi); v.loopDir = -1; } // am Ende spiegeln
                     else if (pos < 0.0) { pos = -pos;           v.loopDir =  1; } // am Anfang spiegeln
                 }
-                else // Forward: vorne wieder anfangen
+                else // Forward: an den Schleifen-Anfang zurueck
                 {
-                    // Mit Crossfade ist [0..xfLen] schon ins Ende gemischt -> die
-                    // Schleife laeuft ab xfLen weiter (effektive Loop-Laenge hi-xfLen).
-                    const double loopLen = hi - (double) xfLen;
+                    // Schleifen-Boden: eigener Loop-Punkt, sonst der Crossfade-Beginn
+                    // ([0..xfLen] ist schon ins Ende gemischt), sonst 0.
+                    const double loopFloor = loopStartSamp > 0 ? (double) loopStartSamp
+                                                              : (double) xfLen;
+                    const double loopLen = hi - loopFloor;
                     if (pos >= hi)  pos -= loopLen;
-                    if (pos < 0.0)  pos += loopLen;
+                    if (pos < loopFloor) pos += loopLen;
                 }
                 pos = juce::jlimit (0.0, hi - 1.0e-4, pos); // robust in den Grenzen halten
             }

@@ -56,9 +56,19 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
     addAndMakeVisible (titleLabel);
 
     for (auto* b : { &waveButton, &trimButton, &cutButton, &normButton, &revButton, &drawButton,
-                     &chopButton, &chopPatButton, &loopButton, &exportButton,
+                     &chopButton, &chopPatButton, &loopButton, &loopPointButton, &exportButton,
                      &previewButton, &applyButton, &closeButton })
         addAndMakeVisible (b);
+
+    loopPointButton.onClick = [this]
+    {
+        loopStartFrac = hasSel ? juce::jlimit (0.0, 0.99, juce::jmin (selStart, selEnd)) : 0.0;
+        loopOn = true;
+        loopButton.setToggleState (true, juce::dontSendNotification);
+        setHint ("Loop-Punkt gesetzt - die Schleife startet ab hier (LOOP an).",
+                 "Loop point set - the loop starts from here (LOOP on).");
+        repaint();
+    };
 
     cutButton.onClick = [this] { cutSelection(); };
     waveButton.onClick = [this]
@@ -169,12 +179,12 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
         setHint (msg, msg);
     };
 
-    previewButton.onClick = [this] { proc.previewBuffer (work, rate, loopOn); };
+    previewButton.onClick = [this] { proc.previewBuffer (work, rate, loopOn, (float) loopStartFrac); };
 
     applyButton.onClick = [this]
     {
         juce::String msg;
-        proc.applyEditedSample (slot, work, rate, msg, loopOn);
+        proc.applyEditedSample (slot, work, rate, msg, loopOn, (float) loopStartFrac);
         setHint (msg, msg);
     };
 
@@ -245,6 +255,9 @@ void SampleEditPanel::applyLanguage()
     loopButton.setButtonText (loc::t ("LOOP", "LOOP"));
     loopButton.setTooltip (loc::t ("One-Shot oder Loop: legt fest, ob das Sample einmal spielt oder in der Schleife laeuft",
                                    "One-shot or loop: whether the sample plays once or loops"));
+    loopPointButton.setButtonText (loc::t ("LOOP-PUNKT", "LOOP POINT"));
+    loopPointButton.setTooltip (loc::t ("Bereich markieren, dann hier klicken: die Schleife startet ab dem Markierungs-Anfang",
+                                        "Select a range, then click here: the loop starts from the selection start"));
     exportButton.setButtonText (loc::t ("SPEICHERN", "SAVE"));
     exportButton.setTooltip (loc::t ("Das (bearbeitete) Sample als WAV-Datei auf die Platte speichern",
                                      "Save the (edited) sample as a WAV file to disk"));
@@ -275,6 +288,9 @@ void SampleEditPanel::refresh()
     }
     hasSel = false;
     selStart = selEnd = 0.0;
+    loopStartFrac = 0.0;
+    loopOn = false;
+    loopButton.setToggleState (false, juce::dontSendNotification);
     repaint();
 }
 
@@ -496,6 +512,14 @@ void SampleEditPanel::paint (juce::Graphics& g)
         }
     }
 
+    // Loop-Punkt-Markierung (ab hier wiederholt sich die Schleife).
+    if (loopOn && loopStartFrac > 0.0)
+    {
+        const int lx = waveRect.getX() + (int) (loopStartFrac * waveRect.getWidth());
+        g.setColour (juce::Colour (0xff45d0ff)); // Cyan = Loop-Punkt
+        g.drawVerticalLine (lx, (float) waveRect.getY(), (float) waveRect.getBottom());
+    }
+
     // Laufmarke: zeigt beim Vorhoeren, wo im Sample gerade gespielt wird.
     {
         const double pp = proc.engine.previewPos();
@@ -526,9 +550,9 @@ void SampleEditPanel::resized()
     {
         closeButton.setBounds (rowB.removeFromRight (120));
         rowB.removeFromRight (8);
-        const int n = 4; // chop, chopPat, preview, apply
+        const int n = 5; // chop, chopPat, loopPoint, preview, apply
         const int bw = (rowB.getWidth() - (n - 1) * 6) / n;
-        for (auto* b : { &chopButton, &chopPatButton, &previewButton, &applyButton })
+        for (auto* b : { &chopButton, &chopPatButton, &loopPointButton, &previewButton, &applyButton })
         {
             b->setBounds (rowB.removeFromLeft (bw));
             rowB.removeFromLeft (6);

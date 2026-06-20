@@ -464,6 +464,7 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.srReduction   = p->srReduction;
     out.loopMode      = p->loopMode;
     out.loopXfade     = p->loopXfade;
+    out.loopStart     = p->loopStart;
     out.drive         = p->drive;
     out.vintagePitch  = p->vintagePitch;
     out.tuneSemis     = p->tuneSemis;
@@ -524,6 +525,7 @@ bool RetroTraxProcessor::getPad (int pad, TrackerEngine::Instrument& out) const
     out.srReduction   = p->srReduction;
     out.loopMode      = p->loopMode;
     out.loopXfade     = p->loopXfade;
+    out.loopStart     = p->loopStart;
     out.drive         = p->drive;
     out.vintagePitch  = p->vintagePitch;
     out.sourceRate    = p->sourceRate;
@@ -655,7 +657,7 @@ bool RetroTraxProcessor::getSampleCopy (int slot, juce::AudioBuffer<float>& out,
 }
 
 bool RetroTraxProcessor::applyEditedSample (int slot, const juce::AudioBuffer<float>& buf,
-                                            double rate, juce::String& message, bool loop)
+                                            double rate, juce::String& message, bool loop, float loopStart)
 {
     if (slot < 0 || slot >= TrackerEngine::kInstruments || buf.getNumSamples() < 2)
     {
@@ -676,8 +678,11 @@ bool RetroTraxProcessor::applyEditedSample (int slot, const juce::AudioBuffer<fl
     {
         const juce::ScopedLock sl (engine.lock);
         if (auto& ip = engine.instruments[slot])
-            ip->loopMode = loop ? TrackerEngine::Instrument::Loop::Forward
-                                : TrackerEngine::Instrument::Loop::Off;
+        {
+            ip->loopMode  = loop ? TrackerEngine::Instrument::Loop::Forward
+                                 : TrackerEngine::Instrument::Loop::Off;
+            ip->loopStart = juce::jlimit (0.0f, 0.99f, loopStart);
+        }
     }
     message = juce::String ("Bearbeitetes Sample in Slot ") + juce::String (slot + 1)
             + (loop ? " uebernommen (Loop)." : " uebernommen (One-Shot).");
@@ -795,7 +800,8 @@ int RetroTraxProcessor::sliceToPattern (const juce::AudioBuffer<float>& buf, dou
     return filled;
 }
 
-void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop)
+void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop,
+                                        float loopStart)
 {
     if (buf.getNumSamples() < 2)
         return;
@@ -806,6 +812,7 @@ void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, dou
     inst->name       = "Vorschau";
     inst->loopMode   = loop ? TrackerEngine::Instrument::Loop::Forward
                             : TrackerEngine::Instrument::Loop::Off;
+    inst->loopStart  = juce::jlimit (0.0f, 0.99f, loopStart);
     engine.previewInstrument (std::move (inst));
 }
 
@@ -941,6 +948,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("srr", ip->srReduction);
                 e->setAttribute ("loop", (int) ip->loopMode);
                 e->setAttribute ("lxf", ip->loopXfade);
+                e->setAttribute ("lst", ip->loopStart);
                 e->setAttribute ("drv", ip->drive);
                 e->setAttribute ("vint", ip->vintagePitch ? 1 : 0);
                 e->setAttribute ("tune", ip->tuneSemis);
@@ -1119,6 +1127,7 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->loopMode      = (TrackerEngine::Instrument::Loop)
                                             juce::jlimit (0, 2, e->getIntAttribute ("loop", 0));
                     ip->loopXfade     = (float) e->getDoubleAttribute ("lxf", 0.0);
+                    ip->loopStart     = (float) e->getDoubleAttribute ("lst", 0.0);
                     ip->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
                     ip->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
                     ip->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);

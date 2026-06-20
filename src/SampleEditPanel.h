@@ -49,6 +49,7 @@ private:
     bool   hasSel = false;
     bool   freehand = false;
     bool   loopOn = false;        // One-Shot (false) <-> Loop (true)
+    double loopStartFrac = 0.0;   // Loop-Punkt als Bruchteil 0..1
     int    lastDrawIdx = -1;
 
     juce::Label titleLabel;
@@ -67,6 +68,7 @@ private:
     juce::TextButton chopButton   { "IN KIT (16)" };
     juce::TextButton chopPatButton{ "-> PATTERN" };
     juce::TextButton loopButton   { "LOOP" };   // One-Shot <-> Loop (Umschalter)
+    juce::TextButton loopPointButton { "LOOP-PUNKT" }; // Loop-Start = Auswahl-Anfang
     juce::TextButton exportButton { "SPEICHERN" }; // Sample als WAV auf Platte
     juce::TextButton previewButton{ "VORHOEREN" };
     juce::TextButton applyButton  { "UEBERNEHMEN" };
