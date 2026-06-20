@@ -11,12 +11,21 @@ DrumKitPanel::DrumKitPanel (RetroTraxProcessor& processor) : proc (processor)
     auto setupButton = [this] (juce::TextButton& b) { addAndMakeVisible (b); };
     setupButton (loadButton);
     setupButton (clearButton);
+    setupButton (allSlotsButton);
     setupButton (toSlotButton);
     setupButton (fromSlotBtn);
     setupButton (closeButton);
 
     loadButton.onClick   = [this] { loadIntoSelected(); };
     clearButton.onClick  = [this] { proc.clearPad (selected); refresh(); repaint(); };
+    allSlotsButton.onClick = [this]
+    {
+        int n = 0;
+        for (int i = 0; i < TrackerEngine::kPads; ++i)
+            if (proc.padToSlot (i, i)) ++n; // Pad i -> Instrument-Slot i
+        setHint (juce::String (n) + " Pads in die Slots 1-16 gelegt (fuer die Drum-Spur).",
+                 juce::String (n) + " pads copied into slots 1-16 (for the drum track).");
+    };
     toSlotButton.onClick = [this]
     {
         const int slot = proc.currentInstrument.load();
@@ -95,6 +104,9 @@ void DrumKitPanel::applyLanguage()
     loadButton.setTooltip (loc::t ("Sample-Datei in das gewaehlte Pad laden",
                                    "Load a sample file into the selected pad"));
     clearButton.setButtonText  (loc::t ("LEEREN", "CLEAR"));
+    allSlotsButton.setButtonText (loc::t ("KIT -> SLOTS", "KIT -> SLOTS"));
+    allSlotsButton.setTooltip (loc::t ("Alle 16 Pads in die Instrument-Slots 1-16 - dann mit DRUM-Eingabe als eine Spur spielen",
+                                       "All 16 pads into instrument slots 1-16 - then play as one track with DRUM input"));
     toSlotButton.setButtonText (loc::t ("-> SLOT", "-> SLOT"));
     toSlotButton.setTooltip (loc::t ("Pad-Sample in den aktuellen Spur-Slot kopieren (fuer den Tracker)",
                                      "Copy the pad sample into the current track slot (for the tracker)"));
@@ -367,11 +379,12 @@ void DrumKitPanel::resized()
     {
         closeButton.setBounds (bottom.removeFromRight (140));
         bottom.removeFromRight (10);
-        const int bw = (bottom.getWidth() - 3 * 8) / 4;
-        loadButton.setBounds   (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
-        clearButton.setBounds  (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
-        toSlotButton.setBounds (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
-        fromSlotBtn.setBounds  (bottom.removeFromLeft (bw));
+        const int bw = (bottom.getWidth() - 4 * 8) / 5;
+        loadButton.setBounds     (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        clearButton.setBounds    (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        allSlotsButton.setBounds (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        toSlotButton.setBounds   (bottom.removeFromLeft (bw)); bottom.removeFromLeft (8);
+        fromSlotBtn.setBounds    (bottom.removeFromLeft (bw));
     }
     area.removeFromBottom (6);
     hintLabel.setBounds (area.removeFromBottom (20));

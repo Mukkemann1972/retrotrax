@@ -30,6 +30,11 @@ public:
     void quantize (int step);
     void randomMelody(); // Cursor-Spur mit einer Moll-Pentatonik-Zufallsmelodie fuellen
 
+    // Drum-Eingabe-Modus: die 16 Pad-Tasten (4x4-Layout) schreiben das jeweilige
+    // Pad/Slot direkt in die aktuelle Spur (eine Drum-Spur, kein Oktav-Wechsel).
+    void setDrumInput (bool on);
+    bool isDrumInput() const { return drumInput; }
+
 private:
     void timerCallback() override;
     void togglePlay();
@@ -105,6 +110,10 @@ private:
     int cursorRow = 0;
     int cursorTrack = 0;
     int cursorCol = 0; // 0 = Note, 1 = Instrument, 2 = Lautstaerke
+
+    bool drumInput = false; // Drum-Eingabe-Modus (Pad-Tasten -> Spur)
+    int  drumPadFromChar (juce::juce_wchar c) const; // Taste -> Pad/Slot 0..15 (-1 = keins)
+    void enterDrum (int pad);                        // Pad in die Spur schreiben + anspielen
 
     static constexpr int kHeaderH = 42; // Platz fuer Spurname + M/S-Knoepfe darunter
     static constexpr int kRowH    = 20;

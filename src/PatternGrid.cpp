@@ -359,6 +359,55 @@ void PatternGrid::quantize (int step)
     emitCursorInfo();
 }
 
+void PatternGrid::setDrumInput (bool on)
+{
+    drumInput = on;
+    repaint();
+    emitCursorInfo();
+}
+
+// 4x4-Pad-Layout wie im KIT-Panel: 1234 / QWER / ASDF / YXCV (unten links = Pad 1).
+int PatternGrid::drumPadFromChar (juce::juce_wchar c) const
+{
+    const int lc = (int) juce::CharacterFunctions::toLowerCase (c);
+    static const char* const rows[4] = { "1234", "qwer", "asdf", "yxcv" };
+    for (int r = 0; r < 4; ++r)
+        for (int col = 0; col < 4; ++col)
+            if (lc == (int) rows[r][col])
+                return (3 - r) * 4 + col;
+    if (lc == (int) 'z') return (3 - 3) * 4 + 0; // QWERTY-Variante = Pad 1
+    return -1;
+}
+
+void PatternGrid::enterDrum (int pad)
+{
+    if (pad < 0 || pad >= TrackerEngine::kInstruments)
+        return;
+    engine.audition (60, pad); // Slot = Pad-Index (Kit -> Slots 1-16 vorausgesetzt)
+    if (engine.playing.load())
+    {
+        if (engine.recording.load())
+        {
+            const int rrow = engine.currentRow.load();
+            const int ppat = engine.displayPattern();
+            if (rrow >= 0 && rrow < TrackerEngine::kRows
+                && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns)
+            {
+                auto& cell = engine.patterns[ppat][rrow][cursorTrack];
+                cell.note       = 60;
+                cell.instrument = pad;
+            }
+        }
+        repaint();
+        return;
+    }
+    pushUndo();
+    auto& cell = engine.cells[cursorRow][cursorTrack];
+    cell.note       = 60;
+    cell.instrument = pad;
+    moveCursor (1, 0);
+}
+
 void PatternGrid::randomMelody()
 {
     pushUndo(); // mit Strg+Z umkehrbar
@@ -661,6 +710,13 @@ bool PatternGrid::keyPressed (const juce::KeyPress& key)
 
     if (c == '+') { proc.currentOctave = juce::jmin (8, proc.currentOctave.load() + 1); repaint(); return true; }
     if (c == '-') { proc.currentOctave = juce::jmax (1, proc.currentOctave.load() - 1); repaint(); return true; }
+
+    // Drum-Eingabe: die Pad-Tasten schreiben das Pad/Slot direkt in die Spur.
+    if (drumInput)
+    {
+        const int pad = drumPadFromChar (c);
+        if (pad >= 0) { enterDrum (pad); return true; }
+    }
 
     if (cursorCol == 0)
     {

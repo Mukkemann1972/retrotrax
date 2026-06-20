@@ -60,6 +60,7 @@ private:
 
     juce::TextButton loadButton   { "LADEN" };       // Datei in gewaehltes Pad
     juce::TextButton clearButton  { "LEEREN" };      // gewaehltes Pad leeren
+    juce::TextButton allSlotsButton { "KIT -> SLOTS" }; // alle 16 Pads in die Slots 1-16
     juce::TextButton toSlotButton { "-> SLOT" };     // Pad in aktuellen Spur-Slot
     juce::TextButton fromSlotBtn  { "SLOT ->" };     // aktuellen Spur-Slot in Pad
     juce::TextButton closeButton  { "SCHLIESSEN" };
