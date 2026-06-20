@@ -8,6 +8,16 @@ DrumKitPanel::DrumKitPanel (RetroTraxProcessor& processor) : proc (processor)
     titleLabel.setColour (juce::Label::textColourId, rt::text);
     addAndMakeVisible (titleLabel);
 
+    addAndMakeVisible (kitsButton);
+    kitsButton.onClick = [this]
+    {
+        juce::PopupMenu m;
+        m.addItem (1, loc::t ("Kit speichern ...", "Save kit ..."));
+        m.addItem (2, loc::t ("Kit laden ...", "Load kit ..."));
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&kitsButton),
+            [this] (int r) { if (r == 1) saveKitDialog(); else if (r == 2) loadKitDialog(); });
+    };
+
     auto setupButton = [this] (juce::TextButton& b) { addAndMakeVisible (b); };
     setupButton (loadButton);
     setupButton (clearButton);
@@ -100,6 +110,9 @@ void DrumKitPanel::applyLanguage()
 {
     titleLabel.setText (loc::t ("DRUM-KIT (16 PADS)", "DRUM KIT (16 PADS)"),
                         juce::dontSendNotification);
+    kitsButton.setButtonText (loc::t ("KITS", "KITS"));
+    kitsButton.setTooltip (loc::t ("Ganzes Kit speichern/laden (.retrokit, mit Samples)",
+                                   "Save/load the whole kit (.retrokit, with samples)"));
     loadButton.setButtonText   (loc::t ("LADEN", "LOAD"));
     loadButton.setTooltip (loc::t ("Sample-Datei in das gewaehlte Pad laden",
                                    "Load a sample file into the selected pad"));
@@ -307,6 +320,45 @@ void DrumKitPanel::loadIntoSelected()
         });
 }
 
+void DrumKitPanel::saveKitDialog()
+{
+    auto dir = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                   .getChildFile ("RetroTrax").getChildFile ("Kits");
+    dir.createDirectory();
+    chooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Kit speichern", "Save kit"), dir.getChildFile ("Mein Kit.retrokit"), "*.retrokit");
+    chooser->launchAsync (juce::FileBrowserComponent::saveMode
+                              | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File()) return;
+            juce::String msg;
+            proc.saveKit (file.withFileExtension ("retrokit"), msg);
+            setHint (msg, msg);
+        });
+}
+
+void DrumKitPanel::loadKitDialog()
+{
+    auto dir = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                   .getChildFile ("RetroTrax").getChildFile ("Kits");
+    chooser = std::make_unique<juce::FileChooser> (
+        loc::t ("Kit laden", "Load kit"), dir, "*.retrokit");
+    chooser->launchAsync (juce::FileBrowserComponent::openMode
+                              | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& fc)
+        {
+            const auto file = fc.getResult();
+            if (file == juce::File()) return;
+            juce::String msg;
+            proc.loadKit (file, msg);
+            refresh();
+            repaint();
+            setHint (msg, msg);
+        });
+}
+
 void DrumKitPanel::timerCallback()
 {
     bool any = false;
@@ -371,7 +423,11 @@ void DrumKitPanel::resized()
 {
     auto area = getLocalBounds().reduced (14);
 
-    titleLabel.setBounds (area.removeFromTop (26));
+    {
+        auto top = area.removeFromTop (26);
+        kitsButton.setBounds (top.removeFromRight (110));
+        titleLabel.setBounds (top);
+    }
     area.removeFromTop (8);
 
     // Unten: Knopfreihe + Hinweiszeile darueber.

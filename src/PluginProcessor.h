@@ -74,6 +74,9 @@ public:
     void editPad (int pad, std::function<void (TrackerEngine::Instrument&)> fn); // Charakter aendern
     bool padToSlot (int pad, int slot);  // Pad-Sample in einen Spur-Slot kopieren
     bool slotToPad (int slot, int pad);  // Spur-Slot-Sample in ein Pad kopieren
+    // Ganzes Drum-Kit (16 Pads, mit eingebetteten Samples) als .retrokit speichern/laden.
+    bool saveKit (const juce::File& file, juce::String& message);
+    bool loadKit (const juce::File& file, juce::String& message);
 
     // --- Fairlight-Sample-Werkzeug -------------------------------------------
     // Arbeitskopie eines Slot-Samples holen (zum Anzeigen/Bearbeiten im Editor).

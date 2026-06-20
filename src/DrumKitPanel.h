@@ -38,6 +38,8 @@ private:
     int  padFromKey (const juce::KeyPress&) const;   // Tastatur -> Pad (-1 = keins)
     juce::Rectangle<int> padBounds (int pad) const;  // Bildschirm-Rechteck eines Pads
     void loadIntoSelected();             // Datei in das gewaehlte Pad laden
+    void saveKitDialog();                // ganzes Kit als .retrokit speichern
+    void loadKitDialog();                // .retrokit laden
     void setHint (const juce::String& de, const juce::String& en);
 
     RetroTraxProcessor& proc;
@@ -49,6 +51,7 @@ private:
     bool padFilled[TrackerEngine::kPads] = {};
 
     juce::Label titleLabel;
+    juce::TextButton kitsButton { "KITS" }; // Kit speichern / laden (.retrokit)
 
     // Charakter-Regler fuer das GEWAEHLTE Pad (SP-1200/Emu-Klang).
     juce::Label      selLabel;                      // "PAD n"

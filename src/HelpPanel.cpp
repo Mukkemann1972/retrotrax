@@ -719,6 +719,8 @@ void HelpPanel::rebuild()
             "  DRUM einschalten: die Pad-Tasten (1234/QWER/ASDF/YXCV) schreiben die\n"
             "  Pads direkt in EINE Spur - ein ganzer Beat auf einer Drum-Spur, ohne\n"
             "  Oktaven zu wechseln (mit REC auch live aufnehmbar).\n"
+            "- KITS (oben rechts): das ganze Kit als .retrokit-Datei speichern und\n"
+            "  spaeter wieder laden (mit allen 16 Samples drin).\n"
             "- Per-pad character (SP-1200/Emu): TUNE tunes the pad in semitones (down\n"
             "  = fatter/crunchier), GRIT adds sample-rate reduction, 12-BIT adds the\n"
             "  12-bit crunch, and SP-1200 applies the classic combo in one click.\n\n"

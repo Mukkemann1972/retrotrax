@@ -947,8 +947,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.58 | Drum-Spur: Kit auf eine Spur",
-                        "v0.58 | Drum track: kit on one track"),
+    g.drawText (loc::t ("v0.59 | Drum-Kits speichern/laden",
+                        "v0.59 | Save/load drum kits"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

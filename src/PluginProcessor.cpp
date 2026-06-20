@@ -8,6 +8,9 @@
 
 // Schreibt einen Float-Puffer als 16-Bit-WAV (Grabber/Chop/Edit). Definition weiter unten.
 static bool writeWavBuffer (const juce::File& file, const juce::AudioBuffer<float>& buf, double rate);
+// Sample-Daten ein-/auspacken (selbst-enthaltende Songs + Kits). Definition weiter unten.
+static juce::String encodeSamples (const juce::AudioBuffer<float>& buf);
+static bool decodeSamples (const juce::String& b64, int ch, int n, juce::AudioBuffer<float>& out);
 
 RetroTraxProcessor::RetroTraxProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
@@ -556,6 +559,83 @@ bool RetroTraxProcessor::slotToPad (int slot, int pad)
         return false;
     engine.setPad (pad, std::make_unique<TrackerEngine::Instrument> (*p)); // tiefe Kopie
     return true;
+}
+
+bool RetroTraxProcessor::saveKit (const juce::File& file, juce::String& message)
+{
+    auto xml = std::make_unique<juce::XmlElement> ("RETROKIT");
+    int n = 0;
+    {
+        const juce::ScopedLock sl (engine.lock);
+        for (int p = 0; p < TrackerEngine::kPads; ++p)
+        {
+            const auto* pad = engine.getPad (p);
+            if (pad == nullptr || pad->data.getNumSamples() < 2)
+                continue;
+            auto* e = xml->createNewChildElement ("PAD");
+            e->setAttribute ("idx", p);
+            e->setAttribute ("name", pad->name);
+            e->setAttribute ("dch", pad->data.getNumChannels());
+            e->setAttribute ("dlen", pad->data.getNumSamples());
+            e->setAttribute ("rate", pad->sourceRate);
+            e->setAttribute ("tune", pad->tuneSemis);
+            e->setAttribute ("ak12", pad->akai12bit ? 1 : 0);
+            e->setAttribute ("srr", pad->srReduction);
+            e->setAttribute ("vint", pad->vintagePitch ? 1 : 0);
+            e->createNewChildElement ("D")->addTextElement (encodeSamples (pad->data));
+            ++n;
+        }
+    }
+    if (n == 0) { message = "Das Kit ist leer."; return false; }
+    if (! xml->writeTo (file, {})) { message = "Kit speichern fehlgeschlagen."; return false; }
+    message = juce::String (n) + " Pads als Kit gespeichert.";
+    return true;
+}
+
+bool RetroTraxProcessor::loadKit (const juce::File& file, juce::String& message)
+{
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("RETROKIT"))
+    {
+        message = "Keine gueltige Kit-Datei.";
+        return false;
+    }
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+        engine.clearPad (p);
+
+    int n = 0;
+    for (auto* e : xml->getChildIterator())
+    {
+        if (! e->hasTagName ("PAD"))
+            continue;
+        const int idx = e->getIntAttribute ("idx", -1);
+        auto* d = e->getChildByName ("D");
+        if (idx < 0 || idx >= TrackerEngine::kPads || d == nullptr)
+            continue;
+        juce::AudioBuffer<float> buf;
+        if (! decodeSamples (d->getAllSubText(), e->getIntAttribute ("dch", 1),
+                             e->getIntAttribute ("dlen", 0), buf))
+            continue;
+        auto inst = std::make_unique<TrackerEngine::Instrument>();
+        inst->kind       = TrackerEngine::Instrument::Kind::Sample;
+        inst->data       = std::move (buf);
+        inst->sourceRate = e->getDoubleAttribute ("rate", 8287.0);
+        inst->name       = e->getStringAttribute ("name", "Pad");
+        engine.setPad (idx, std::move (inst));
+        {
+            const juce::ScopedLock sl (engine.lock);
+            if (auto* pad = const_cast<TrackerEngine::Instrument*> (engine.getPad (idx)))
+            {
+                pad->tuneSemis    = (float) e->getDoubleAttribute ("tune", 0.0);
+                pad->akai12bit    = e->getIntAttribute ("ak12", 0) != 0;
+                pad->srReduction  = (float) e->getDoubleAttribute ("srr", 0.0);
+                pad->vintagePitch = e->getIntAttribute ("vint", 0) != 0;
+            }
+        }
+        ++n;
+    }
+    message = juce::String (n) + " Pads aus dem Kit geladen.";
+    return n > 0;
 }
 
 // --- Fairlight-Sample-Werkzeug ------------------------------------------------
