@@ -16,11 +16,22 @@ class SpectrumPanel : public juce::Component,
 public:
     explicit SpectrumPanel (RetroTraxProcessor& processor) : proc (processor)
     {
+        setWantsKeyboardFocus (true);
         addAndMakeVisible (closeButton);
         closeButton.onClick = [this] { if (onClose) onClose(); };
     }
 
     std::function<void()> onClose; // Editor blendet die Anzeige dann wieder aus
+
+    bool keyPressed (const juce::KeyPress& key) override
+    {
+        if (key.getKeyCode() == juce::KeyPress::escapeKey && onClose != nullptr)
+        {
+            onClose();
+            return true;
+        }
+        return false;
+    }
 
     void applyLanguage()
     {

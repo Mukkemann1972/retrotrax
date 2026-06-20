@@ -138,7 +138,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                 switch (r)
                 {
                     case 1:  loadSampleClicked(); break;
-                    case 2:  diskBrowser.setVisible (true); diskBrowser.toFront (false); break;
+                    case 2:  hideAllOverlays(); diskBrowser.setVisible (true); diskBrowser.toFront (false); break;
                     case 3:  loadSongClicked(); break;
                     case 10: loadModClicked(); break;
                     case 11: loadXmClicked(); break;
@@ -160,6 +160,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     helpButton.onClick = [this]
     {
+        hideAllOverlays();
         helpPanel.setVisible (true);
         helpPanel.toFront (false);
         helpPanel.grabKeyboardFocus();
@@ -236,9 +237,10 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     spectrumButton.onClick = [this]
     {
         const bool show = ! spectrumPanel.isVisible();
+        if (show) hideAllOverlays();
         spectrumPanel.setVisible (show);
         spectrumButton.setToggleState (show, juce::dontSendNotification);
-        if (show) spectrumPanel.toFront (false);
+        if (show) { spectrumPanel.toFront (false); spectrumPanel.grabKeyboardFocus(); }
         else      grid.grabKeyboardFocus();
     };
     spectrumPanel.onClose = [this]
@@ -268,6 +270,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         instDot.colour = rt::instColour (slot);
         instDot.repaint();
 
+        hideAllOverlays();
         sidPanel.refresh();
         sidPanel.setVisible (true);
         sidButton.setToggleState (true, juce::dontSendNotification);
@@ -298,6 +301,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                                juce::dontSendNotification);
             return;
         }
+        hideAllOverlays();
         akaiPanel.refresh();
         akaiPanel.setVisible (true);
         akaiButton.setToggleState (true, juce::dontSendNotification);
@@ -313,6 +317,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     kitButton.onClick = [this]
     {
+        hideAllOverlays();
         kitPanel.refresh();
         kitPanel.setVisible (true);
         kitButton.setToggleState (true, juce::dontSendNotification);
@@ -328,6 +333,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     editButton.onClick = [this]
     {
+        hideAllOverlays();
         editPanel.refresh();
         editPanel.setVisible (true);
         editButton.setToggleState (true, juce::dontSendNotification);
@@ -343,6 +349,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
 
     fxButton.onClick = [this]
     {
+        hideAllOverlays();
         fxPanel.refresh();
         fxPanel.setVisible (true);
         fxButton.setToggleState (true, juce::dontSendNotification);
@@ -439,6 +446,26 @@ void RetroTraxEditor::updateTransportButtons()
     const bool rec = proc.engine.recording.load();
     recButton.setToggleState (rec, juce::dontSendNotification);
     recButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffd03030)); // rot bei REC
+}
+
+void RetroTraxEditor::hideAllOverlays()
+{
+    // Immer nur ein Overlay offen: alle ausblenden (Inhalt/State bleibt erhalten)
+    // und die zugehoerigen Knopf-Zustaende zuruecksetzen.
+    diskBrowser.setVisible (false);
+    helpPanel.setVisible (false);
+    sidPanel.setVisible (false);
+    akaiPanel.setVisible (false);
+    kitPanel.setVisible (false);
+    editPanel.setVisible (false);
+    fxPanel.setVisible (false);
+    spectrumPanel.setVisible (false);
+    sidButton.setToggleState (false, juce::dontSendNotification);
+    akaiButton.setToggleState (false, juce::dontSendNotification);
+    kitButton.setToggleState (false, juce::dontSendNotification);
+    editButton.setToggleState (false, juce::dontSendNotification);
+    fxButton.setToggleState (false, juce::dontSendNotification);
+    spectrumButton.setToggleState (false, juce::dontSendNotification);
 }
 
 void RetroTraxEditor::refreshInstrumentBox()
@@ -947,8 +974,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.60 | Fairlight: Sample speichern + Loop",
-                        "v0.60 | Fairlight: save sample + loop"),
+    g.drawText (loc::t ("v0.61 | Aufgeraeumt: ein Panel, ESC, WAV oben",
+                        "v0.61 | Tidied: one panel, ESC, WAV on top"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -980,6 +1007,8 @@ void RetroTraxEditor::resized()
     songRow.removeFromRight (6);
     spectrumButton.setBounds (songRow.removeFromRight (96));
     songRow.removeFromRight (12);
+    wavButton.setBounds (songRow.removeFromRight (60));      // WAV gehoert zu SONG SPEICHERN
+    songRow.removeFromRight (6);
     saveSongButton.setBounds (songRow.removeFromRight (140));
     songRow.removeFromRight (6);
     loadMenuButton.setBounds (songRow.removeFromRight (110)); // LADEN oben neben SONG SPEICHERN
@@ -987,8 +1016,6 @@ void RetroTraxEditor::resized()
     area.removeFromTop (54); // Titelzeile (nur paint)
 
     auto controls = area.removeFromTop (40).reduced (8, 5);
-    wavButton.setBounds (controls.removeFromRight (60)); // WAV unter SONG SPEICHERN (rechts)
-    controls.removeFromRight (10);
     playButton.setBounds (controls.removeFromLeft (74));
     controls.removeFromLeft (6);
     recButton.setBounds (controls.removeFromLeft (60));

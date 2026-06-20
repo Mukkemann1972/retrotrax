@@ -38,6 +38,7 @@ private:
     void loadTfmxClicked();
     void grabTfmxClicked();   // TFMX-Grabber: Samples entnehmen -> eigener Ordner
     void syncUiFromState();
+    void hideAllOverlays(); // alle Overlay-Panels schliessen (immer nur eins offen)
     void applyLanguage();
     void setDefaultHint(); // Standard-Tastenkuerzel-Zeile unten
     void updateSongUi();   // Pattern-Nummer, SONG/LOOP, Reihenfolge anzeigen
