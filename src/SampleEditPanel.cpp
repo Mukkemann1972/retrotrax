@@ -56,10 +56,36 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
     addAndMakeVisible (titleLabel);
 
     for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
-                     &chopButton, &chopPatButton, &previewButton, &applyButton, &closeButton })
+                     &chopButton, &chopPatButton, &loopButton, &exportButton,
+                     &previewButton, &applyButton, &closeButton })
         addAndMakeVisible (b);
 
     drawButton.setClickingTogglesState (true);
+    loopButton.setClickingTogglesState (true);
+    loopButton.onClick = [this]
+    {
+        loopOn = loopButton.getToggleState();
+        setHint (loopOn ? "Loop: das Sample laeuft in der Schleife." : "One-Shot: einmal abspielen.",
+                 loopOn ? "Loop: the sample plays in a loop." : "One-shot: play once.");
+    };
+    exportButton.onClick = [this]
+    {
+        auto dir = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                       .getChildFile ("RetroTrax").getChildFile ("Samples");
+        dir.createDirectory();
+        chooser = std::make_unique<juce::FileChooser> (
+            loc::t ("Sample speichern", "Save sample"), dir.getChildFile ("Sample.wav"), "*.wav");
+        chooser->launchAsync (juce::FileBrowserComponent::saveMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+            [this] (const juce::FileChooser& fc)
+            {
+                const auto file = fc.getResult();
+                if (file == juce::File()) return;
+                juce::String msg;
+                proc.exportSample (work, rate, file, msg);
+                setHint (msg, msg);
+            });
+    };
 
     trimButton.onClick = [this]
     {
@@ -129,12 +155,12 @@ SampleEditPanel::SampleEditPanel (RetroTraxProcessor& processor) : proc (process
         setHint (msg, msg);
     };
 
-    previewButton.onClick = [this] { proc.previewBuffer (work, rate); };
+    previewButton.onClick = [this] { proc.previewBuffer (work, rate, loopOn); };
 
     applyButton.onClick = [this]
     {
         juce::String msg;
-        proc.applyEditedSample (slot, work, rate, msg);
+        proc.applyEditedSample (slot, work, rate, msg, loopOn);
         setHint (msg, msg);
     };
 
@@ -194,6 +220,12 @@ void SampleEditPanel::applyLanguage()
     chopPatButton.setButtonText (loc::t ("-> PATTERN", "-> PATTERN"));
     chopPatButton.setTooltip (loc::t ("Sample in 16 Scheiben schneiden, in Slots legen UND als Noten ins Pattern (Break wird spielbar/umbaubar)",
                                       "Slice into 16, put into slots AND as notes in the pattern (break becomes playable/rearrangeable)"));
+    loopButton.setButtonText (loc::t ("LOOP", "LOOP"));
+    loopButton.setTooltip (loc::t ("One-Shot oder Loop: legt fest, ob das Sample einmal spielt oder in der Schleife laeuft",
+                                   "One-shot or loop: whether the sample plays once or loops"));
+    exportButton.setButtonText (loc::t ("SPEICHERN", "SAVE"));
+    exportButton.setTooltip (loc::t ("Das (bearbeitete) Sample als WAV-Datei auf die Platte speichern",
+                                     "Save the (edited) sample as a WAV file to disk"));
     previewButton.setButtonText (loc::t ("VORHOEREN", "PREVIEW"));
     applyButton.setButtonText  (loc::t ("UEBERNEHMEN", "APPLY"));
     applyButton.setTooltip (loc::t ("Bearbeitetes Sample zurueck in den Slot legen (bleibt im Song)",
@@ -392,18 +424,30 @@ void SampleEditPanel::resized()
     titleLabel.setBounds (area.removeFromTop (26));
     area.removeFromTop (8);
 
-    // Knopfreihe unten + Hinweiszeile darueber.
-    auto bottom = area.removeFromBottom (34);
+    // Zwei aufgeraeumte Knopfreihen unten. Unterste: Schneiden/Abspielen + Schliessen.
+    auto rowB = area.removeFromBottom (32);
     {
-        closeButton.setBounds (bottom.removeFromRight (130));
-        bottom.removeFromRight (10);
-        const int n = 8; // trim, norm, rev, draw, chop, chopPat, preview, apply
-        const int bw = (bottom.getWidth() - (n - 1) * 6) / n;
-        for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
-                         &chopButton, &chopPatButton, &previewButton, &applyButton })
+        closeButton.setBounds (rowB.removeFromRight (120));
+        rowB.removeFromRight (8);
+        const int n = 4; // chop, chopPat, preview, apply
+        const int bw = (rowB.getWidth() - (n - 1) * 6) / n;
+        for (auto* b : { &chopButton, &chopPatButton, &previewButton, &applyButton })
         {
-            b->setBounds (bottom.removeFromLeft (bw));
-            bottom.removeFromLeft (6);
+            b->setBounds (rowB.removeFromLeft (bw));
+            rowB.removeFromLeft (6);
+        }
+    }
+    area.removeFromBottom (6);
+    // Darueber: Bearbeiten-Werkzeuge.
+    auto rowA = area.removeFromBottom (30);
+    {
+        const int n = 6; // trim, norm, rev, draw, loop, export
+        const int bw = (rowA.getWidth() - (n - 1) * 6) / n;
+        for (auto* b : { &trimButton, &normButton, &revButton, &drawButton,
+                         &loopButton, &exportButton })
+        {
+            b->setBounds (rowA.removeFromLeft (bw));
+            rowA.removeFromLeft (6);
         }
     }
     area.removeFromBottom (6);

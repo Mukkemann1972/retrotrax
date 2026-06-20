@@ -655,7 +655,7 @@ bool RetroTraxProcessor::getSampleCopy (int slot, juce::AudioBuffer<float>& out,
 }
 
 bool RetroTraxProcessor::applyEditedSample (int slot, const juce::AudioBuffer<float>& buf,
-                                            double rate, juce::String& message)
+                                            double rate, juce::String& message, bool loop)
 {
     if (slot < 0 || slot >= TrackerEngine::kInstruments || buf.getNumSamples() < 2)
     {
@@ -672,7 +672,32 @@ bool RetroTraxProcessor::applyEditedSample (int slot, const juce::AudioBuffer<fl
         message = "Konnte das bearbeitete Sample nicht sichern.";
         return false;
     }
-    message = "Bearbeitetes Sample in Slot " + juce::String (slot + 1) + " uebernommen.";
+    // One-Shot oder Loop ans Instrument anlegen.
+    {
+        const juce::ScopedLock sl (engine.lock);
+        if (auto& ip = engine.instruments[slot])
+            ip->loopMode = loop ? TrackerEngine::Instrument::Loop::Forward
+                                : TrackerEngine::Instrument::Loop::Off;
+    }
+    message = juce::String ("Bearbeitetes Sample in Slot ") + juce::String (slot + 1)
+            + (loop ? " uebernommen (Loop)." : " uebernommen (One-Shot).");
+    return true;
+}
+
+bool RetroTraxProcessor::exportSample (const juce::AudioBuffer<float>& buf, double rate,
+                                       const juce::File& file, juce::String& message)
+{
+    if (buf.getNumSamples() < 2)
+    {
+        message = "Kein Sample zum Speichern.";
+        return false;
+    }
+    if (! writeWavBuffer (file.withFileExtension ("wav"), buf, rate))
+    {
+        message = "Speichern fehlgeschlagen.";
+        return false;
+    }
+    message = "Sample gespeichert: " + file.withFileExtension ("wav").getFileName();
     return true;
 }
 
@@ -770,7 +795,7 @@ int RetroTraxProcessor::sliceToPattern (const juce::AudioBuffer<float>& buf, dou
     return filled;
 }
 
-void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate)
+void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, double rate, bool loop)
 {
     if (buf.getNumSamples() < 2)
         return;
@@ -779,6 +804,8 @@ void RetroTraxProcessor::previewBuffer (const juce::AudioBuffer<float>& buf, dou
     inst->data       = buf;
     inst->sourceRate = rate;
     inst->name       = "Vorschau";
+    inst->loopMode   = loop ? TrackerEngine::Instrument::Loop::Forward
+                            : TrackerEngine::Instrument::Loop::Off;
     engine.previewInstrument (std::move (inst));
 }
 

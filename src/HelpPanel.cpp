@@ -746,6 +746,10 @@ void HelpPanel::rebuild()
             "  umbaubar (Recycle/Page-R-Idee).\n"
             "- TIME-STRETCH: das Sample mit dem Regler laenger/kuerzer machen und mit\n"
             "  DEHNEN anwenden - die Tonhoehe bleibt gleich (granulare Dehnung).\n"
+            "- LOOP/One-Shot: legt fest, ob das Sample einmal spielt oder in der\n"
+            "  Schleife laeuft (wirkt beim Vorhoeren und Uebernehmen).\n"
+            "- SPEICHERN sichert das (bearbeitete) Sample als WAV-Datei auf die Platte\n"
+            "  - auch wenn du es gar nicht im Song nutzt.\n"
             "- VORHOEREN spielt die Arbeitskopie; UEBERNEHMEN legt sie zurueck in den\n"
             "  Slot (als WAV gesichert, bleibt im Song erhalten).",
             "The FAIRLIGHT button opens the sample tool for the current slot - a small\n"

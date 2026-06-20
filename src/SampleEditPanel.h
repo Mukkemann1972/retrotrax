@@ -44,6 +44,7 @@ private:
     double selStart = 0.0, selEnd = 0.0; // Auswahl als Bruchteile 0..1
     bool   hasSel = false;
     bool   freehand = false;
+    bool   loopOn = false;        // One-Shot (false) <-> Loop (true)
     int    lastDrawIdx = -1;
 
     juce::Label titleLabel;
@@ -59,10 +60,13 @@ private:
     juce::TextButton drawButton   { "FREIHAND" };
     juce::TextButton chopButton   { "IN KIT (16)" };
     juce::TextButton chopPatButton{ "-> PATTERN" };
+    juce::TextButton loopButton   { "LOOP" };   // One-Shot <-> Loop (Umschalter)
+    juce::TextButton exportButton { "SPEICHERN" }; // Sample als WAV auf Platte
     juce::TextButton previewButton{ "VORHOEREN" };
     juce::TextButton applyButton  { "UEBERNEHMEN" };
     juce::TextButton closeButton  { "SCHLIESSEN" };
     juce::Label hintLabel;
+    std::unique_ptr<juce::FileChooser> chooser; // fuer SPEICHERN (Sample exportieren)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleEditPanel)
 };
