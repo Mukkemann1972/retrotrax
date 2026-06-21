@@ -9,15 +9,24 @@ namespace
     {
         const char* nameDe; const char* nameEn;
         bool  on;  float cutoff, reso;  bool bit12;
+        float grain;  // Sample-Rate-Reduktion (Koernung)
+        float drive;  // weiche Saettigung (analoge Waerme)
+        bool  vintage;// rohe Wandlung (crunchy beim Pitchen)
     };
 
+    // Beruehmte Vintage-Sampler als Ein-Klick-Charaktere. Jeder kombiniert nur die
+    // vorhandenen Bausteine (Filter, 12-Bit, Koernung/Decimator, Drive, Vintage-
+    // Pitch) zum typischen Klang-Fingerabdruck der Maschine - das Sample selbst
+    // bleibt unangetastet.
     const AkaiPreset kAkaiPresets[] =
     {
-        // Name              an     cut    res    12-Bit
-        { "S900",  "S900",  true,  0.45f, 0.30f, true  }, // grobkoerniger 12-Bit-Klassiker
-        { "S950",  "S950",  true,  0.60f, 0.22f, true  }, // etwas klarer, noch 12-Bit
-        { "S1000", "S1000", true,  0.80f, 0.12f, false }, // sanfter 16-Bit-Charakter
-        { "WARM",  "WARM",  true,  0.40f, 0.10f, false }, // einfach weich gefiltert
+        // Name                       an     cut    res    12-Bit grain  drive  vintage
+        { "S950",      "S950",       true,  0.60f, 0.22f, true,  0.10f, 0.10f, false }, // 12-Bit-Klassiker, klar
+        { "S1000",     "S1000",      true,  0.85f, 0.10f, false, 0.00f, 0.00f, false }, // 16-Bit sauber/transparent
+        { "SP-1200",   "SP-1200",    true,  0.70f, 0.10f, true,  0.40f, 0.30f, true  }, // dreckige HipHop-Drums
+        { "EMU II",    "EMU II",     true,  0.50f, 0.20f, true,  0.05f, 0.35f, false }, // 12-Bit warm, analoge Filter
+        { "MIRAGE",    "MIRAGE",     true,  0.60f, 0.15f, true,  0.55f, 0.20f, true  }, // 8-Bit rau, koernig
+        { "FAIRLIGHT", "FAIRLIGHT",  true,  0.85f, 0.08f, true,  0.35f, 0.05f, true  }, // 8-Bit kristallin/metallisch
     };
     constexpr int kNumAkaiPresets = (int) (sizeof (kAkaiPresets) / sizeof (kAkaiPresets[0]));
 }
@@ -149,7 +158,7 @@ void AkaiPanel::applyLanguage()
 {
     titleLabel.setText (loc::t ("AKAI-SAMPLER", "AKAI SAMPLER"),
                         juce::dontSendNotification);
-    presetLabel.setText (loc::t ("MODELL", "MODEL"), juce::dontSendNotification);
+    presetLabel.setText (loc::t ("VINTAGE-CHARAKTER", "VINTAGE CHARACTER"), juce::dontSendNotification);
     for (int i = 0; i < presetButtons.size() && i < kNumAkaiPresets; ++i)
         presetButtons[i]->setButtonText (loc::t (kAkaiPresets[i].nameDe, kAkaiPresets[i].nameEn));
 
@@ -264,6 +273,9 @@ void AkaiPanel::applyPreset (int index)
         i.akaiCutoff    = p.cutoff;
         i.akaiResonance = p.reso;
         i.akai12bit     = p.bit12;
+        i.srReduction   = p.grain;
+        i.drive         = p.drive;
+        i.vintagePitch  = p.vintage;
     });
     refresh();
     previewNote();

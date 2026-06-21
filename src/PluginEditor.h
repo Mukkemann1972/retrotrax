@@ -7,10 +7,9 @@
 #include "SampleDiskBrowser.h"
 #include "HelpPanel.h"
 #include "SidPanel.h"
-#include "AkaiPanel.h"
 #include "DrumKitPanel.h"
 #include "SampleEditPanel.h"
-#include "MasterFxPanel.h"
+#include "FxPanel.h"
 #include "SpectrumPanel.h"
 #include "KeyboardPanel.h"
 #include "SplashOverlay.h"
@@ -53,10 +52,9 @@ private:
     juce::TextButton recButton  { "REC" };  // Aufnahme scharf schalten (rot, wenn aktiv)
     juce::TextButton loadMenuButton { "LADEN" }; // Aufklapp-Menue: Sample/Song laden + Importieren
     juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
-    juce::TextButton akaiButton { "AKAI" }; // Akai-Filter fuer den aktuellen Sample-Slot
     juce::TextButton kitButton { "KIT" }; // Drum-Kit (16 Pads, MPC60/SP-1200-Stil)
     juce::TextButton editButton { "FAIRLIGHT" }; // Sample-Werkzeug (trimmen/zeichnen/choppen)
-    juce::TextButton fxButton { "FX" }; // Master-FX (Echo + Hall)
+    juce::TextButton fxButton { "FX" }; // FX: Akai-Sampler-Effekte + Master-Effekte
     juce::TextButton saveSongButton { "SONG SPEICHERN" };
     juce::TextButton helpButton { "?" };
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
@@ -102,10 +100,9 @@ private:
     SampleDiskBrowser diskBrowser;
     HelpPanel helpPanel;
     SidPanel sidPanel;
-    AkaiPanel akaiPanel;
     DrumKitPanel kitPanel;
     SampleEditPanel editPanel;
-    MasterFxPanel fxPanel;
+    FxPanel fxPanel;
     SpectrumPanel spectrumPanel;
     KeyboardPanel kbPanel;
     SplashOverlay splash;

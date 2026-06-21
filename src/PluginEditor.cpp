@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), akaiPanel (p),
+    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p),
       kitPanel (p), editPanel (p), fxPanel (p), spectrumPanel (p), kbPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
@@ -12,7 +12,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (diskBrowser); // unsichtbar, bis SAMPLES gedrueckt wird
     addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
     addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
-    addChildComponent (akaiPanel);   // unsichtbar, bis AKAI gedrueckt wird
     addChildComponent (kitPanel);    // unsichtbar, bis KIT gedrueckt wird
     addChildComponent (editPanel);   // unsichtbar, bis FAIRLIGHT gedrueckt wird
     addChildComponent (fxPanel);     // unsichtbar, bis FX gedrueckt wird
@@ -22,7 +21,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (recButton);
     addAndMakeVisible (loadMenuButton);
     addAndMakeVisible (sidButton);
-    addAndMakeVisible (akaiButton);
     addAndMakeVisible (kitButton);
     addAndMakeVisible (editButton);
     addAndMakeVisible (fxButton);
@@ -279,31 +277,6 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         instDot.repaint();
     };
 
-    akaiButton.onClick = [this]
-    {
-        const int slot = proc.currentInstrument.load();
-        if (! proc.isSampleSlot (slot))
-        {
-            // Kein Sample im Slot -> kurz erklaeren statt ein leeres Panel zu zeigen.
-            hintLabel.setText (loc::t ("AKAI-Filter braucht ein Sample im Slot - erst ein Sample laden.",
-                                       "Akai filter needs a sample in the slot - load a sample first."),
-                               juce::dontSendNotification);
-            return;
-        }
-        hideAllOverlays();
-        akaiPanel.refresh();
-        akaiPanel.setVisible (true);
-        akaiButton.setToggleState (true, juce::dontSendNotification);
-        akaiPanel.toFront (false);
-        akaiPanel.grabKeyboardFocus();
-    };
-    akaiPanel.onClose = [this]
-    {
-        akaiPanel.setVisible (false);
-        akaiButton.setToggleState (false, juce::dontSendNotification);
-        grid.grabKeyboardFocus();
-    };
-
     kitButton.onClick = [this]
     {
         hideAllOverlays();
@@ -339,6 +312,9 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     fxButton.onClick = [this]
     {
         hideAllOverlays();
+        // Sinnvollen Reiter vorwaehlen: Sampler-FX, wenn der aktuelle Slot ein
+        // Sample ist, sonst gleich die Master-Effekte.
+        fxPanel.showSection (proc.isSampleSlot (proc.currentInstrument.load()) ? 0 : 1);
         fxPanel.refresh();
         fxPanel.setVisible (true);
         fxButton.setToggleState (true, juce::dontSendNotification);
@@ -444,14 +420,12 @@ void RetroTraxEditor::hideAllOverlays()
     diskBrowser.setVisible (false);
     helpPanel.setVisible (false);
     sidPanel.setVisible (false);
-    akaiPanel.setVisible (false);
     kitPanel.setVisible (false);
     editPanel.setVisible (false);
     fxPanel.setVisible (false);
     spectrumPanel.setVisible (false);
     kbPanel.setVisible (false);
     sidButton.setToggleState (false, juce::dontSendNotification);
-    akaiButton.setToggleState (false, juce::dontSendNotification);
     kitButton.setToggleState (false, juce::dontSendNotification);
     editButton.setToggleState (false, juce::dontSendNotification);
     fxButton.setToggleState (false, juce::dontSendNotification);
@@ -941,18 +915,14 @@ void RetroTraxEditor::applyLanguage()
     recButton.setTooltip (loc::t ("Aufnahme scharf schalten: nur dann landen live gespielte Noten im Pattern",
                                   "Arm recording: only then do live-played notes land in the pattern"));
     fxButton.setButtonText (loc::t ("FX", "FX"));
-    fxButton.setTooltip (loc::t ("Master-FX: Echo + Hall fuer den ganzen Mix",
-                                 "Master FX: echo + reverb for the whole mix"));
+    fxButton.setTooltip (loc::t ("FX: Akai-Sampler-Effekte (pro Sample) + Master-Effekte (Echo/Hall/EQ) - zwei Reiter",
+                                 "FX: Akai sampler effects (per sample) + master effects (echo/reverb/EQ) - two tabs"));
     fxPanel.applyLanguage();
-    akaiButton.setButtonText (loc::t ("AKAI", "AKAI"));
-    akaiButton.setTooltip (loc::t ("Akai-Sampler-Filter fuer das aktuelle Sample (resonanter Tiefpass + 12-Bit-Crunch)",
-                                   "Akai sampler filter for the current sample (resonant low-pass + 12-bit crunch)"));
 
     refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen
     diskBrowser.applyLanguage();
     helpPanel.applyLanguage();
     sidPanel.applyLanguage();
-    akaiPanel.applyLanguage();
     spectrumPanel.applyLanguage();
     kbPanel.applyLanguage();
     repaint();
@@ -978,8 +948,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.73 | Speichern=RetroTrax/WAV, REC schreibt erst",
-                        "v0.73 | Save=RetroTrax/WAV, REC to write"),
+    g.drawText (loc::t ("v0.74 | FX-Knopf: Sampler- + Master-Effekte, Vintage-Charaktere",
+                        "v0.74 | FX button: sampler + master effects, vintage characters"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -1040,8 +1010,6 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (10);
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
-    akaiButton.setBounds (controls.removeFromLeft (70));
-    controls.removeFromLeft (6);
     kitButton.setBounds (controls.removeFromLeft (118));
     controls.removeFromLeft (6);
     editButton.setBounds (controls.removeFromLeft (96));
@@ -1076,7 +1044,6 @@ void RetroTraxEditor::resized()
     diskBrowser.setBounds (gridArea); // liegt als Overlay genau ueber dem Grid
     helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
-    akaiPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     kitPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     editPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     fxPanel.setBounds (gridArea);     // ebenfalls Overlay ueber dem Grid

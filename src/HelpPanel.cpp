@@ -479,11 +479,11 @@ void HelpPanel::rebuild()
             "after a restart). REMOVE takes one out again - your files are left\n"
             "untouched.") });
 
-    topics.add ({ loc::t ("Akai-Sampler-Filter", "Akai sampler filter"),
+    topics.add ({ loc::t ("FX: Akai-Sampler-Effekte", "FX: Akai sampler effects"),
         loc::t (
-            "Der AKAI-Knopf oeffnet den Sampler-Filter fuer das Sample im aktuellen\n"
-            "Slot - der warme, druckvolle Klang der alten Akai-Sampler\n"
-            "(S900 / S950 / S1000).\n\n"
+            "Der FX-Knopf hat zwei Reiter. Der Reiter AKAI-SAMPLER-EFFEKTE bearbeitet\n"
+            "das Sample im aktuellen Slot - der warme, druckvolle Klang der alten\n"
+            "Sampler. (Der zweite Reiter MASTER-EFFEKTE wirkt auf den ganzen Mix.)\n\n"
             "- FILTER AN schaltet einen resonanten Tiefpass dazu (24 dB/Okt).\n"
             "- GRENZE bestimmt, ab wo die Hoehen weggenommen werden.\n"
             "- RESONANZ betont die Grenzfrequenz - hoeher = es faengt an zu pfeifen.\n"
@@ -504,13 +504,16 @@ void HelpPanel::rebuild()
             "  alter Sampler) - crunchy, lebendig, besonders tief gespielt.\n"
             "- HUELLKURVE (ADSR) + LAUTSTAERKE: das Sample wie an einem echten Sampler\n"
             "  formen - Attack/Decay/Sustain/Release und die Lautstaerke pro Klang.\n"
-            "- MODELL: fertige Startklaenge - S900/S950 koerniger, S1000 sanfter.\n\n"
+            "- VINTAGE-CHARAKTER: beruehmte Maschinen auf einen Klick - S950 (12-Bit\n"
+            "  klar), S1000 (16-Bit sauber), SP-1200 (dreckige HipHop-Drums), EMU II\n"
+            "  (12-Bit warm), MIRAGE (8-Bit rau), FAIRLIGHT (8-Bit kristallin). Jeder\n"
+            "  kombiniert nur die obigen Regler - danach frei weiterdrehen.\n\n"
             "Standard ist AUS, dein Sample bleibt also unveraendert, bis du den\n"
             "Filter einschaltest. Die Einstellung wird im Song (.retrotrax)\n"
             "mitgespeichert. TEST spielt ein C-5 mit dem aktuellen Klang.",
-            "The AKAI button opens the sampler filter for the sample in the current\n"
-            "slot - the warm, punchy sound of the old Akai samplers\n"
-            "(S900 / S950 / S1000).\n\n"
+            "The FX button has two tabs. The AKAI SAMPLER FX tab edits the sample in\n"
+            "the current slot - the warm, punchy sound of the old samplers. (The\n"
+            "second tab, MASTER FX, affects the whole mix.)\n\n"
             "- FILTER ON adds a resonant low-pass (24 dB/oct).\n"
             "- CUTOFF sets where the highs start to be removed.\n"
             "- RESONANCE emphasises the cutoff - higher = it starts to whistle.\n"
@@ -529,7 +532,10 @@ void HelpPanel::rebuild()
             "  punch and push; high resonance saturates musically instead of clipping.\n"
             "- VINTAGE: pitches raw without smoothing (like the slow converter clock\n"
             "  of old samplers) - crunchy, alive, especially when played low.\n"
-            "- MODEL: ready-made starting points - S900/S950 grittier, S1000 smoother.\n\n"
+            "- VINTAGE CHARACTER: famous machines in one click - S950 (12-bit clear),\n"
+            "  S1000 (16-bit clean), SP-1200 (dirty hip-hop drums), EMU II (12-bit\n"
+            "  warm), MIRAGE (8-bit rough), FAIRLIGHT (8-bit crystalline). Each just\n"
+            "  combines the knobs above - tweak further afterwards.\n\n"
             "Off by default, so your sample stays unchanged until you switch the\n"
             "filter on. The setting is saved with the song (.retrotrax). TEST plays\n"
             "a C-5 with the current sound.") });
@@ -800,10 +806,11 @@ void HelpPanel::rebuild()
             "- PREVIEW plays the working copy; APPLY puts it back into the slot (saved\n"
             "  as a WAV, kept with the song).") });
 
-    topics.add ({ loc::t ("Master-FX (Echo & Hall)", "Master FX (echo & reverb)"),
+    topics.add ({ loc::t ("FX: Master-Effekte (Echo & Hall)", "FX: master effects (echo & reverb)"),
         loc::t (
-            "Der FX-Knopf oeffnet die Master-Effekte - sie wirken auf den GANZEN Mix\n"
-            "(alle Spuren zusammen), wie der Master-Track in Renoise.\n\n"
+            "Der FX-Knopf, Reiter MASTER-EFFEKTE, wirkt auf den GANZEN Mix\n"
+            "(alle Spuren zusammen), wie der Master-Track in Renoise. (Der erste\n"
+            "Reiter AKAI-SAMPLER-EFFEKTE bearbeitet nur das aktuelle Sample.)\n\n"
             "- ECHO (Delay): ZEIT = Verzoegerung, RUECKKOPPLUNG = wie oft es\n"
             "  wiederholt, MIX = wie laut das Echo. MIX 0 = aus.\n"
             "- HALL (Reverb): RAUM = Groesse des Raums, MIX = wie viel Hall. MIX 0 = aus.\n"
@@ -811,8 +818,9 @@ void HelpPanel::rebuild()
             "  0 = flach) - gibt dem Mix Druck oder nimmt Schaerfe raus.\n\n"
             "Beide sind Standard AUS, dein Klang bleibt also unveraendert, bis du MIX\n"
             "aufdrehst. Die Einstellungen werden im Song (.retrotrax) mitgespeichert.",
-            "The FX button opens the master effects - they affect the WHOLE mix (all\n"
-            "tracks together), like the master track in Renoise.\n\n"
+            "The FX button, MASTER FX tab, affects the WHOLE mix (all tracks\n"
+            "together), like the master track in Renoise. (The first tab, AKAI\n"
+            "SAMPLER FX, edits only the current sample.)\n\n"
             "- ECHO (delay): TIME = delay length, FEEDBACK = how often it repeats,\n"
             "  MIX = how loud the echo. MIX 0 = off.\n"
             "- REVERB: ROOM = room size, MIX = how much reverb. MIX 0 = off.\n"
