@@ -12,16 +12,31 @@ PatternGrid::PatternGrid (RetroTraxProcessor& processor)
 
 void PatternGrid::timerCallback()
 {
-    if (engine.playing.load())
+    const bool playing = engine.playing.load();
+
+    // Start des Abspielens: aktuelle Bearbeitungsstelle merken, damit der Cursor
+    // nach dem Stoppen genau dorthin zurueckkehrt (und nicht beim Play-Balken
+    // stehenbleibt). Gilt fuer Abspielen UND Aufnahme gleichermassen.
+    if (playing && ! wasPlaying)
+        savedCursorRow = cursorRow;
+
+    if (playing)
     {
-        // Nur bei scharfer AUFNAHME (REC) reitet der orange Eingabe-Cursor auf dem
-        // Play-Balken mit, damit man sieht, wo man aufnimmt. Beim reinen Abspielen
-        // (Testen) bleibt der Cursor stehen, wo der Nutzer ihn hat - so springt
-        // nichts mehr auf den Anfang/eine andere Stelle.
-        if (engine.recording.load())
-            cursorRow = engine.currentRow.load();
+        // Der orange Eingabe-Cursor reitet jetzt auch beim reinen Abspielen auf
+        // dem Play-Balken mit (vorher nur bei REC) - so sieht man immer, wo man
+        // gerade ist, und die Ansicht folgt der blauen Linie.
+        cursorRow = engine.currentRow.load();
         repaint();
     }
+    else if (wasPlaying)
+    {
+        // Gerade gestoppt: Cursor an die vorherige Bearbeitungsstelle zuruecksetzen.
+        if (savedCursorRow >= 0 && savedCursorRow < TrackerEngine::kRows)
+            cursorRow = savedCursorRow;
+        repaint();
+    }
+
+    wasPlaying = playing;
 }
 
 void PatternGrid::togglePlay()

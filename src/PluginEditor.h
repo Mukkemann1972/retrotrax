@@ -110,5 +110,8 @@ private:
     std::unique_ptr<juce::FileChooser> songChooser;
     juce::File currentSongFile; // zuletzt gespeicherter/geoeffneter Song
 
+    std::unique_ptr<juce::AlertWindow> startDialog; // Startabfrage "Weitermachen/leere Seite"
+    void maybeAskFreshStart();                      // beim Standalone-Start ggf. fragen
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroTraxEditor)
 };

@@ -352,6 +352,9 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
                                                instrumentBox.getSelectedId() - 1);
         instDot.colour = rt::instColour (proc.currentInstrument.load());
         instDot.repaint();
+        // Fokus zurueck ans Grid, damit das neue Sample sofort ueber die Tastatur
+        // hoerbar ist - ohne erst in die Spur klicken zu muessen.
+        grid.grabKeyboardFocus();
     };
     refreshInstrumentBox();
 
@@ -396,6 +399,49 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     splash.onDone = [this] { splash.setVisible (false); grid.grabKeyboardFocus(); };
     splash.toFront (false);
     splash.grabKeyboardFocus();
+
+    // Beim Standalone-Start fragen, ob der letzte Song weiterlaeuft oder eine
+    // frische leere Seite gestartet wird. Verzoegert, damit das Fenster zuerst
+    // fertig steht; SafePointer schuetzt, falls es vorher schon zu waere.
+    juce::Component::SafePointer<RetroTraxEditor> safe (this);
+    juce::MessageManager::callAsync ([safe]
+    {
+        if (safe != nullptr)
+            safe->maybeAskFreshStart();
+    });
+}
+
+void RetroTraxEditor::maybeAskFreshStart()
+{
+    // Nur im eigenstaendigen Programm sinnvoll - in einer DAW will man keinen
+    // Dialog beim Laden des Plugins. Und nur, wenn es ueberhaupt etwas zu
+    // behalten gibt (sonst ist die Seite ja schon leer).
+    if (proc.wrapperType != juce::AudioProcessor::wrapperType_Standalone)
+        return;
+    if (proc.isEmptySong())
+        return;
+
+    startDialog = std::make_unique<juce::AlertWindow> (
+        loc::t ("Willkommen zurueck", "Welcome back"),
+        loc::t ("Letzte Seite weitermachen - oder mit einer leeren Seite starten?",
+                "Continue your last page - or start with an empty page?"),
+        juce::MessageBoxIconType::QuestionIcon);
+    startDialog->addButton (loc::t ("WEITERMACHEN", "CONTINUE"), 1,
+                            juce::KeyPress (juce::KeyPress::returnKey));
+    startDialog->addButton (loc::t ("NEUE LEERE SEITE", "NEW EMPTY PAGE"), 2);
+    startDialog->enterModalState (true, juce::ModalCallbackFunction::create (
+        [this] (int result)
+        {
+            if (result == 2) // leere Seite gewuenscht
+            {
+                proc.newSong();
+                syncUiFromState();
+                hintLabel.setText (loc::t ("Neue leere Seite.", "New empty page."),
+                                   juce::dontSendNotification);
+            }
+            startDialog.reset();
+            grid.grabKeyboardFocus();
+        }), false);
 }
 
 RetroTraxEditor::~RetroTraxEditor()

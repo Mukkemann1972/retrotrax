@@ -113,6 +113,13 @@ public:
     bool saveSong (const juce::File& file);
     bool loadSong (const juce::File& file, juce::StringArray& missingSamples);
 
+    // Komplett leere Seite: stoppt, raeumt alle Instrumente/Pads/Pattern-Zellen
+    // und setzt Tempo/Effekte auf Standard zurueck - ein frischer Start.
+    void newSong();
+    // true, wenn nichts zu behalten waere (keine Samples, alle Zellen leer) -
+    // dann lohnt die Startabfrage "Weitermachen oder leere Seite?" nicht.
+    bool isEmptySong() const;
+
     // Klassisches Amiga-MOD (.mod) importieren: Samples -> Instrument-Slots,
     // Pattern-Daten -> Patterns, Reihenfolge -> Order. 'message' bekommt eine
     // kurze Zusammenfassung (oder den Fehlergrund).

@@ -109,6 +109,12 @@ private:
     int cursorTrack = 0;
     int cursorCol = 0; // 0 = Note, 1 = Instrument, 2 = Lautstaerke
 
+    // Beim Abspielen reitet der Cursor auf dem Play-Balken mit (wie bei REC).
+    // Damit dabei die eigene Bearbeitungsstelle nicht verlorengeht, merken wir
+    // sie beim Start und stellen sie beim Stoppen wieder her.
+    bool wasPlaying     = false;
+    int  savedCursorRow = -1;
+
     int  drumPadFromChar (juce::juce_wchar c) const; // Taste -> Pad/Slot 0..15 (-1 = keins)
     void enterDrum (int pad);                        // Pad in die Spur schreiben + anspielen
 

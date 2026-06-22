@@ -470,6 +470,46 @@ bool RetroTraxProcessor::isSampleSlot (int slot) const
         && p->data.getNumSamples() > 1;
 }
 
+bool RetroTraxProcessor::isEmptySong() const
+{
+    const juce::ScopedLock sl (engine.lock);
+    for (int i = 0; i < TrackerEngine::kInstruments; ++i)
+        if (engine.instruments[i] != nullptr)
+            return false;
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+        if (engine.padHasSound (p))
+            return false;
+    for (const auto& pat : engine.patterns)
+        for (const auto& row : pat)
+            for (const auto& c : row)
+                if (c.note != -1 || c.instrument != -1)
+                    return false;
+    return true;
+}
+
+void RetroTraxProcessor::newSong()
+{
+    engine.stop(); // nie mitten im Abspielen umbauen
+    playbackMode = PlaybackMode::Tracker;
+
+    // Alle Slots, Pads und Pattern-Zellen leeren (clearAllCells setzt auch die
+    // Song-Reihenfolge auf ein einzelnes leeres Pattern zurueck).
+    for (int i = 0; i < TrackerEngine::kInstruments; ++i)
+        engine.setInstrument (i, nullptr);
+    for (int p = 0; p < TrackerEngine::kPads; ++p)
+        engine.clearPad (p);
+    engine.clearAllCells();
+
+    // Tempo/Eingabe/Effekte auf Standard - wie ein frisch gestarteter Song.
+    engine.bpm   = 125.0f;
+    engine.swing = 0.0f;
+    currentInstrument = 0;
+    currentOctave     = 5;
+    echoTimeMs   = 300.0f; echoFeedback = 0.35f; echoMix = 0.0f;
+    reverbSize   = 0.5f;   reverbMix    = 0.0f;
+    eqLow = 0.0f; eqMid = 0.0f; eqHigh = 0.0f;
+}
+
 bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) const
 {
     if (slot < 0 || slot >= TrackerEngine::kInstruments)
