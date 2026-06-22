@@ -10,8 +10,16 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.74 — Sampler + SID-Synthesizer (echter reSIDfp-Chip)
+## Stand: v0.77 — Anfänger-Modus (EINFACH): ein Klick macht den Tracker einsteigerfreundlich
 
+- **🟢 Anfänger-Modus (EINFACH ⇄ PROFI):** ein Knopf oben schaltet das ganze
+  Programm zwischen **EINFACH** (einsteigerfreundlich) und **PROFI** (alles) um.
+  Im EINFACH-Modus zeigt das Grid pro Spur nur **Note + Instrument** (die Hex-
+  Spalten Lautstärke/Effekt sind aus, dafür sitzen die Noten breiter und lesbarer)
+  und die ganze Song-Leiste (Pattern / LOOP / QUANT / WÜRFEL) verschwindet, damit
+  das Grid mehr Platz bekommt; eine kurze „Los geht's"-Box und die Bildschirm-
+  Tastatur lassen dich in Sekunden losspielen. Deine Wahl wird gemerkt. PROFI
+  bleibt Standard — nimmt nichts weg, jederzeit zurückschaltbar
 - **🎹 SID-Synthesizer:** jeder Slot kann statt eines Samples ein selbst
   erzeugter C64-SID-Klang sein — Wellenformen (Dreieck / Säge / Puls mit
   Pulsweite / Rauschen), **ADSR-Hüllkurve** und ein Multimode-**Filter**
@@ -151,8 +159,12 @@ Ein Projekt aus dem Mukkemann-Universum.
 - **Swing / Groove** ✅: der **SWING**-Regler (neben BPM) versetzt gerade/ungerade
   Zeilen gegeneinander — der MPC/SP-1200-Shuffle, der den Beat lebendig macht
   (Tempo bleibt gleich, 0 % = gerade)
+- **Anfänger-Modus (EINFACH)** ✅: ein Klick reduziert die Oberfläche auf Note +
+  Instrument und blendet die Song-Leiste aus, mit „Los geht's"-Box und Bildschirm-
+  Tastatur — ein sanfter Einstieg für Neulinge; PROFI bleibt Standard und nimmt
+  nichts weg
 - **Später:** weitere Sampler-Effekte (Time-Stretch), echte Beaterkennung,
-  .sid-Player + .retrotrax-Replayer für eigene Demos, Anfänger-Modus
+  .sid-Player + .retrotrax-Replayer für eigene Demos
 
 ## Bedienung
 

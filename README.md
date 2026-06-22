@@ -10,8 +10,16 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.74 — Sampler + SID synthesizer (real reSIDfp chip)
+## Status: v0.77 — Beginner mode (EASY): one click makes the tracker newcomer-friendly
 
+- **🟢 Beginner mode (EASY ⇄ PRO):** one button up top switches the whole app
+  between **EASY** (newcomer-friendly) and **PRO** (everything). In EASY the grid
+  shows only **note + instrument** per track (the volume/effect hex columns are
+  hidden, so notes sit wider and easier to read) and the song strip
+  (pattern / LOOP / QUANT / DICE) disappears to give the grid more room; a short
+  "let's go" box plus the on-screen keyboard get you playing in seconds. Your
+  choice is remembered for next time. PRO stays the default — nothing is taken
+  away, switch back any time
 - **🎹 SID synthesizer:** every slot can be a sound you create yourself instead
   of a sample — a C64 SID-style voice with waveforms (triangle / saw / pulse with
   pulse width / noise), an **ADSR envelope** and a multimode **filter**
@@ -148,8 +156,12 @@ A project from the Mukkemann universe.
 - **Swing / groove** ✅: the **SWING** slider (next to BPM) offsets even/odd rows
   against each other — the MPC/SP-1200 shuffle that brings the beat to life (tempo
   stays the same, 0 % = straight)
+- **Beginner mode (EASY)** ✅: one click strips the interface down to note +
+  instrument and hides the song strip, with a "let's go" box and the on-screen
+  keyboard — a gentle way in for newcomers; PRO stays the default and takes
+  nothing away
 - **Later:** more sampler effects (time-stretch), real beat detection,
-  .sid player + .retrotrax replayer for your own demos, beginner mode
+  .sid player + .retrotrax replayer for your own demos
 
 ## Controls
 
