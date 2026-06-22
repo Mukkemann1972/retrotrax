@@ -57,7 +57,8 @@ void PatternGrid::moveCursor (int rowDelta, int colDelta)
 
     if (colDelta != 0)
     {
-        constexpr int kCols = 4; // Note, Instrument, Lautstaerke, Effekt
+        // Im Anfaenger-Modus nur 2 Spalten (Note, Instrument); sonst alle 4.
+        const int kCols = beginnerMode ? 2 : 4; // Note, Instrument[, Lautstaerke, Effekt]
         int flat = cursorTrack * kCols + cursorCol + colDelta;
         const int total = TrackerEngine::kTracks * kCols;
         flat = (flat % total + total) % total;
@@ -256,6 +257,16 @@ void PatternGrid::setLiveHelp (bool on)
     liveHelp = on;
     if (on)
         emitCursorInfo(); // sofort die aktuelle Stelle erklaeren
+}
+
+void PatternGrid::setBeginnerMode (bool on)
+{
+    beginnerMode = on;
+    // Cursor koennte in einer jetzt ausgeblendeten Spalte stehen -> auf Instrument
+    // zurueckholen, damit er sichtbar bleibt.
+    if (beginnerMode && cursorCol > 1)
+        cursorCol = 1;
+    repaint();
 }
 
 void PatternGrid::emitCursorInfo()
@@ -819,9 +830,12 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
         const int t   = juce::jmin (TrackerEngine::kTracks - 1, firstVisTrack + vi);
         const int xin = (e.x - kLeftW) % trackW;
         cursorTrack = t;
-        cursorCol = xin < trackW * 34 / 100 ? 0
-                  : xin < trackW * 49 / 100 ? 1
-                  : xin < trackW * 65 / 100 ? 2 : 3;
+        // Anfaenger-Modus: nur Note/Instrument anklickbar; sonst alle vier Spalten.
+        cursorCol = beginnerMode
+                  ? (xin < trackW * 55 / 100 ? 0 : 1)
+                  : (xin < trackW * 34 / 100 ? 0
+                   : xin < trackW * 49 / 100 ? 1
+                   : xin < trackW * 65 / 100 ? 2 : 3);
     }
     if (e.y > kHeaderH)
     {
@@ -903,10 +917,12 @@ void PatternGrid::paint (juce::Graphics& g)
                 g.fillRect (tx, y, trackW, kRowH);
             }
 
+            // Im Anfaenger-Modus nur Note + Instrument, dafuer breiter und luftiger;
+            // im Profi-Modus zusaetzlich Lautstaerke + Effekt (die schmalen Hex-Spalten).
             const int noteX = tx + 6;
-            const int noteW = trackW * 30 / 100;
-            const int instX = tx + trackW * 34 / 100;
-            const int instW = trackW * 14 / 100;
+            const int noteW = beginnerMode ? trackW * 52 / 100 : trackW * 30 / 100;
+            const int instX = tx + (beginnerMode ? trackW * 58 / 100 : trackW * 34 / 100);
+            const int instW = beginnerMode ? trackW * 36 / 100 : trackW * 14 / 100;
             const int volX  = tx + trackW * 49 / 100;
             const int volW  = trackW * 14 / 100;
             const int fxX   = tx + trackW * 65 / 100;
@@ -947,18 +963,22 @@ void PatternGrid::paint (juce::Graphics& g)
                                   : juce::String::formatted ("%02d", cell.instrument + 1),
                         instX, y, instW, kRowH, juce::Justification::centredLeft);
 
-            const bool volEmpty = cell.volume < 0;
-            g.setFont (rt::mono (cellFontH, ! volEmpty));
-            g.setColour (volEmpty ? emptyCol : rt::volCol.brighter (0.2f));
-            g.drawText (volEmpty ? juce::String ("..")
-                                 : juce::String::formatted ("%02d", cell.volume),
-                        volX, y, volW, kRowH, juce::Justification::centredLeft);
+            // Lautstaerke- und Effekt-Spalte gibt es nur im Profi-Modus.
+            if (! beginnerMode)
+            {
+                const bool volEmpty = cell.volume < 0;
+                g.setFont (rt::mono (cellFontH, ! volEmpty));
+                g.setColour (volEmpty ? emptyCol : rt::volCol.brighter (0.2f));
+                g.drawText (volEmpty ? juce::String ("..")
+                                     : juce::String::formatted ("%02d", cell.volume),
+                            volX, y, volW, kRowH, juce::Justification::centredLeft);
 
-            const bool fxEmpty = cell.effect < 0;
-            g.setFont (rt::mono (cellFontH, ! fxEmpty));
-            g.setColour (fxEmpty ? emptyCol : rt::fxCol);
-            g.drawText (effectText (cell.effect, cell.effectParam),
-                        fxX, y, fxW, kRowH, juce::Justification::centredLeft);
+                const bool fxEmpty = cell.effect < 0;
+                g.setFont (rt::mono (cellFontH, ! fxEmpty));
+                g.setColour (fxEmpty ? emptyCol : rt::fxCol);
+                g.drawText (effectText (cell.effect, cell.effectParam),
+                            fxX, y, fxW, kRowH, juce::Justification::centredLeft);
+            }
         }
     }
 

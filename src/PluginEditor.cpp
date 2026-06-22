@@ -1,5 +1,27 @@
 #include "PluginEditor.h"
 
+// Anfaenger/Profi-Modus wird gespeichert (wie die Sprache), damit er beim
+// naechsten Start wieder so steht - ein Anfaenger soll nicht jedes Mal umschalten.
+namespace
+{
+    juce::File modeSettingsFile()
+    {
+        return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+            .getChildFile ("MukkemannRetroTrax").getChildFile ("modus.txt");
+    }
+    bool loadBeginnerSetting()
+    {
+        const auto f = modeSettingsFile();
+        return f.existsAsFile() && f.loadFileAsString().trim().equalsIgnoreCase ("EINFACH");
+    }
+    void saveBeginnerSetting (bool beginner)
+    {
+        const auto f = modeSettingsFile();
+        f.getParentDirectory().createDirectory();
+        f.replaceWithText (beginner ? "EINFACH" : "PROFI");
+    }
+}
+
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p),
       kitPanel (p), editPanel (p), fxPanel (p), spectrumPanel (p), kbPanel (p)
@@ -150,6 +172,14 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     {
         loc::toggle();
         applyLanguage();
+    };
+
+    addAndMakeVisible (modeButton);
+    modeButton.onClick = [this]
+    {
+        beginnerMode = ! beginnerMode;
+        saveBeginnerSetting (beginnerMode);
+        applyBeginnerMode (true); // beim Einschalten Erste-Schritte zeigen
     };
 
     // Live-Hilfe-Zeile an/abschalten: an -> der Cursor erklaert sich unten selbst,
@@ -394,6 +424,10 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     setResizeLimits (960, 520, 3840, 2160); // grosses Maximum, damit Maximieren den Schirm fuellt
     setSize (1240, 720); // etwas breiter: Platz fuer den AKAI-Knopf, Spalten gleich lesbar
 
+    // Gespeicherten Anfaenger/Profi-Modus wiederherstellen (ohne Erste-Schritte-Box).
+    beginnerMode = loadBeginnerSetting();
+    applyBeginnerMode (false);
+
     // Start-Splash mit dem Logo ganz oben drueber; nach dem Wegblenden Fokus ins Grid.
     addAndMakeVisible (splash);
     splash.onDone = [this] { splash.setVisible (false); grid.grabKeyboardFocus(); };
@@ -442,6 +476,66 @@ void RetroTraxEditor::maybeAskFreshStart()
             startDialog.reset();
             grid.grabKeyboardFocus();
         }), false);
+}
+
+void RetroTraxEditor::applyBeginnerMode (bool justSwitchedOn)
+{
+    // Grid auf wenige Spalten umstellen.
+    grid.setBeginnerMode (beginnerMode);
+
+    // Fortgeschrittene Knoepfe + die ganze Song-Leiste ausblenden - der Anfaenger
+    // sieht nur das Noetigste, der Profi hat alles. Nimmt nichts weg (umschaltbar).
+    const bool adv = ! beginnerMode;
+    sidButton.setVisible (adv);
+    kitButton.setVisible (adv);
+    editButton.setVisible (adv);
+    fxButton.setVisible (adv);
+    patPrevButton.setVisible (adv);
+    patNextButton.setVisible (adv);
+    songModeButton.setVisible (adv);
+    orderAddButton.setVisible (adv);
+    orderDelButton.setVisible (adv);
+    quantBox.setVisible (adv);
+    quantButton.setVisible (adv);
+    randomButton.setVisible (adv);
+    patLabel.setVisible (adv);
+    orderLabel.setVisible (adv);
+
+    // Knopf-Beschriftung zeigt, wohin der naechste Klick fuehrt bzw. den Zustand.
+    modeButton.setButtonText (beginnerMode ? loc::t ("EINFACH", "EASY")
+                                           : loc::t ("PROFI", "PRO"));
+    modeButton.setToggleState (beginnerMode, juce::dontSendNotification);
+
+    resized();   // Layout neu (Song-Leiste fehlt im Anfaenger-Modus -> Grid groesser)
+    grid.repaint();
+
+    if (beginnerMode && justSwitchedOn)
+    {
+        // Erste-Schritte-Box: drei einfache Schritte, danach die Tastatur oeffnen.
+        firstStepsBox = std::make_unique<juce::AlertWindow> (
+            loc::t ("Los geht's - ganz einfach", "Let's go - nice and easy"),
+            loc::t ("1) Oben ein Instrument waehlen\n2) Eine Taste druecken = eine Note\n3) PLAY druecken - fertig!\n\nMit dem PROFI-Knopf bekommst du spaeter alles dazu.",
+                    "1) Pick an instrument up top\n2) Press a key = a note\n3) Press PLAY - done!\n\nThe PRO button unlocks everything later."),
+            juce::MessageBoxIconType::InfoIcon);
+        firstStepsBox->addButton (loc::t ("VERSTANDEN", "GOT IT"), 1,
+                                  juce::KeyPress (juce::KeyPress::returnKey));
+        firstStepsBox->enterModalState (true, juce::ModalCallbackFunction::create (
+            [this] (int)
+            {
+                firstStepsBox.reset();
+                // Bildschirm-Tastatur zeigen - man sieht sofort, welche Taste welche
+                // Note ist. Schliessbar per ESC/SCHLIESSEN, dann ist das Grid wieder da.
+                hideAllOverlays();
+                kbPanel.setVisible (true);
+                kbButton.setToggleState (true, juce::dontSendNotification);
+                kbPanel.toFront (false);
+                kbPanel.grabKeyboardFocus();
+            }), false);
+    }
+    else
+    {
+        grid.grabKeyboardFocus();
+    }
 }
 
 RetroTraxEditor::~RetroTraxEditor()
@@ -906,6 +1000,10 @@ void RetroTraxEditor::setDefaultHint()
 void RetroTraxEditor::applyLanguage()
 {
     langButton.setButtonText (loc::code()); // zeigt die aktuelle Sprache (DE/EN)
+    modeButton.setButtonText (beginnerMode ? loc::t ("EINFACH", "EASY")
+                                           : loc::t ("PROFI", "PRO"));
+    modeButton.setTooltip (loc::t ("Umschalten: EINFACH (Anfaenger) <-> PROFI (alles) - nimmt nichts weg",
+                                   "Toggle: EASY (beginner) <-> PRO (everything) - removes nothing"));
     loadMenuButton.setButtonText (loc::t ("LADEN", "LOAD"));
     loadMenuButton.setTooltip (loc::t ("Sample oder Song laden, Sample-Browser, oder ein Modul importieren (MOD/XM/TFMX)",
                                        "Load a sample or song, open the sample browser, or import a module (MOD/XM/TFMX)"));
@@ -1025,6 +1123,8 @@ void RetroTraxEditor::resized()
     songRow.removeFromRight (6);
     langButton.setBounds (songRow.removeFromRight (46));
     songRow.removeFromRight (6);
+    modeButton.setBounds (songRow.removeFromRight (104)); // EINFACH/PROFI-Umschalter
+    songRow.removeFromRight (6);
     liveHelpButton.setBounds (songRow.removeFromRight (60));
     songRow.removeFromRight (6);
     spectrumButton.setBounds (songRow.removeFromRight (96));
@@ -1063,26 +1163,31 @@ void RetroTraxEditor::resized()
     fxButton.setBounds (controls.removeFromLeft (48));
 
     // Song-Modus-Leiste: Pattern waehlen, LOOP/SONG, Reihenfolge bearbeiten.
-    auto song = area.removeFromTop (32).reduced (8, 3);
-    patPrevButton.setBounds (song.removeFromLeft (58));
-    song.removeFromLeft (4);
-    patLabel.setBounds (song.removeFromLeft (104));
-    song.removeFromLeft (4);
-    patNextButton.setBounds (song.removeFromLeft (58));
-    song.removeFromLeft (16);
-    songModeButton.setBounds (song.removeFromLeft (72));
-    song.removeFromLeft (16);
-    orderAddButton.setBounds (song.removeFromLeft (66));
-    song.removeFromLeft (4);
-    orderDelButton.setBounds (song.removeFromLeft (66));
-    song.removeFromLeft (16);
-    quantBox.setBounds (song.removeFromLeft (72));
-    song.removeFromLeft (4);
-    quantButton.setBounds (song.removeFromLeft (72));
-    song.removeFromLeft (8);
-    randomButton.setBounds (song.removeFromLeft (84));
-    song.removeFromLeft (12);
-    orderLabel.setBounds (song);
+    // Im Anfaenger-Modus ausgeblendet -> der ganze Streifen entfaellt, das Grid
+    // bekommt den Platz (weniger ist mehr fuer Einsteiger).
+    if (! beginnerMode)
+    {
+        auto song = area.removeFromTop (32).reduced (8, 3);
+        patPrevButton.setBounds (song.removeFromLeft (58));
+        song.removeFromLeft (4);
+        patLabel.setBounds (song.removeFromLeft (104));
+        song.removeFromLeft (4);
+        patNextButton.setBounds (song.removeFromLeft (58));
+        song.removeFromLeft (16);
+        songModeButton.setBounds (song.removeFromLeft (72));
+        song.removeFromLeft (16);
+        orderAddButton.setBounds (song.removeFromLeft (66));
+        song.removeFromLeft (4);
+        orderDelButton.setBounds (song.removeFromLeft (66));
+        song.removeFromLeft (16);
+        quantBox.setBounds (song.removeFromLeft (72));
+        song.removeFromLeft (4);
+        quantButton.setBounds (song.removeFromLeft (72));
+        song.removeFromLeft (8);
+        randomButton.setBounds (song.removeFromLeft (84));
+        song.removeFromLeft (12);
+        orderLabel.setBounds (song);
+    }
 
     hintLabel.setBounds (area.removeFromBottom (26));
     const auto gridArea = area.reduced (8, 4);

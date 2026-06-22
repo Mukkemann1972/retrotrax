@@ -60,6 +60,7 @@ private:
     juce::TextButton liveHelpButton { "TIPP" }; // Live-Hilfe-Zeile an/aus
     juce::TextButton spectrumButton { "SPEKTRUM" }; // Frequenz-Anzeige ein/aus
     juce::TextButton kbButton { "TASTEN" }; // Bildschirm-Tastatur (welche Taste = welche Note)
+    juce::TextButton modeButton { "PROFI" }; // EINFACH <-> PROFI (Anfaenger/Fortgeschrittene)
     juce::TextButton langButton { "DE" };
 
     // Song-Modus-Leiste
@@ -112,6 +113,12 @@ private:
 
     std::unique_ptr<juce::AlertWindow> startDialog; // Startabfrage "Weitermachen/leere Seite"
     void maybeAskFreshStart();                      // beim Standalone-Start ggf. fragen
+
+    // Anfaenger-Modus (EINFACH) vs. Profi-Modus. Schaltet weniger Spalten im Grid,
+    // blendet fortgeschrittene Knoepfe/Song-Leiste aus und oeffnet die Tastatur.
+    bool beginnerMode = false;
+    void applyBeginnerMode (bool justSwitchedOn);   // Oberflaeche an den Modus anpassen
+    std::unique_ptr<juce::AlertWindow> firstStepsBox; // Erste-Schritte-Box (Anfaenger)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroTraxEditor)
 };

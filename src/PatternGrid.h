@@ -24,6 +24,10 @@ public:
     bool liveHelpOn() const { return liveHelp; }
     std::function<void(const juce::String&)> onCursorInfo; // Editor zeigt den Text an
 
+    // Anfaenger-Modus: Grid zeigt nur Note + Instrument (Lautstaerke/Effekt aus),
+    // beide Spalten breiter. Nimmt nichts weg - zurueck auf Profi-Look schaltbar.
+    void setBeginnerMode (bool on);
+
     // Aktuelles Pattern quantisieren: jede Note auf das naechste Vielfache von
     // 'step' Zeilen schnappen (z.B. 2 = Achtel, 4 = Viertel). Rueckgaengig-faehig.
     // Vom Editor (QUANT-Knopf) aufgerufen.
@@ -114,6 +118,8 @@ private:
     // sie beim Start und stellen sie beim Stoppen wieder her.
     bool wasPlaying     = false;
     int  savedCursorRow = -1;
+
+    bool beginnerMode = false; // true = nur Note+Instrument (Anfaenger)
 
     int  drumPadFromChar (juce::juce_wchar c) const; // Taste -> Pad/Slot 0..15 (-1 = keins)
     void enterDrum (int pad);                        // Pad in die Spur schreiben + anspielen
