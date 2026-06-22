@@ -483,6 +483,8 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.akaiCutoff    = p->akaiCutoff;
     out.akaiResonance = p->akaiResonance;
     out.akai12bit     = p->akai12bit;
+    out.akai8bit      = p->akai8bit;
+    out.companding    = p->companding;
     out.reverse       = p->reverse;
     out.srReduction   = p->srReduction;
     out.loopMode      = p->loopMode;
@@ -550,6 +552,8 @@ bool RetroTraxProcessor::getPad (int pad, TrackerEngine::Instrument& out) const
     out.akaiCutoff    = p->akaiCutoff;
     out.akaiResonance = p->akaiResonance;
     out.akai12bit     = p->akai12bit;
+    out.akai8bit      = p->akai8bit;
+    out.companding    = p->companding;
     out.reverse       = p->reverse;
     out.srReduction   = p->srReduction;
     out.loopMode      = p->loopMode;
@@ -611,6 +615,8 @@ bool RetroTraxProcessor::saveKit (const juce::File& file, juce::String& message)
             e->setAttribute ("rate", pad->sourceRate);
             e->setAttribute ("tune", pad->tuneSemis);
             e->setAttribute ("ak12", pad->akai12bit ? 1 : 0);
+            e->setAttribute ("ak8", pad->akai8bit ? 1 : 0);
+            e->setAttribute ("comp", pad->companding ? 1 : 0);
             e->setAttribute ("srr", pad->srReduction);
             e->setAttribute ("vint", pad->vintagePitch ? 1 : 0);
             e->createNewChildElement ("D")->addTextElement (encodeSamples (pad->data));
@@ -659,6 +665,8 @@ bool RetroTraxProcessor::loadKit (const juce::File& file, juce::String& message)
             {
                 pad->tuneSemis    = (float) e->getDoubleAttribute ("tune", 0.0);
                 pad->akai12bit    = e->getIntAttribute ("ak12", 0) != 0;
+                pad->akai8bit     = e->getIntAttribute ("ak8", 0) != 0;
+                pad->companding   = e->getIntAttribute ("comp", 0) != 0;
                 pad->srReduction  = (float) e->getDoubleAttribute ("srr", 0.0);
                 pad->vintagePitch = e->getIntAttribute ("vint", 0) != 0;
             }
@@ -964,7 +972,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->createNewChildElement ("D")->addTextElement (encodeSamples (ip->data));
             // Akai-Filter nur sichern, wenn er ueberhaupt benutzt wird -> normale
             // Sample-Slots bleiben in der Datei unveraendert (alte Songs laden weiter).
-            if (ip->akaiOn || ip->akai12bit || ip->reverse || ip->srReduction > 0.0f
+            if (ip->akaiOn || ip->akai12bit || ip->akai8bit || ip->companding || ip->reverse || ip->srReduction > 0.0f
                 || ip->loopMode != TrackerEngine::Instrument::Loop::Off
                 || ip->loopXfade > 0.0f
                 || ip->drive > 0.0f || ip->vintagePitch || ip->tuneSemis != 0.0f
@@ -974,6 +982,8 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("akcut", ip->akaiCutoff);
                 e->setAttribute ("akres", ip->akaiResonance);
                 e->setAttribute ("ak12", ip->akai12bit ? 1 : 0);
+                e->setAttribute ("ak8", ip->akai8bit ? 1 : 0);
+                e->setAttribute ("comp", ip->companding ? 1 : 0);
                 e->setAttribute ("rev", ip->reverse ? 1 : 0);
                 e->setAttribute ("srr", ip->srReduction);
                 e->setAttribute ("loop", (int) ip->loopMode);
@@ -1012,6 +1022,8 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         e->setAttribute ("akcut", pad->akaiCutoff);
         e->setAttribute ("akres", pad->akaiResonance);
         e->setAttribute ("ak12", pad->akai12bit ? 1 : 0);
+        e->setAttribute ("ak8", pad->akai8bit ? 1 : 0);
+        e->setAttribute ("comp", pad->companding ? 1 : 0);
         e->setAttribute ("rev", pad->reverse ? 1 : 0);
         e->setAttribute ("srr", pad->srReduction);
         e->setAttribute ("loop", (int) pad->loopMode);
@@ -1158,6 +1170,8 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->akaiCutoff    = (float) e->getDoubleAttribute ("akcut", 1.0);
                     ip->akaiResonance = (float) e->getDoubleAttribute ("akres", 0.12);
                     ip->akai12bit     = e->getIntAttribute ("ak12", 0) != 0;
+                    ip->akai8bit      = e->getIntAttribute ("ak8", 0) != 0;
+                    ip->companding    = e->getIntAttribute ("comp", 0) != 0;
                     ip->reverse       = e->getIntAttribute ("rev", 0) != 0;
                     ip->srReduction   = (float) e->getDoubleAttribute ("srr", 0.0);
                     ip->loopMode      = (TrackerEngine::Instrument::Loop)
@@ -1214,6 +1228,8 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     pad->akaiCutoff    = (float) e->getDoubleAttribute ("akcut", 1.0);
                     pad->akaiResonance = (float) e->getDoubleAttribute ("akres", 0.12);
                     pad->akai12bit     = e->getIntAttribute ("ak12", 0) != 0;
+                    pad->akai8bit      = e->getIntAttribute ("ak8", 0) != 0;
+                    pad->companding    = e->getIntAttribute ("comp", 0) != 0;
                     pad->reverse       = e->getIntAttribute ("rev", 0) != 0;
                     pad->srReduction   = (float) e->getDoubleAttribute ("srr", 0.0);
                     pad->loopMode      = (TrackerEngine::Instrument::Loop)

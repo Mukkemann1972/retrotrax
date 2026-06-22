@@ -12,6 +12,7 @@ namespace
         float grain;  // Sample-Rate-Reduktion (Koernung)
         float drive;  // weiche Saettigung (analoge Waerme)
         bool  vintage;// rohe Wandlung (crunchy beim Pitchen)
+        bool  comp;   // EMU-II-Kompander (mu-law, warm/druckvoll)
     };
 
     // Beruehmte Vintage-Sampler als Ein-Klick-Charaktere. Jeder kombiniert nur die
@@ -20,13 +21,13 @@ namespace
     // bleibt unangetastet.
     const AkaiPreset kAkaiPresets[] =
     {
-        // Name                       an     cut    res    12-Bit grain  drive  vintage
-        { "S950",      "S950",       true,  0.60f, 0.22f, true,  0.10f, 0.10f, false }, // 12-Bit-Klassiker, klar
-        { "S1000",     "S1000",      true,  0.85f, 0.10f, false, 0.00f, 0.00f, false }, // 16-Bit sauber/transparent
-        { "SP-1200",   "SP-1200",    true,  0.70f, 0.10f, true,  0.40f, 0.30f, true  }, // dreckige HipHop-Drums
-        { "EMU II",    "EMU II",     true,  0.50f, 0.20f, true,  0.05f, 0.35f, false }, // 12-Bit warm, analoge Filter
-        { "MIRAGE",    "MIRAGE",     true,  0.60f, 0.15f, true,  0.55f, 0.20f, true  }, // 8-Bit rau, koernig
-        { "FAIRLIGHT", "FAIRLIGHT",  true,  0.85f, 0.08f, true,  0.35f, 0.05f, true  }, // 8-Bit kristallin/metallisch
+        // Name                       an     cut    res    12-Bit grain  drive  vintage comp
+        { "S950",      "S950",       true,  0.60f, 0.22f, true,  0.10f, 0.10f, false, false }, // 12-Bit-Klassiker, klar
+        { "S1000",     "S1000",      true,  0.85f, 0.10f, false, 0.00f, 0.00f, false, false }, // 16-Bit sauber/transparent
+        { "SP-1200",   "SP-1200",    true,  0.70f, 0.10f, true,  0.40f, 0.30f, true,  false }, // dreckige HipHop-Drums
+        { "EMU II",    "EMU II",     true,  0.50f, 0.20f, false, 0.05f, 0.35f, false, true  }, // 12-Bit kompandiert, warm + analoge Filter
+        { "MIRAGE",    "MIRAGE",     true,  0.60f, 0.15f, true,  0.55f, 0.20f, true,  false }, // 8-Bit rau, koernig
+        { "FAIRLIGHT", "FAIRLIGHT",  true,  0.85f, 0.08f, true,  0.35f, 0.05f, true,  false }, // 8-Bit kristallin/metallisch
     };
     constexpr int kNumAkaiPresets = (int) (sizeof (kAkaiPresets) / sizeof (kAkaiPresets[0]));
 }
@@ -71,6 +72,24 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
         previewNote();
     };
     addAndMakeVisible (bitButton);
+
+    bit8Button.setClickingTogglesState (true);
+    bit8Button.onClick = [this]
+    {
+        const bool on = bit8Button.getToggleState();
+        proc.editSample (slot, [on] (TrackerEngine::Instrument& i) { i.akai8bit = on; });
+        previewNote();
+    };
+    addAndMakeVisible (bit8Button);
+
+    compButton.setClickingTogglesState (true);
+    compButton.onClick = [this]
+    {
+        const bool on = compButton.getToggleState();
+        proc.editSample (slot, [on] (TrackerEngine::Instrument& i) { i.companding = on; });
+        previewNote();
+    };
+    addAndMakeVisible (compButton);
 
     revButton.setClickingTogglesState (true);
     revButton.onClick = [this]
@@ -166,6 +185,12 @@ void AkaiPanel::applyLanguage()
     bitButton.setButtonText (loc::t ("12-BIT", "12-BIT"));
     bitButton.setTooltip (loc::t ("12-Bit-Crunch: der koernige lo-fi-Klang der alten Sampler",
                                   "12-bit crunch: the gritty lo-fi sound of the old samplers"));
+    bit8Button.setButtonText (loc::t ("8-BIT", "8-BIT"));
+    bit8Button.setTooltip (loc::t ("8-Bit: noch groeber als 12-Bit - roh, koernig, kristallin (Mirage/Fairlight)",
+                                   "8-bit: even coarser than 12-bit - raw, gritty, crystalline (Mirage/Fairlight)"));
+    compButton.setButtonText (loc::t ("KOMPANDER", "COMPANDER"));
+    compButton.setTooltip (loc::t ("EMU-II-Kompander: leise Anteile feiner, laute saettigen weich - warm + druckvoll",
+                                   "EMU II compander: quiet parts finer, loud parts saturate softly - warm + punchy"));
     revButton.setButtonText (loc::t ("REVERSE", "REVERSE"));
     revButton.setTooltip (loc::t ("Sample rueckwaerts abspielen",
                                   "Play the sample backwards"));
@@ -228,6 +253,8 @@ void AkaiPanel::refresh()
     volSlider.setValue (have ? juce::jlimit (0.0, 200.0, s.gain    * 100.0)        : 100.0, juce::dontSendNotification);
     onButton.setToggleState  (have && s.akaiOn,       juce::dontSendNotification);
     bitButton.setToggleState (have && s.akai12bit,    juce::dontSendNotification);
+    bit8Button.setToggleState(have && s.akai8bit,     juce::dontSendNotification);
+    compButton.setToggleState(have && s.companding,   juce::dontSendNotification);
     revButton.setToggleState (have && s.reverse,      juce::dontSendNotification);
     vintButton.setToggleState(have && s.vintagePitch, juce::dontSendNotification);
     envButton.setToggleState (have && s.ampEnv,       juce::dontSendNotification);
@@ -276,6 +303,7 @@ void AkaiPanel::applyPreset (int index)
         i.srReduction   = p.grain;
         i.drive         = p.drive;
         i.vintagePitch  = p.vintage;
+        i.companding    = p.comp;
     });
     refresh();
     previewNote();
@@ -366,13 +394,21 @@ void AkaiPanel::resized()
     }
     area.removeFromTop (16);
 
-    // FILTER AN + 12-BIT + REVERSE nebeneinander.
+    // Reihe 1: FILTER AN + 12-BIT + 8-BIT + KOMPANDER (Wandler-Charakter).
     {
         auto row = area.removeFromTop (32);
         onButton.setBounds  (row.removeFromLeft (150));
         row.removeFromLeft (10);
         bitButton.setBounds (row.removeFromLeft (110));
         row.removeFromLeft (10);
+        bit8Button.setBounds (row.removeFromLeft (110));
+        row.removeFromLeft (10);
+        compButton.setBounds (row.removeFromLeft (140));
+    }
+    area.removeFromTop (8);
+    // Reihe 2: REVERSE + VINTAGE (Abspiel-Charakter).
+    {
+        auto row = area.removeFromTop (32);
         revButton.setBounds (row.removeFromLeft (120));
         row.removeFromLeft (10);
         vintButton.setBounds (row.removeFromLeft (120));

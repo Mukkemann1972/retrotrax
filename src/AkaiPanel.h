@@ -42,6 +42,8 @@ private:
 
     juce::TextButton onButton  { "FILTER AN" }; // Akai-Filter an/aus
     juce::TextButton bitButton { "12-BIT" };    // 12-Bit-Crunch an/aus
+    juce::TextButton bit8Button { "8-BIT" };    // 8-Bit (Mirage/Fairlight)
+    juce::TextButton compButton { "KOMPANDER" };// EMU-II-Kompander (mu-law)
     juce::TextButton revButton { "REVERSE" };   // Sample rueckwaerts
     juce::TextButton vintButton { "VINTAGE" };  // Vintage-Pitch (rohe Wandlung)
 

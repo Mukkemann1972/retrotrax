@@ -60,6 +60,21 @@ public:
         float akaiResonance = 0.12f;  // 0..1 (0 zahm .. 1 klingelt)
         bool  akai12bit     = false;  // 12-Bit-Quantisierung (Crunch)
 
+        // --- 8-Bit (Mirage / Fairlight I / Ensoniq) ---
+        // Noch groebere Quantisierung als 12-Bit: roh, koernig, kristallin-metallisch
+        // wie die fruehen 8-Bit-Sampler. Geht VOR 12-Bit (wenn beide an, gewinnt 8).
+        // Standard AUS -> bestehende Songs klingen unveraendert.
+        bool  akai8bit      = false;
+
+        // --- Companding (EMU II) ---
+        // Der Emulator II quantisierte nicht linear, sondern KOMPANDIERT: beim
+        // Aufnehmen mit einer mu-law-Kennlinie gestaucht, beim Abspielen wieder
+        // gespreizt. Leise Anteile bekommen so mehr Aufloesung, laute saettigen
+        // weich -> der typische "warm + druckvoll"-Charakter (Depeche Mode/Vangelis).
+        // Wirkt rund um die 12-Bit-Stufe; ohne 12-Bit allein als sanfte mu-law-
+        // Faerbung. Standard AUS -> bestehende Songs klingen unveraendert.
+        bool  companding    = false;
+
         // --- Sampler-Effekte (nur bei kind == Sample) ---
         // Reverse spielt das Sample rueckwaerts; SR-Reduktion (Decimator) haelt
         // jeden Quellwert ueber mehrere Ausgabe-Samples -> koerniger lo-fi-Klang
@@ -860,6 +875,8 @@ private:
         // wie der SID-Filter, hier aber in 2 Stufen kaskadiert = 24 dB/Okt).
         const bool  akaiOn = inst->akaiOn;
         const bool  crunch = inst->akai12bit;
+        const bool  bit8   = inst->akai8bit;   // 8-Bit (Mirage/Fairlight)
+        const bool  comp   = inst->companding; // EMU-II-Kompander (mu-law)
         const bool  rev    = inst->reverse;
         const auto  loop   = inst->loopMode;
         const bool  vintage = inst->vintagePitch;
@@ -1019,7 +1036,22 @@ private:
                         const float wh = std::cos (0.5f * juce::MathConstants<float>::pi * xfTail);
                         s = s * wt + head * wh;
                     }
-                    if (crunch)
+                    if (comp)
+                    {
+                        // EMU II: mu-law stauchen -> 12-Bit quantisieren -> spreizen.
+                        // Leise Anteile feiner, laute saettigen weich (warm/druckvoll).
+                        constexpr float mu = 255.0f;
+                        const float L = std::log1p (mu);          // ln(1+mu)
+                        const float a = juce::jlimit (-1.0f, 1.0f, s);
+                        const float sg = a < 0.0f ? -1.0f : 1.0f;
+                        float c = sg * std::log1p (mu * std::abs (a)) / L; // komprimiert -1..1
+                        c = std::round (c * 2047.0f) / 2047.0f;            // 12-Bit
+                        const float cg = c < 0.0f ? -1.0f : 1.0f;
+                        s = cg * std::expm1 (std::abs (c) * L) / mu;       // gespreizt
+                    }
+                    else if (bit8)
+                        s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 127.0f) / 127.0f;   // 8 Bit (roh/koernig)
+                    else if (crunch)
                         s = std::round (juce::jlimit (-1.0f, 1.0f, s) * 2047.0f) / 2047.0f; // 12 Bit
                     v.srHold[sc] = s;
                 }
