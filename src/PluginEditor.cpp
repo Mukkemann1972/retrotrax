@@ -514,8 +514,8 @@ void RetroTraxEditor::applyBeginnerMode (bool justSwitchedOn)
         // Erste-Schritte-Box: drei einfache Schritte, danach die Tastatur oeffnen.
         firstStepsBox = std::make_unique<juce::AlertWindow> (
             loc::t ("Los geht's - ganz einfach", "Let's go - nice and easy"),
-            loc::t ("Als Erstes brauchst du einen Sound:\n1) Oben rechts auf LADEN klicken\n2) \"Sample-Browser (ST-Disks)\" = fertige Sounds (Internet noetig)\n     oder \"Sample laden ...\" = eigene Datei vom Rechner\n3) Einen Sound aussuchen\n\nDann loslegen:\n4) Eine Taste druecken = eine Note (du hoerst deinen Sound)\n5) PLAY druecken - fertig!\n\nMit dem PROFI-Knopf bekommst du spaeter alles dazu.",
-                    "First you need a sound:\n1) Click LOAD at the top right\n2) \"Sample browser (ST-Disks)\" = ready-made sounds (needs internet)\n     or \"Load sample ...\" = your own file\n3) Pick a sound\n\nThen go:\n4) Press a key = a note (you hear your sound)\n5) Press PLAY - done!\n\nThe PRO button unlocks everything later."),
+            loc::t ("Als Erstes brauchst du einen Sound:\n1) Oben auf LADEN klicken\n2) \"Sample-Browser (ST-Disks)\" = fertige Sounds (Internet noetig)\n     oder \"Sample laden ...\" = eigene Datei vom Rechner\n3) Einen Sound aussuchen\n\nDann loslegen:\n4) Eine Taste druecken = eine Note (du hoerst deinen Sound)\n5) PLAY druecken - fertig!\n\nMit dem PROFI-Knopf bekommst du spaeter alles dazu.",
+                    "First you need a sound:\n1) Click LOAD at the top\n2) \"Sample browser (ST-Disks)\" = ready-made sounds (needs internet)\n     or \"Load sample ...\" = your own file\n3) Pick a sound\n\nThen go:\n4) Press a key = a note (you hear your sound)\n5) Press PLAY - done!\n\nThe PRO button unlocks everything later."),
             juce::MessageBoxIconType::InfoIcon);
         firstStepsBox->addButton (loc::t ("VERSTANDEN", "GOT IT"), 1,
                                   juce::KeyPress (juce::KeyPress::returnKey));
@@ -1092,8 +1092,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.74 | FX-Knopf: Sampler- + Master-Effekte, Vintage-Charaktere",
-                        "v0.74 | FX button: sampler + master effects, vintage characters"),
+    g.drawText (loc::t ("v0.78 | Anfaenger-Modus EINFACH: erst Sound laden, dann loslegen",
+                        "v0.78 | Beginner mode EASY: load a sound first, then go"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
