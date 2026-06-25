@@ -13,6 +13,7 @@ namespace
         float drive;  // weiche Saettigung (analoge Waerme)
         bool  vintage;// rohe Wandlung (crunchy beim Pitchen)
         bool  comp;   // EMU-II-Kompander (mu-law, warm/druckvoll)
+        float wow;    // Tape-Wow/Flutter (Mellotron-Band-Eiern)
     };
 
     // Beruehmte Vintage-Sampler als Ein-Klick-Charaktere. Jeder kombiniert nur die
@@ -21,13 +22,14 @@ namespace
     // bleibt unangetastet.
     const AkaiPreset kAkaiPresets[] =
     {
-        // Name                       an     cut    res    12-Bit grain  drive  vintage comp
-        { "S950",      "S950",       true,  0.60f, 0.22f, true,  0.10f, 0.10f, false, false }, // 12-Bit-Klassiker, klar
-        { "S1000",     "S1000",      true,  0.85f, 0.10f, false, 0.00f, 0.00f, false, false }, // 16-Bit sauber/transparent
-        { "SP-1200",   "SP-1200",    true,  0.70f, 0.10f, true,  0.40f, 0.30f, true,  false }, // dreckige HipHop-Drums
-        { "EMU II",    "EMU II",     true,  0.50f, 0.20f, false, 0.05f, 0.35f, false, true  }, // 12-Bit kompandiert, warm + analoge Filter
-        { "MIRAGE",    "MIRAGE",     true,  0.60f, 0.15f, true,  0.55f, 0.20f, true,  false }, // 8-Bit rau, koernig
-        { "FAIRLIGHT", "FAIRLIGHT",  true,  0.85f, 0.08f, true,  0.35f, 0.05f, true,  false }, // 8-Bit kristallin/metallisch
+        // Name                       an     cut    res    12-Bit grain  drive  vintage comp   wow
+        { "S950",      "S950",       true,  0.60f, 0.22f, true,  0.10f, 0.10f, false, false, 0.00f }, // 12-Bit-Klassiker, klar
+        { "S1000",     "S1000",      true,  0.85f, 0.10f, false, 0.00f, 0.00f, false, false, 0.00f }, // 16-Bit sauber/transparent
+        { "SP-1200",   "SP-1200",    true,  0.70f, 0.10f, true,  0.40f, 0.30f, true,  false, 0.00f }, // dreckige HipHop-Drums
+        { "EMU II",    "EMU II",     true,  0.50f, 0.20f, false, 0.05f, 0.35f, false, true,  0.00f }, // 12-Bit kompandiert, warm + analoge Filter
+        { "MIRAGE",    "MIRAGE",     true,  0.60f, 0.15f, true,  0.55f, 0.20f, true,  false, 0.00f }, // 8-Bit rau, koernig
+        { "FAIRLIGHT", "FAIRLIGHT",  true,  0.85f, 0.08f, true,  0.35f, 0.05f, true,  false, 0.00f }, // 8-Bit kristallin/metallisch
+        { "MELLOTRON", "MELLOTRON",  true,  0.55f, 0.10f, false, 0.00f, 0.20f, false, false, 0.55f }, // Bandeiern + warme Saettigung, sanfter Tiefpass
     };
     constexpr int kNumAkaiPresets = (int) (sizeof (kAkaiPresets) / sizeof (kAkaiPresets[0]));
 }
@@ -141,6 +143,7 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
     setupSlider (grainSlider,  grainLabel);
     setupSlider (driveSlider,  driveLabel);
     setupSlider (crossSlider,  crossLabel);
+    setupSlider (wowSlider,    wowLabel);
 
     // ADSR-Huellkurve + Lautstaerke.
     envButton.setClickingTogglesState (true);
@@ -222,6 +225,9 @@ void AkaiPanel::applyLanguage()
     grainLabel.setText  (loc::t ("KOERNUNG", "GRAIN"), juce::dontSendNotification);
     grainSlider.setTooltip (loc::t ("Sample-Rate-Reduktion: rauer, koerniger lo-fi-Klang (Decimator)",
                                     "Sample-rate reduction: rough, gritty lo-fi sound (decimator)"));
+    wowLabel.setText  (loc::t ("BAND-EIERN", "TAPE WOW"), juce::dontSendNotification);
+    wowSlider.setTooltip (loc::t ("Tape-Wow/Flutter wie beim Mellotron: langsames Band-Eiern + leichtes Flattern - die Tonhoehe schwankt sanft (jede Note eiert eigen)",
+                                  "Tape wow/flutter like a Mellotron: slow pitch drift + gentle flutter - the pitch wavers softly (each note wobbles on its own)"));
     hintLabel.setText (loc::t ("Resonanter Tiefpass + 12-Bit + Reverse + Koernung (Decimator). Standard AUS - dein Sample bleibt unveraendert.",
                               "Resonant low-pass + 12-bit + reverse + grain (decimator). Off by default - your sample stays unchanged."),
                        juce::dontSendNotification);
@@ -246,6 +252,7 @@ void AkaiPanel::refresh()
     grainSlider.setValue  (have ? s.srReduction   * 100.0 :   0.0, juce::dontSendNotification);
     driveSlider.setValue  (have ? s.drive         * 100.0 :   0.0, juce::dontSendNotification);
     crossSlider.setValue  (have ? s.loopXfade     * 100.0 :   0.0, juce::dontSendNotification);
+    wowSlider.setValue    (have ? s.tapeWow       * 100.0 :   0.0, juce::dontSendNotification);
     attSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.attack  / 2.0 * 100.0) :   2.0, juce::dontSendNotification);
     decSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.decay   / 2.0 * 100.0) :   9.0, juce::dontSendNotification);
     susSlider.setValue (have ? juce::jlimit (0.0, 100.0, s.sustain * 100.0)        :  65.0, juce::dontSendNotification);
@@ -304,6 +311,7 @@ void AkaiPanel::applyPreset (int index)
         i.drive         = p.drive;
         i.vintagePitch  = p.vintage;
         i.companding    = p.comp;
+        i.tapeWow       = p.wow;
     });
     refresh();
     previewNote();
@@ -318,6 +326,7 @@ void AkaiPanel::writeParams()
     const float grain = (float) (grainSlider.getValue()  / 100.0);
     const float drv   = (float) (driveSlider.getValue()  / 100.0);
     const float cross = (float) (crossSlider.getValue()  / 100.0);
+    const float wow   = (float) (wowSlider.getValue()    / 100.0);
     const float att = (float) (attSlider.getValue() / 100.0 * 2.0);
     const float dec = (float) (decSlider.getValue() / 100.0 * 2.0);
     const float sus = (float) (susSlider.getValue() / 100.0);
@@ -331,6 +340,7 @@ void AkaiPanel::writeParams()
         i.srReduction   = grain;
         i.drive         = drv;
         i.loopXfade     = cross;
+        i.tapeWow       = wow;
     });
 }
 
@@ -429,6 +439,8 @@ void AkaiPanel::resized()
     sliderRow (grainLabel, grainSlider);
     area.removeFromTop (8);
     sliderRow (driveLabel, driveSlider);
+    area.removeFromTop (8);
+    sliderRow (wowLabel, wowSlider);
     area.removeFromTop (14);
 
     // Loop-Reihe: Label + AUS / VORWAERTS / PING-PONG.

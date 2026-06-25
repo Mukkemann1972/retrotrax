@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.78 — Anfänger-Box führt zuerst zum Sound: erst LADEN, dann loslegen
+## Stand: v0.79 — MELLOTRON-Charakter: Band-Eiern (Tape-Wow/Flutter) im FX-Sampler
 
 - **🟢 Anfänger-Modus (EINFACH ⇄ PROFI):** ein Knopf oben schaltet das ganze
   Programm zwischen **EINFACH** (einsteigerfreundlich) und **PROFI** (alles) um.

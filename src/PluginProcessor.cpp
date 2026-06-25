@@ -531,6 +531,7 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.loopXfade     = p->loopXfade;
     out.loopStart     = p->loopStart;
     out.drive         = p->drive;
+    out.tapeWow       = p->tapeWow;
     out.vintagePitch  = p->vintagePitch;
     out.tuneSemis     = p->tuneSemis;
     out.ampEnv        = p->ampEnv;
@@ -600,6 +601,7 @@ bool RetroTraxProcessor::getPad (int pad, TrackerEngine::Instrument& out) const
     out.loopXfade     = p->loopXfade;
     out.loopStart     = p->loopStart;
     out.drive         = p->drive;
+    out.tapeWow       = p->tapeWow;
     out.vintagePitch  = p->vintagePitch;
     out.sourceRate    = p->sourceRate;
     out.tuneSemis     = p->tuneSemis;
@@ -1030,6 +1032,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("lxf", ip->loopXfade);
                 e->setAttribute ("lst", ip->loopStart);
                 e->setAttribute ("drv", ip->drive);
+                e->setAttribute ("wow", ip->tapeWow);
                 e->setAttribute ("vint", ip->vintagePitch ? 1 : 0);
                 e->setAttribute ("tune", ip->tuneSemis);
                 e->setAttribute ("aenv", ip->ampEnv ? 1 : 0);
@@ -1069,6 +1072,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         e->setAttribute ("loop", (int) pad->loopMode);
         e->setAttribute ("lxf", pad->loopXfade);
         e->setAttribute ("drv", pad->drive);
+        e->setAttribute ("wow", pad->tapeWow);
         e->setAttribute ("vint", pad->vintagePitch ? 1 : 0);
         e->setAttribute ("rate", pad->sourceRate);
         e->setAttribute ("tune", pad->tuneSemis);
@@ -1219,6 +1223,7 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->loopXfade     = (float) e->getDoubleAttribute ("lxf", 0.0);
                     ip->loopStart     = (float) e->getDoubleAttribute ("lst", 0.0);
                     ip->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
+                    ip->tapeWow       = (float) e->getDoubleAttribute ("wow", 0.0);
                     ip->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
                     ip->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);
                     ip->ampEnv        = e->getIntAttribute ("aenv", 0) != 0;
@@ -1276,6 +1281,7 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                                              juce::jlimit (0, 2, e->getIntAttribute ("loop", 0));
                     pad->loopXfade     = (float) e->getDoubleAttribute ("lxf", 0.0);
                     pad->drive         = (float) e->getDoubleAttribute ("drv", 0.0);
+                    pad->tapeWow       = (float) e->getDoubleAttribute ("wow", 0.0);
                     pad->vintagePitch  = e->getIntAttribute ("vint", 0) != 0;
                     pad->sourceRate    = e->getDoubleAttribute ("rate", pad->sourceRate);
                     pad->tuneSemis     = (float) e->getDoubleAttribute ("tune", 0.0);

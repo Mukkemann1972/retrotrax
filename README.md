@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.78 — Beginner box leads to a sound first: LOAD, then go
+## Status: v0.79 — MELLOTRON character: tape wow/flutter in the FX sampler
 
 - **🟢 Beginner mode (EASY ⇄ PRO):** one button up top switches the whole app
   between **EASY** (newcomer-friendly) and **PRO** (everything). In EASY the grid

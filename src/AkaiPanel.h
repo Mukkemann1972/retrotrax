@@ -53,8 +53,8 @@ private:
     juce::TextButton loopFwd  { "VORWAERTS" };
     juce::TextButton loopPing { "PING-PONG" };
 
-    juce::Label  cutoffLabel, resoLabel, grainLabel, driveLabel, crossLabel;
-    juce::Slider cutoffSlider, resoSlider, grainSlider, driveSlider, crossSlider; // grain = SR-Reduktion, cross = Loop-Crossfade
+    juce::Label  cutoffLabel, resoLabel, grainLabel, driveLabel, crossLabel, wowLabel;
+    juce::Slider cutoffSlider, resoSlider, grainSlider, driveSlider, crossSlider, wowSlider; // grain = SR-Reduktion, cross = Loop-Crossfade, wow = Tape-Wow/Flutter
 
     // Sampler-Huellkurve (ADSR) + Lautstaerke - eigenen Sound formen.
     juce::TextButton envButton { "HUELLKURVE" };

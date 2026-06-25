@@ -115,6 +115,11 @@ public:
         // Stimmung wie SP-1200/MPC), wirkt aber auf jedes Instrument. Standard 0.
         float tuneSemis     = 0.0f;
 
+        // Tape-Wow/Flutter (Mellotron): langsames Band-Eiern (~0.7 Hz) + leichtes
+        // Flattern (~8 Hz) moduliert die Tonhoehe. Jede Note eiert mit eigener Phase
+        // (wie ein eigener Bandstreifen pro Taste beim Mellotron). 0 = aus.
+        float tapeWow       = 0.0f;
+
         // Sampler-Huellkurve (ADSR) + Lautstaerke: wie an einem echten Sampler den
         // Klang formen. ampEnv=false -> Sample spielt unveraendert (nur Anti-Knack).
         // Bei ampEnv nutzt das Sample die unten stehenden attack/decay/sustain/release.
@@ -506,6 +511,8 @@ private:
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
         double       uniPhase[2] = { 0.0, 0.0 }; // Phasen der gestapelten Unisono-Stimmen
+        double       wowPhase  = 0.0;       // Phase der Tape-Wow-LFO (Mellotron-Eiern)
+        double       flutPhase = 0.0;       // Phase des schnelleren Flutter-Anteils
         // --- Effekt-Status der laufenden Zeile ---
         int    effect = -1;
         int    effectParam = 0;
@@ -672,6 +679,10 @@ private:
         v.step        = v.baseStep;
         v.portaTarget = v.baseStep;
         v.vibPhase    = 0;
+        // Tape-Wow: jede Note startet mit eigener Phase (sonst eiern alle im Gleichtakt) -
+        // deterministisch aus der Note abgeleitet, damit es reproduzierbar bleibt.
+        v.wowPhase    = std::fmod ((double) note * 1.94161, juce::MathConstants<double>::twoPi);
+        v.flutPhase   = 0.0;
         v.voiceIdx    = voiceIdx;
         v.vol         = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
         panGains (voiceIdx, v.vol, v.gainL, v.gainR);
@@ -909,6 +920,14 @@ private:
         const float srAmt   = juce::jlimit (0.0f, 1.0f, inst->srReduction);
         const int   holdLen = srAmt > 0.0f ? 1 + (int) std::round (srAmt * srAmt * 47.0f) : 1;
         const float sr = (float) sampleRate;
+        // Tape-Wow/Flutter (Mellotron): wow = langsames Band-Eiern (~0.7 Hz),
+        // Flutter = schnelleres Flattern (~8 Hz). Beide modulieren multiplikativ
+        // den Abspielschritt -> Tonhoehe schwankt. Tiefe steigt mit tapeWow.
+        const float  wowAmt   = juce::jlimit (0.0f, 1.0f, inst->tapeWow);
+        const double wowInc   = juce::MathConstants<double>::twoPi * 0.7 / (double) sr;
+        const double flutInc  = juce::MathConstants<double>::twoPi * 8.3 / (double) sr;
+        const double wowDepth = 0.025 * (double) wowAmt; // bis ~2.5 % Tonhoehe
+        const double flutDepth= 0.006 * (double) wowAmt; // bis ~0.6 %
         // Sampler-Huellkurve (ADSR) + Lautstaerke.
         const bool  ampEnv  = inst->ampEnv;
         const float gainAmp = inst->gain;
@@ -1085,15 +1104,28 @@ private:
                 buffer.addSample (ch, offset + i, out);
                 if (ch == 0) trackPk = juce::jmax (trackPk, std::abs (out)); // VU-Pegel pro Spur
             }
+            // Tape-Wow: effektiven Schritt fuer dieses Sample modulieren. wowAmt=0
+            // -> Faktor exakt 1.0 (Sample bleibt unveraendert). Phasen pro Stimme.
+            double effStep = v.step;
+            if (wowAmt > 0.0f)
+            {
+                effStep *= 1.0 + wowDepth * std::sin (v.wowPhase)
+                               + flutDepth * std::sin (v.flutPhase);
+                v.wowPhase  += wowInc;
+                v.flutPhase += flutInc;
+                if (v.wowPhase  > juce::MathConstants<double>::twoPi) v.wowPhase  -= juce::MathConstants<double>::twoPi;
+                if (v.flutPhase > juce::MathConstants<double>::twoPi) v.flutPhase -= juce::MathConstants<double>::twoPi;
+            }
+
             // Position weiterfahren - je nach Loop-Modus.
             if (loop == Instrument::Loop::Off)
             {
-                pos += v.step; // der Check oben faengt das Sample-Ende ab
+                pos += effStep; // der Check oben faengt das Sample-Ende ab
             }
             else
             {
                 const double hi = (double) (len - 1);
-                pos += v.step * v.loopDir;
+                pos += effStep * v.loopDir;
                 if (loop == Instrument::Loop::PingPong)
                 {
                     if (pos >= hi)      { pos = hi - (pos - hi); v.loopDir = -1; } // am Ende spiegeln

@@ -1092,8 +1092,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.78 | Anfaenger-Modus EINFACH: erst Sound laden, dann loslegen",
-                        "v0.78 | Beginner mode EASY: load a sound first, then go"),
+    g.drawText (loc::t ("v0.79 | MELLOTRON-Charakter: Band-Eiern (Tape-Wow) im FX-Sampler",
+                        "v0.79 | MELLOTRON character: tape wow in the FX sampler"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
