@@ -1,7 +1,11 @@
 #pragma once
 
 #include "SID.h"          // reSIDfp-Motor (liegt in libs/residfp, per Include-Pfad erreichbar)
-#include <juce_audio_basics/juce_audio_basics.h>
+#ifdef RETROTRAX_NO_JUCE
+  #include "rt_juce_shim.h"   // schlanker Replayer-Build: JUCE-Ersatz
+#else
+  #include <juce_audio_basics/juce_audio_basics.h>
+#endif
 #include <cmath>
 #include <algorithm>
 
