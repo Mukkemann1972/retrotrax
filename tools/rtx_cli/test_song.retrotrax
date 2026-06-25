@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RETROTRAX bpm="125" swing="0" order="0">
+  <INSTRUMENT slot="0" kind="synth" name="Saw" eng="0" wave="1" a="0.004" d="0.18" s="0.7" rel="0.25"/>
+  <C r="0"  t="0" n="60" i="0" v="64"/>
+  <C r="4"  t="0" n="63" i="0" v="64"/>
+  <C r="8"  t="0" n="67" i="0" v="64"/>
+  <C r="12" t="0" n="72" i="0" v="64"/>
+  <C r="16" t="0" n="67" i="0" v="64"/>
+  <C r="20" t="0" n="63" i="0" v="64"/>
+  <C r="24" t="0" n="60" i="0" v="64"/>
+</RETROTRAX>
