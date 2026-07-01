@@ -3,12 +3,12 @@
 //   Ohne Argument : Smoke-Test (Engine hochfahren, Stille rendern).
 //   <song.retrotrax> [out.wav] : Song laden und zu WAV rendern.
 //
-// Phase 2a kann: bpm/swing/order, Synth-Instrumente, Pattern-Zellen.
-// Sample-Instrumente (eingebettete <D>-Daten) folgen in Phase 2b.
+// Kann: bpm/swing/order, Synth- UND Sample-Instrumente (eingebettete <D>-Daten,
+// Phase 2b: Base64 + zlib-inflate), Pattern-Zellen.
 //
-// Bauen (JUCE-frei):
+// Bauen (JUCE-frei; -lz fuer die zlib-Sample-Dekompression):
 //   g++ -std=c++17 -O2 -DRETROTRAX_NO_JUCE -DHAVE_CXX17 -I src -I libs/residfp \
-//       tools/rtx_cli/main.cpp build/libresidfp.a -lpthread -o build/rtx_cli
+//       tools/rtx_cli/main.cpp build/libresidfp.a -lpthread -lz -o build/rtx_cli
 
 #include "TrackerEngine.h"
 #include "rt_load.h"

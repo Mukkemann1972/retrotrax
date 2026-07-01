@@ -2,13 +2,14 @@
 //
 // rt_load.h - .retrotrax laden + Song zu WAV rendern, JUCE-frei.
 //
-// Phase 2a: liest bpm/swing/order, Synth-Instrumente und die Pattern-Zellen <C>
-// in die TrackerEngine. Sample-Instrumente (eingebettete <D>-Base64/GZIP-Daten)
-// folgen in Phase 2b. Rendert den Song einmal komplett (bis die Reihenfolge
-// einmal umlaeuft) und schreibt 16-bit-Stereo-WAV.
+// Liest bpm/swing/order, Synth- UND Sample-Instrumente (Phase 2b: eingebettete
+// <D>-Base64/zlib-Daten) sowie die Pattern-Zellen <C> in die TrackerEngine.
+// Rendert den Song einmal komplett (bis die Reihenfolge einmal umlaeuft) und
+// schreibt 16-bit-Stereo-WAV.
 
 #include "TrackerEngine.h"
 #include "rt_xml.h"
+#include "rt_sample.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -77,8 +78,47 @@ namespace rtload
                 }
                 else
                 {
-                    // Sample-Instrument: Daten stecken im <D>-Kind (Base64+GZIP).
-                    // -> Phase 2b. Vorerst ueberspringen (kein Klang fuer diesen Slot).
+                    // Sample-Instrument: Daten stecken im <D>-Kind (Base64+zlib).
+                    // Der Replayer ist selbst-enthaltend -> ohne eingebettete
+                    // Daten kein Klang (keinen Datei-Pfad-Rueckfall wie im Plugin).
+                    const rtxml::Node* dEl = e.child ("D");
+                    if (dEl == nullptr)
+                        continue;
+
+                    inst->kind = Inst::Kind::Sample;
+                    if (! rtsample::decodeSampleData (dEl->text, e.attrInt ("dch", 1),
+                                                      e.attrInt ("dlen", 0), inst->data))
+                        continue;
+                    inst->sourceRate = e.attrDouble ("drate", 44100.0);
+
+                    // Sampler-Charakter (fehlt -> Standard aus), exakt wie das
+                    // Plugin ihn in applyStateXml wieder auf den Slot legt.
+                    inst->akaiOn        = e.attrInt ("akon", 0) != 0;
+                    inst->akaiCutoff    = (float) e.attrDouble ("akcut", 1.0);
+                    inst->akaiResonance = (float) e.attrDouble ("akres", 0.12);
+                    inst->akai12bit     = e.attrInt ("ak12", 0) != 0;
+                    inst->akai8bit      = e.attrInt ("ak8", 0) != 0;
+                    inst->companding    = e.attrInt ("comp", 0) != 0;
+                    inst->reverse       = e.attrInt ("rev", 0) != 0;
+                    inst->srReduction   = (float) e.attrDouble ("srr", 0.0);
+                    {
+                        const int lm = e.attrInt ("loop", 0);
+                        inst->loopMode  = (Inst::Loop) (lm < 0 ? 0 : (lm > 2 ? 2 : lm));
+                    }
+                    inst->loopXfade     = (float) e.attrDouble ("lxf", 0.0);
+                    inst->loopStart     = (float) e.attrDouble ("lst", 0.0);
+                    inst->drive         = (float) e.attrDouble ("drv", 0.0);
+                    inst->tapeWow       = (float) e.attrDouble ("wow", 0.0);
+                    inst->vintagePitch  = e.attrInt ("vint", 0) != 0;
+                    inst->tuneSemis     = (float) e.attrDouble ("tune", 0.0);
+                    inst->ampEnv        = e.attrInt ("aenv", 0) != 0;
+                    inst->gain          = (float) e.attrDouble ("gain", 1.0);
+                    inst->attack        = (float) e.attrDouble ("a", 0.004);
+                    inst->decay         = (float) e.attrDouble ("d", 0.18);
+                    inst->sustain       = (float) e.attrDouble ("s", 0.65);
+                    inst->release       = (float) e.attrDouble ("rel", 0.25);
+                    engine.setInstrument (slot, std::move (inst));
+                    ++loaded;
                 }
             }
             else if (e.tag == "C")
