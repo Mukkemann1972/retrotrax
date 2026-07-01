@@ -14,10 +14,14 @@
 //   TFMX-Player - kommt in Phase 1b dazu.)
 
 #include <algorithm>
+#include <atomic>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <fstream>
 #include <mutex>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 namespace juce
@@ -75,6 +79,28 @@ namespace juce
         bool isEmpty() const { return s_.empty(); }
         bool isNotEmpty() const { return ! s_.empty(); }
 
+        bool startsWithIgnoreCase (const String& o) const
+        {
+            if (o.s_.size() > s_.size()) return false;
+            for (size_t i = 0; i < o.s_.size(); ++i)
+                if (std::tolower ((unsigned char) s_[i]) != std::tolower ((unsigned char) o.s_[i]))
+                    return false;
+            return true;
+        }
+        bool equalsIgnoreCase (const String& o) const
+        {
+            if (s_.size() != o.s_.size()) return false;
+            for (size_t i = 0; i < s_.size(); ++i)
+                if (std::tolower ((unsigned char) s_[i]) != std::tolower ((unsigned char) o.s_[i]))
+                    return false;
+            return true;
+        }
+        String substring (int start) const
+        {
+            if (start < 0) start = 0;
+            return String (start < (int) s_.size() ? s_.substr ((size_t) start) : std::string());
+        }
+
         const char* toRawUTF8() const { return s_.c_str(); }
         const std::string& toStdString() const { return s_; }
         operator std::string() const { return s_; }
@@ -108,6 +134,107 @@ namespace juce
         const CriticalSection& cs_;
     };
 
+    // --- SpinLock: nicht-blockierende Sperre (fuer den TFMX-Player) ----------
+    // Der Audio-Thread nimmt sie nur per TryLock (ScopedTryLockType) -> bei
+    // Konflikt Stille statt Warten. Gleiche Semantik wie juce::SpinLock.
+    class SpinLock
+    {
+    public:
+        void enter() const { while (flag_.test_and_set (std::memory_order_acquire)) {} }
+        bool tryEnter() const { return ! flag_.test_and_set (std::memory_order_acquire); }
+        void exit() const { flag_.clear (std::memory_order_release); }
+
+        class ScopedLockType
+        {
+        public:
+            explicit ScopedLockType (const SpinLock& l) : l_ (l) { l_.enter(); }
+            ~ScopedLockType() { l_.exit(); }
+            ScopedLockType (const ScopedLockType&) = delete;
+            ScopedLockType& operator= (const ScopedLockType&) = delete;
+        private:
+            const SpinLock& l_;
+        };
+
+        class ScopedTryLockType
+        {
+        public:
+            explicit ScopedTryLockType (const SpinLock& l) : l_ (l), locked_ (l.tryEnter()) {}
+            ~ScopedTryLockType() { if (locked_) l_.exit(); }
+            bool isLocked() const { return locked_; }
+            ScopedTryLockType (const ScopedTryLockType&) = delete;
+            ScopedTryLockType& operator= (const ScopedTryLockType&) = delete;
+        private:
+            const SpinLock& l_;
+            bool locked_;
+        };
+
+    private:
+        mutable std::atomic_flag flag_ = ATOMIC_FLAG_INIT;
+    };
+
+    // --- MemoryBlock: roher Byte-Puffer -------------------------------------
+    class MemoryBlock
+    {
+    public:
+        void*       getData()       { return bytes_.empty() ? nullptr : bytes_.data(); }
+        const void* getData() const { return bytes_.empty() ? nullptr : bytes_.data(); }
+        size_t      getSize() const { return bytes_.size(); }
+        std::vector<uint8_t> bytes_; // direkt beschreibbar (nur im schlanken Build)
+    };
+
+    // --- File: nur was der TFMX-Player anfasst (Lesen + Namens-Teile) --------
+    class File
+    {
+    public:
+        File() = default;
+        File (const char* path)        : path_ (path ? path : "") {}
+        File (const std::string& path) : path_ (path) {}
+        File (const String& path)      : path_ (path.toStdString()) {}
+
+        bool existsAsFile() const
+        {
+            struct stat st;
+            return ! path_.empty() && ::stat (path_.c_str(), &st) == 0 && S_ISREG (st.st_mode);
+        }
+
+        bool loadFileAsData (MemoryBlock& mb) const
+        {
+            std::ifstream f (path_, std::ios::binary | std::ios::ate);
+            if (! f.good()) return false;
+            const std::streamsize n = f.tellg();
+            if (n < 0) return false;
+            f.seekg (0);
+            mb.bytes_.resize ((size_t) n);
+            if (n > 0) f.read ((char*) mb.bytes_.data(), n);
+            return (bool) f;
+        }
+
+        String getFullPathName() const { return String (path_); }
+
+        String getFileName() const
+        {
+            const auto slash = path_.find_last_of ("/\\");
+            return String (slash == std::string::npos ? path_ : path_.substr (slash + 1));
+        }
+        String getFileExtension() const // inkl. Punkt, wie JUCE (letzter Punkt)
+        {
+            const std::string fn = getFileName().toStdString();
+            const auto dot = fn.find_last_of ('.');
+            if (dot == std::string::npos || dot == 0) return String();
+            return String (fn.substr (dot));
+        }
+        String getFileNameWithoutExtension() const
+        {
+            const std::string fn = getFileName().toStdString();
+            const auto dot = fn.find_last_of ('.');
+            if (dot == std::string::npos || dot == 0) return String (fn);
+            return String (fn.substr (0, dot));
+        }
+
+    private:
+        std::string path_;
+    };
+
     // --- AudioBuffer<float>: nur die genutzten Methoden ----------------------
     template <typename SampleType>
     class AudioBuffer
@@ -130,10 +257,19 @@ namespace juce
         SampleType*       getWritePointer (int ch)       { return data_[(size_t) ch].data(); }
         const SampleType* getReadPointer  (int ch) const { return data_[(size_t) ch].data(); }
 
+        SampleType*       getWritePointer (int ch, int start)       { return data_[(size_t) ch].data() + start; }
+        const SampleType* getReadPointer  (int ch, int start) const { return data_[(size_t) ch].data() + start; }
+
         void clear()
         {
             for (auto& ch : data_)
                 std::fill (ch.begin(), ch.end(), (SampleType) 0);
+        }
+
+        void clear (int ch, int start, int num)
+        {
+            auto* p = data_[(size_t) ch].data();
+            std::fill (p + start, p + start + num, (SampleType) 0);
         }
 
         void addSample (int ch, int index, SampleType value)
