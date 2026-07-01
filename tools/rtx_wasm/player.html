@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RetroTrax – Web-Player</title>
+<style>
+  :root { --bg:#12131a; --panel:#1c1e2a; --ink:#e8e6df; --amber:#ffb347; --green:#8bd450; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg);
+         color:var(--ink); display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; }
+  .card { background:var(--panel); border:1px solid #2c2f40; border-radius:14px; padding:28px 30px;
+          width:min(560px,100%); box-shadow:0 10px 40px rgba(0,0,0,.4); }
+  h1 { margin:0 0 4px; font-size:22px; letter-spacing:.5px; }
+  h1 span { color:var(--amber); }
+  p.sub { margin:0 0 20px; color:#9a9cb0; font-size:14px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:14px 0; }
+  button, label.file { background:#2a2d3e; color:var(--ink); border:1px solid #3a3e54; border-radius:9px;
+           padding:11px 18px; font-size:15px; cursor:pointer; transition:.15s; }
+  button:hover, label.file:hover { background:#343850; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.play { background:var(--green); color:#0d1206; border-color:var(--green); font-weight:600; }
+  #status { font-size:13px; color:#9a9cb0; min-height:20px; margin-top:8px; white-space:pre-line; }
+  .hint { font-size:12px; color:#71748a; margin-top:18px; line-height:1.5; }
+  input[type=file] { display:none; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Retro<span>Trax</span> · Web-Player</h1>
+    <p class="sub">Spielt <code>.retrotrax</code>-Songs direkt im Browser – ganz ohne Installation.</p>
+
+    <div class="row">
+      <label class="file">📂 Song wählen…<input id="file" type="file" accept=".retrotrax,.xml"></label>
+      <button id="play" class="play" disabled>▶︎ Abspielen</button>
+      <button id="stop" disabled>■ Stopp</button>
+    </div>
+    <div id="status">Lade Klang-Engine…</div>
+
+    <div class="hint">
+      Tipp: Über einen lokalen Webserver öffnen (Datei-Doppelklick reicht wegen WASM nicht):<br>
+      <code>cd tools/rtx_wasm &amp;&amp; python3 -m http.server 8099</code> → <code>http://localhost:8099/player.html</code>
+    </div>
+  </div>
+
+<script src="rtx_wasm.js"></script>
+<script>
+(async () => {
+  const statusEl = document.getElementById('status');
+  const fileEl   = document.getElementById('file');
+  const playEl   = document.getElementById('play');
+  const stopEl   = document.getElementById('stop');
+  const set = (m) => statusEl.textContent = m;
+
+  let Module, audioCtx, source, audioBuffer = null;
+
+  try {
+    Module = await RtxModule();                 // WASM laden (MODULARIZE)
+    set('Bereit. Wähle einen .retrotrax-Song.');
+  } catch (e) {
+    set('FEHLER beim Laden der Engine: ' + e);
+    return;
+  }
+
+  // .retrotrax (XML-Text) -> gerenderter WebAudio-Buffer.
+  function renderSong(xmlText) {
+    const sr = 44100;
+    const h  = Module.ccall('rtx_create', 'number', ['number'], [sr]);
+    try {
+      const nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'], [h, xmlText]);
+      if (nInst < 0) throw new Error('Keine gültige .retrotrax-Datei.');
+
+      const frames = Module.ccall('rtx_render', 'number', ['number','number'], [h, 600.0]);
+      if (frames <= 0) throw new Error('Song ergab kein Audio (leer?).');
+
+      const ptr   = Module.ccall('rtx_buffer', 'number', ['number'], [h]);      // float* interleaved
+      const outSr = Module.ccall('rtx_sample_rate', 'number', ['number'], [h]);
+      const base  = ptr >> 2;                                                     // float-Index
+      const heap  = Module.HEAPF32;
+
+      const buf = (audioCtx || new (window.AudioContext||window.webkitAudioContext)())
+                    .createBuffer(2, frames, outSr);
+      const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      for (let i = 0; i < frames; i++) { L[i] = heap[base + 2*i]; R[i] = heap[base + 2*i + 1]; }
+      return { buf, nInst, frames, outSr };
+    } finally {
+      Module.ccall('rtx_destroy', null, ['number'], [h]);                         // Heap freigeben
+    }
+  }
+
+  fileEl.addEventListener('change', async () => {
+    const f = fileEl.files[0];
+    if (!f) return;
+    stopPlayback();
+    set('Lese „' + f.name + '“…');
+    try {
+      const text = await f.text();
+      if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const r = renderSong(text);
+      audioBuffer = r.buf;
+      playEl.disabled = false;
+      set('„' + f.name + '“ geladen: ' + r.nInst + ' Instrument(e), ' +
+          (r.frames / r.outSr).toFixed(1) + ' s. Bereit zum Abspielen.');
+    } catch (e) {
+      audioBuffer = null; playEl.disabled = true;
+      set('FEHLER: ' + e.message);
+    }
+  });
+
+  function stopPlayback() {
+    if (source) { try { source.stop(); } catch(_){} source.disconnect(); source = null; }
+    stopEl.disabled = true;
+  }
+
+  playEl.addEventListener('click', async () => {
+    if (!audioBuffer) return;
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    stopPlayback();
+    source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+    source.onended = () => { stopEl.disabled = true; };
+    source.start();
+    stopEl.disabled = false;
+    set('▶︎ Läuft…');
+  });
+
+  stopEl.addEventListener('click', () => { stopPlayback(); set('Gestoppt.'); });
+})();
+</script>
+</body>
+</html>

@@ -172,18 +172,19 @@ namespace rtload
         return true;
     }
 
-    // Song einmal komplett rendern (bis die Reihenfolge umlaeuft) -> WAV.
-    // Gibt die Zahl gerenderter Frames zurueck.
-    inline long renderSongToWav (TrackerEngine& engine, const std::string& path,
-                                 double sampleRate, double maxSeconds = 600.0)
+    // Song einmal komplett rendern (bis die Reihenfolge umlaeuft) in einen
+    // interleaved Stereo-Float-Puffer (L,R,L,R). Gibt die Zahl der Frames zurueck.
+    // Gemeinsame Basis fuer WAV-Export (CLI) UND den Web-/WASM-Player.
+    inline long renderSong (TrackerEngine& engine, std::vector<float>& interleaved,
+                            double sampleRate, double maxSeconds = 600.0)
     {
         engine.prepare (sampleRate);
         engine.songMode.store (true);
         engine.play();
 
-        const int block = 512, ch = 2;
-        juce::AudioBuffer<float> buf (ch, block);
-        std::vector<int16_t> pcm;
+        const int block = 512;
+        juce::AudioBuffer<float> buf (2, block);
+        interleaved.clear();
         const long maxFrames = (long) (maxSeconds * sampleRate);
         long frames = 0;
 
@@ -197,21 +198,37 @@ namespace rtload
         {
             buf.clear();
             engine.process (buf);
+            const float* L = buf.getReadPointer (0);
+            const float* R = buf.getReadPointer (1);
             for (int i = 0; i < block; ++i)
-                for (int c = 0; c < ch; ++c)
-                {
-                    float s = buf.getReadPointer (c)[i];
-                    if (s >  1.0f) s =  1.0f;
-                    if (s < -1.0f) s = -1.0f;
-                    pcm.push_back ((int16_t) (s * 32767.0f));
-                }
+            {
+                interleaved.push_back (L[i]);
+                interleaved.push_back (R[i]);
+            }
             frames += block;
 
             const long loops = engine.songLoopCount.load();
             if (startLoops < 0) startLoops = loops;     // Basislinie nach 1. Block
             else if (loops > startLoops) break;          // Reihenfolge wirklich umgelaufen
         }
-        writeWav (path, pcm, ch, (int) sampleRate);
+        return frames;
+    }
+
+    // Song rendern -> 16-bit-Stereo-WAV (fuer die CLI).
+    inline long renderSongToWav (TrackerEngine& engine, const std::string& path,
+                                 double sampleRate, double maxSeconds = 600.0)
+    {
+        std::vector<float> interleaved;
+        const long frames = renderSong (engine, interleaved, sampleRate, maxSeconds);
+        std::vector<int16_t> pcm;
+        pcm.reserve (interleaved.size());
+        for (float s : interleaved)
+        {
+            if (s >  1.0f) s =  1.0f;
+            if (s < -1.0f) s = -1.0f;
+            pcm.push_back ((int16_t) (s * 32767.0f));
+        }
+        writeWav (path, pcm, 2, (int) sampleRate);
         return frames;
     }
 }
