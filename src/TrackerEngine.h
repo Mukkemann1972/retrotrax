@@ -235,10 +235,12 @@ public:
         {
             songPos = 0;
             playPattern = juce::jlimit (0, kMaxPatterns - 1, order[0]);
+            songStartPending = true; // order[0] beim ersten Umlauf nicht ueberspringen
         }
         else
         {
             playPattern = editPattern.load();
+            songStartPending = false;
         }
         playing = true;
     }
@@ -454,6 +456,10 @@ public:
     // wirken beim naechsten Zeilenwechsel (originalgetreue Modul-Wiedergabe).
     int pendingBreakRow = -1; // Dxx: Zielzeile (-1 = keiner)
     int pendingPosJump  = -1; // Bxx: Ziel-Position in der Reihenfolge (-1 = keiner)
+    // True direkt nach play() im Song-Modus: der allererste Zeilen-Umlauf bleibt
+    // bei order[0], statt songPos schon 0->1 hochzuzaehlen (sonst wird das erste
+    // Pattern der Reihenfolge uebersprungen).
+    bool songStartPending = false;
 
     // --- Solo / Mute pro Spur (wie in jeder DAW und jedem alten Tracker) ------
     // Reine Wiedergabe-Schalter: der Sequencer laeuft weiter, nur der Ton einer
@@ -609,6 +615,7 @@ private:
             row = juce::jlimit (0, kRows - 1, row);
             pendingPosJump  = -1;
             pendingBreakRow = -1;
+            songStartPending = false; // ein Sprung auf Zeile 0 verbraucht den Start
         }
         else
         {
@@ -619,10 +626,19 @@ private:
                 // Pattern zu Ende: im Song-Modus zum naechsten Eintrag der Reihenfolge.
                 if (songMode.load())
                 {
-                    int sp = songPos.load() + 1;
-                    if (sp >= orderLen) { sp = 0; songLoopCount.fetch_add (1, std::memory_order_relaxed); } // Reihenfolge umgelaufen
-                    songPos = sp;
-                    playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
+                    if (songStartPending)
+                    {
+                        // Allererster Umlauf nach play(): bei order[0] bleiben,
+                        // sonst faellt das erste Pattern der Reihenfolge weg.
+                        songStartPending = false;
+                    }
+                    else
+                    {
+                        int sp = songPos.load() + 1;
+                        if (sp >= orderLen) { sp = 0; songLoopCount.fetch_add (1, std::memory_order_relaxed); } // Reihenfolge umgelaufen
+                        songPos = sp;
+                        playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
+                    }
                 }
             }
         }
