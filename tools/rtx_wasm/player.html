@@ -28,16 +28,17 @@
 <body>
   <div class="card">
     <h1>Retro<span>Trax</span> · Web-Player</h1>
-    <p class="sub">Spielt <code>.retrotrax</code>-Songs direkt im Browser – ganz ohne Installation.</p>
+    <p class="sub">Spielt <code>.retrotrax</code>-Songs und <code>TFMX</code>-Module direkt im Browser – ganz ohne Installation.</p>
 
     <div class="row">
-      <label class="file">📂 Song wählen…<input id="file" type="file" accept=".retrotrax,.xml"></label>
+      <label class="file">📂 Song wählen…<input id="file" type="file" multiple accept=".retrotrax,.xml,.mdat,.tfmx,.tfx,.tfm,.smpl,.sam"></label>
       <button id="play" class="play" disabled>▶︎ Abspielen</button>
       <button id="stop" disabled>■ Stopp</button>
     </div>
     <div id="status">Lade Klang-Engine…</div>
 
     <div class="hint">
+      TFMX-Module (Chris Hülsbeck) brauchen <b>beide</b> Dateien – <code>mdat.*</code> und <code>smpl.*</code> zusammen auswählen.<br>
       Tipp: Über einen lokalen Webserver öffnen (Datei-Doppelklick reicht wegen WASM nicht):<br>
       <code>cd tools/rtx_wasm &amp;&amp; python3 -m http.server 8099</code> → <code>http://localhost:8099/player.html</code>
     </div>
@@ -62,44 +63,79 @@
     return;
   }
 
-  // .retrotrax (XML-Text) -> gerenderter WebAudio-Buffer.
-  function renderSong(xmlText) {
-    const sr = 44100;
-    const h  = Module.ccall('rtx_create', 'number', ['number'], [sr]);
+  // Gemeinsamer Helfer: interleaved-Float-Puffer aus dem WASM-Heap -> WebAudio.
+  function heapToAudioBuffer(h, frames) {
+    const ptr   = Module.ccall('rtx_buffer', 'number', ['number'], [h]);   // float* L,R,L,R
+    const outSr = Module.ccall('rtx_sample_rate', 'number', ['number'], [h]);
+    const base  = ptr >> 2, heap = Module.HEAPF32;
+    const buf = audioCtx.createBuffer(2, frames, outSr);
+    const L = buf.getChannelData(0), R = buf.getChannelData(1);
+    for (let i = 0; i < frames; i++) { L[i] = heap[base + 2*i]; R[i] = heap[base + 2*i + 1]; }
+    return { buf, frames, outSr };
+  }
+
+  // .retrotrax (XML-Text) -> ganzer Song gerendert.
+  function renderRetrotrax(xmlText) {
+    const h = Module.ccall('rtx_create', 'number', ['number'], [44100]);
     try {
       const nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'], [h, xmlText]);
       if (nInst < 0) throw new Error('Keine gültige .retrotrax-Datei.');
-
       const frames = Module.ccall('rtx_render', 'number', ['number','number'], [h, 600.0]);
       if (frames <= 0) throw new Error('Song ergab kein Audio (leer?).');
-
-      const ptr   = Module.ccall('rtx_buffer', 'number', ['number'], [h]);      // float* interleaved
-      const outSr = Module.ccall('rtx_sample_rate', 'number', ['number'], [h]);
-      const base  = ptr >> 2;                                                     // float-Index
-      const heap  = Module.HEAPF32;
-
-      const buf = (audioCtx || new (window.AudioContext||window.webkitAudioContext)())
-                    .createBuffer(2, frames, outSr);
-      const L = buf.getChannelData(0), R = buf.getChannelData(1);
-      for (let i = 0; i < frames; i++) { L[i] = heap[base + 2*i]; R[i] = heap[base + 2*i + 1]; }
-      return { buf, nInst, frames, outSr };
+      const r = heapToAudioBuffer(h, frames);
+      r.info = nInst + ' Instrument(e)';
+      return r;
     } finally {
-      Module.ccall('rtx_destroy', null, ['number'], [h]);                         // Heap freigeben
+      Module.ccall('rtx_destroy', null, ['number'], [h]);
     }
   }
 
-  fileEl.addEventListener('change', async () => {
-    const f = fileEl.files[0];
-    if (!f) return;
-    stopPlayback();
-    set('Lese „' + f.name + '“…');
+  // TFMX braucht zwei Dateien (mdat + smpl). Bytes ins virtuelle Dateisystem
+  // (MEMFS) schreiben, damit der Decoder sie per Pfad findet; feste Spieldauer.
+  function renderTfmx(mdatBytes, smplBytes, seconds) {
+    try { Module.FS.mkdir('/work'); } catch (e) {}
+    Module.FS.writeFile('/work/mdat.song', mdatBytes); // "mdat." <-> "smpl." (findSmpl)
+    Module.FS.writeFile('/work/smpl.song', smplBytes);
+    const h = Module.ccall('rtx_create', 'number', ['number'], [44100]);
     try {
-      const text = await f.text();
-      if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-      const r = renderSong(text);
+      const frames = Module.ccall('rtx_tfmx_render', 'number', ['number','string','number'],
+                                  [h, '/work/mdat.song', seconds || 120.0]);
+      if (frames <= 0) throw new Error('TFMX nicht abspielbar (fehlt die zweite Datei mdat/smpl?).');
+      const r = heapToAudioBuffer(h, frames);
+      r.info = 'TFMX';
+      return r;
+    } finally {
+      Module.ccall('rtx_destroy', null, ['number'], [h]);
+    }
+  }
+
+  const isTfmx = (bytes) => bytes.length >= 4 &&
+      bytes[0]===0x54 && bytes[1]===0x46 && bytes[2]===0x4D && bytes[3]===0x58; // "TFMX"
+
+  fileEl.addEventListener('change', async () => {
+    const files = [...fileEl.files];
+    if (!files.length) return;
+    stopPlayback();
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    set('Lese…');
+    try {
+      const bufs = await Promise.all(files.map(async f =>
+        ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+
+      const mdat = bufs.find(b => isTfmx(b.bytes));
+      let r, label;
+      if (mdat) {                                   // TFMX-Modul (zwei Dateien)
+        const smpl = bufs.find(b => b !== mdat);
+        if (!smpl) throw new Error('TFMX braucht ZWEI Dateien: mdat.* UND smpl.* (beide zusammen auswählen).');
+        r = renderTfmx(mdat.bytes, smpl.bytes);
+        label = mdat.name;
+      } else {                                      // .retrotrax (XML-Text)
+        r = renderRetrotrax(new TextDecoder().decode(bufs[0].bytes));
+        label = bufs[0].name;
+      }
       audioBuffer = r.buf;
       playEl.disabled = false;
-      set('„' + f.name + '“ geladen: ' + r.nInst + ' Instrument(e), ' +
+      set('„' + label + '“ geladen: ' + r.info + ', ' +
           (r.frames / r.outSr).toFixed(1) + ' s. Bereit zum Abspielen.');
     } catch (e) {
       audioBuffer = null; playEl.disabled = true;

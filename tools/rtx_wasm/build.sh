@@ -26,19 +26,21 @@ fi
 
 # reSIDfp-Quellen (wie im CMake-residfp-Target: *.cpp/*.cc + resample/*.cpp).
 RESIDFP=$(find libs/residfp -maxdepth 2 \( -name '*.cpp' -o -name '*.cc' \) | sort)
+# TFMX-Decoder-Quellen (vendored, wie im CMake-tfmxdecoder-Target: rekursiv *.cpp).
+TFMX=$(find libs/tfmxdecoder -name '*.cpp' | sort)
 
 echo "emcc-Version: $(emcc --version | head -1)"
-echo "reSIDfp-Dateien: $(echo "$RESIDFP" | wc -l)"
+echo "reSIDfp-Dateien: $(echo "$RESIDFP" | wc -l)  TFMX-Dateien: $(echo "$TFMX" | wc -l)"
 
 emcc -std=c++17 -O2 \
     -DRETROTRAX_NO_JUCE -DHAVE_CXX17 \
-    -I src -I libs/residfp \
-    tools/rtx_wasm/rtx_wasm.cpp $RESIDFP \
+    -I src -I libs/residfp -I libs/tfmxdecoder \
+    tools/rtx_wasm/rtx_wasm.cpp $RESIDFP $TFMX \
     -sUSE_ZLIB=1 \
     -sMODULARIZE=1 -sEXPORT_NAME=RtxModule \
     -sALLOW_MEMORY_GROWTH=1 \
-    -sEXPORTED_FUNCTIONS='["_rtx_create","_rtx_destroy","_rtx_load_retrotrax","_rtx_render","_rtx_buffer","_rtx_frames","_rtx_sample_rate","_malloc","_free"]' \
-    -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPF32","HEAPU8"]' \
+    -sEXPORTED_FUNCTIONS='["_rtx_create","_rtx_destroy","_rtx_load_retrotrax","_rtx_render","_rtx_buffer","_rtx_frames","_rtx_sample_rate","_rtx_tfmx_render","_malloc","_free"]' \
+    -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPF32","HEAPU8","FS"]' \
     -o tools/rtx_wasm/rtx_wasm.js
 
 echo "OK -> tools/rtx_wasm/rtx_wasm.js (+ rtx_wasm.wasm)"

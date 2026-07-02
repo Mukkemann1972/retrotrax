@@ -11,6 +11,7 @@
 
 #include "TrackerEngine.h"
 #include "rt_load.h"
+#include "rt_tfmx.h"
 
 #include <string>
 #include <vector>
@@ -87,4 +88,25 @@ RTX_API double rtx_sample_rate (void* h)
 {
     auto* p = static_cast<RtxPlayer*> (h);
     return p != nullptr ? p->sampleRate : 44100.0;
+}
+
+// ============================================================================
+//  TFMX (Chris Huelsbeck) im Browser. Die .mdat/.smpl-Bytes schreibt der
+//  JavaScript-Player vorher ins virtuelle Dateisystem (MEMFS); hier wird nur
+//  der Pfad reingereicht, der Decoder findet die .smpl daneben (findSmpl).
+//  TFMX laeuft endlos -> feste Spieldauer 'seconds' in einen Puffer rendern.
+// ============================================================================
+
+// mdatPath: Pfad im virtuellen Dateisystem (z.B. "/work/mdat.song").
+// Rueckgabe: gerenderte Frames, oder <0 bei Fehler (kein/ungueltiges TFMX).
+RTX_API int rtx_tfmx_render (void* h, const char* mdatPath, double seconds)
+{
+    auto* p = static_cast<RtxPlayer*> (h);
+    if (p == nullptr || mdatPath == nullptr) return -1;
+    TfmxPlayer::Info info;
+    const long fr = rttfmx::renderTfmxToBuffer (std::string (mdatPath), p->interleaved,
+                                                p->sampleRate,
+                                                seconds > 0.0 ? seconds : 30.0, &info);
+    p->frames = fr > 0 ? (int) fr : 0;
+    return (int) fr; // <0 = Fehler, sonst Frames (Puffer via rtx_buffer/rtx_frames)
 }

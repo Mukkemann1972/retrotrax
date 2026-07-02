@@ -63,11 +63,12 @@ namespace rttfmx
         return {};
     }
 
-    // Rendert 'seconds' Sekunden TFMX-Wiedergabe -> 16-bit-Stereo-WAV.
+    // Rendert 'seconds' Sekunden TFMX-Wiedergabe in einen interleaved Stereo-
+    // Float-Puffer (L,R,L,R). Gemeinsame Basis fuer WAV (CLI) UND Web/WASM.
     // Rueckgabe: gerenderte Frames, oder <0 bei Fehler.
-    inline long renderTfmxToWav (const std::string& mdatPath, const std::string& outPath,
-                                 double sampleRate, double seconds,
-                                 TfmxPlayer::Info* infoOut = nullptr)
+    inline long renderTfmxToBuffer (const std::string& mdatPath, std::vector<float>& interleaved,
+                                    double sampleRate, double seconds,
+                                    TfmxPlayer::Info* infoOut = nullptr)
     {
         TfmxPlayer player;
         const std::string smplPath = findSmpl (mdatPath);
@@ -85,7 +86,7 @@ namespace rttfmx
 
         const int block = 512, ch = 2;
         juce::AudioBuffer<float> buf (ch, block);
-        std::vector<int16_t> pcm;
+        interleaved.clear();
         const long maxFrames = (long) (seconds * sampleRate);
         long frames = 0;
 
@@ -93,17 +94,35 @@ namespace rttfmx
         {
             buf.clear();
             player.render (buf, 0, block);
+            const float* L = buf.getReadPointer (0);
+            const float* R = buf.getReadPointer (1);
             for (int i = 0; i < block; ++i)
-                for (int c = 0; c < ch; ++c)
-                {
-                    float s = buf.getReadPointer (c)[i];
-                    if (s >  1.0f) s =  1.0f;
-                    if (s < -1.0f) s = -1.0f;
-                    pcm.push_back ((int16_t) (s * 32767.0f));
-                }
+            {
+                interleaved.push_back (L[i]);
+                interleaved.push_back (R[i]);
+            }
             frames += block;
         }
-        rtload::writeWav (outPath, pcm, ch, (int) sampleRate);
+        return frames;
+    }
+
+    // Rendert TFMX -> 16-bit-Stereo-WAV (fuer die CLI).
+    inline long renderTfmxToWav (const std::string& mdatPath, const std::string& outPath,
+                                 double sampleRate, double seconds,
+                                 TfmxPlayer::Info* infoOut = nullptr)
+    {
+        std::vector<float> interleaved;
+        const long frames = renderTfmxToBuffer (mdatPath, interleaved, sampleRate, seconds, infoOut);
+        if (frames < 0) return frames;
+        std::vector<int16_t> pcm;
+        pcm.reserve (interleaved.size());
+        for (float s : interleaved)
+        {
+            if (s >  1.0f) s =  1.0f;
+            if (s < -1.0f) s = -1.0f;
+            pcm.push_back ((int16_t) (s * 32767.0f));
+        }
+        rtload::writeWav (outPath, pcm, 2, (int) sampleRate);
         return frames;
     }
 }
