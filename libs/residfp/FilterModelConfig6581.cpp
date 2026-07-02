@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <mutex>
 #include <thread>
+#include <functional>
 #include <cmath>
 #include <cstdint>
 
@@ -249,7 +250,13 @@ FilterModelConfig6581::FilterModelConfig6581() :
         }
     };
 
-#if defined(HAVE_CXX20) && defined(__cpp_lib_jthread)
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    // WASM ist per Default single-threaded -> std::thread wirft "thread
+    // constructor failed". Die 6 Filter-Tabellen stattdessen seriell bauen:
+    // ein Mini-Ersatz, der die Lambda gleich im Ctor ausfuehrt, join() = no-op.
+    // (RetroTrax-Patch, nur im schlanken WASM-Build aktiv; nativ/Plugin unberuehrt.)
+    struct sidThread { explicit sidThread (std::function<void()> f) { f(); } void join() {} };
+#elif defined(HAVE_CXX20) && defined(__cpp_lib_jthread)
     using sidThread = std::jthread;
 #else
     using sidThread = std::thread;
