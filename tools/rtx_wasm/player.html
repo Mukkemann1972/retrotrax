@@ -5,35 +5,147 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RetroTrax – Web-Player</title>
 <style>
-  :root { --bg:#12131a; --panel:#1c1e2a; --ink:#e8e6df; --amber:#ffb347; --green:#8bd450; }
+  :root {
+    --bg:#0b0c10; --panel:#14161f; --panel2:#1a1d29; --ink:#e8e6df;
+    --amber:#ffb347; --green:#8bd450; --dim:#9a9cb0; --dimmer:#71748a;
+    --line:#2c2f40; --glow:rgba(139,212,80,.25);
+  }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg);
-         color:var(--ink); display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; }
-  .card { background:var(--panel); border:1px solid #2c2f40; border-radius:14px; padding:28px 30px;
-          width:min(560px,100%); box-shadow:0 10px 40px rgba(0,0,0,.4); }
-  h1 { margin:0 0 4px; font-size:22px; letter-spacing:.5px; }
-  h1 span { color:var(--amber); }
-  p.sub { margin:0 0 20px; color:#9a9cb0; font-size:14px; }
-  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:14px 0; }
-  button, label.file { background:#2a2d3e; color:var(--ink); border:1px solid #3a3e54; border-radius:9px;
-           padding:11px 18px; font-size:15px; cursor:pointer; transition:.15s; }
-  button:hover, label.file:hover { background:#343850; }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  button.play { background:var(--green); color:#0d1206; border-color:var(--green); font-weight:600; }
-  #status { font-size:13px; color:#9a9cb0; min-height:20px; margin-top:8px; white-space:pre-line; }
-  .hint { font-size:12px; color:#71748a; margin-top:18px; line-height:1.5; }
+  html,body { height:100%; }
+  body {
+    margin:0; font-family:ui-monospace,'Cascadia Mono',Consolas,'Courier New',monospace;
+    background:var(--bg); color:var(--ink);
+    display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px;
+    background-image:
+      radial-gradient(ellipse at 50% -20%, #1a2030 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 120%, #16131f 0%, transparent 60%);
+  }
+  /* Dezente CRT-Scanlines über allem */
+  body::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:9;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px);
+  }
+  .card {
+    position:relative; background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:26px 28px 22px; width:min(600px,100%);
+    box-shadow:0 10px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,179,71,.06), 0 0 60px -20px var(--glow);
+  }
+  /* Kopfzeile */
+  header { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  h1 {
+    margin:0; font-size:26px; letter-spacing:2px; font-weight:800;
+    text-shadow:0 0 14px rgba(255,179,71,.35);
+  }
+  h1 .rt1 { color:var(--ink); } h1 .rt2 { color:var(--amber); }
+  .badge {
+    font-size:11px; letter-spacing:1.5px; color:var(--green); border:1px solid var(--green);
+    border-radius:4px; padding:2px 7px; text-transform:uppercase;
+    box-shadow:0 0 10px -2px var(--glow), inset 0 0 8px -4px var(--glow);
+  }
+  p.sub { margin:6px 0 16px; color:var(--dim); font-size:13px; line-height:1.5; }
+
+  /* Visualizer */
+  .scope-wrap {
+    position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden;
+    background:linear-gradient(180deg,#0d0f16 0%,#0a0b11 100%); margin-bottom:14px;
+  }
+  canvas#scope { display:block; width:100%; height:120px; }
+  .scope-wrap::after {  /* Glas-Reflex */
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(165deg, rgba(255,255,255,.05) 0%, transparent 30%);
+  }
+  #songtitle {
+    position:absolute; top:8px; left:12px; right:12px; font-size:12px; letter-spacing:1px;
+    color:var(--amber); text-shadow:0 0 8px rgba(255,179,71,.6);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;
+  }
+
+  /* Fortschritt */
+  .progress { display:flex; align-items:center; gap:10px; margin:2px 0 14px; }
+  .progress .time { font-size:12px; color:var(--dim); min-width:44px; text-align:center; }
+  #bar {
+    position:relative; flex:1; height:14px; border-radius:7px; cursor:pointer;
+    background:var(--panel2); border:1px solid var(--line); overflow:hidden;
+  }
+  #barfill {
+    position:absolute; inset:0 auto 0 0; width:0%;
+    background:linear-gradient(90deg, var(--green), var(--amber));
+    box-shadow:0 0 12px -2px var(--glow);
+  }
+
+  /* Transport */
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+  button, label.file {
+    font-family:inherit; background:var(--panel2); color:var(--ink);
+    border:1px solid #3a3e54; border-radius:9px; padding:11px 18px; font-size:15px;
+    cursor:pointer; transition:.15s;
+  }
+  button:hover, label.file:hover { background:#242840; border-color:#4a4f6a; }
+  button:active { transform:translateY(1px); }
+  button:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+  button.play {
+    background:var(--green); color:#0d1206; border-color:var(--green); font-weight:700;
+    min-width:130px; box-shadow:0 0 16px -4px var(--glow);
+  }
+  button.play:hover:not(:disabled) { background:#9ce55f; }
+  .vol { display:flex; align-items:center; gap:8px; margin-left:auto; color:var(--dim); font-size:14px; }
+  input[type=range] {
+    -webkit-appearance:none; width:110px; height:4px; border-radius:2px;
+    background:linear-gradient(90deg, var(--green) var(--volpct,80%), #333850 var(--volpct,80%));
+    outline:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--amber); border:2px solid #12131a; box-shadow:0 0 8px rgba(255,179,71,.5);
+  }
+  input[type=range]::-moz-range-thumb {
+    width:14px; height:14px; border-radius:50%; background:var(--amber);
+    border:2px solid #12131a; box-shadow:0 0 8px rgba(255,179,71,.5);
+  }
+
+  /* Status als LED-Zeile */
+  #status {
+    font-size:13px; color:var(--dim); min-height:20px; margin-top:6px; white-space:pre-line;
+    padding-left:16px; position:relative;
+  }
+  #status::before {
+    content:''; position:absolute; left:0; top:5px; width:8px; height:8px; border-radius:50%;
+    background:var(--led,#555b77); box-shadow:0 0 8px var(--led,#555b77);
+  }
+  #status.ok    { --led:#8bd450; }
+  #status.err   { --led:#ff5c5c; color:#ffb0b0; }
+  #status.busy  { --led:#ffb347; }
+
+  .hint { font-size:12px; color:var(--dimmer); margin-top:16px; line-height:1.6;
+          border-top:1px dashed var(--line); padding-top:12px; }
+  .hint code { color:var(--dim); }
   input[type=file] { display:none; }
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>Retro<span>Trax</span> · Web-Player</h1>
+    <header>
+      <h1><span class="rt1">Retro</span><span class="rt2">Trax</span></h1>
+      <span class="badge">Web-Player</span>
+    </header>
     <p class="sub">Spielt <code>.retrotrax</code>-Songs und <code>TFMX</code>-Module direkt im Browser – ganz ohne Installation.</p>
+
+    <div class="scope-wrap">
+      <div id="songtitle"></div>
+      <canvas id="scope" width="1140" height="240"></canvas>
+    </div>
+
+    <div class="progress">
+      <span class="time" id="tcur">0:00</span>
+      <div id="bar"><div id="barfill"></div></div>
+      <span class="time" id="tlen">0:00</span>
+    </div>
 
     <div class="row">
       <label class="file">📂 Song wählen…<input id="file" type="file" multiple accept=".retrotrax,.xml,.mdat,.tfmx,.tfx,.tfm,.smpl,.sam"></label>
       <button id="play" class="play" disabled>▶︎ Abspielen</button>
       <button id="stop" disabled>■ Stopp</button>
+      <div class="vol">🔊<input id="vol" type="range" min="0" max="100" value="80"></div>
     </div>
     <div id="status">Lade Klang-Engine…</div>
 
@@ -51,16 +163,38 @@
   const fileEl   = document.getElementById('file');
   const playEl   = document.getElementById('play');
   const stopEl   = document.getElementById('stop');
-  const set = (m) => statusEl.textContent = m;
+  const volEl    = document.getElementById('vol');
+  const barEl    = document.getElementById('bar');
+  const fillEl   = document.getElementById('barfill');
+  const tcurEl   = document.getElementById('tcur');
+  const tlenEl   = document.getElementById('tlen');
+  const titleEl  = document.getElementById('songtitle');
+  const scope    = document.getElementById('scope');
+  const sctx     = scope.getContext('2d');
+  const set = (m, cls) => { statusEl.textContent = m; statusEl.className = cls || ''; };
 
   let Module, audioCtx, source, audioBuffer = null;
+  let gain, analyser;
+  let startedAt = 0, pausedAt = 0, playing = false, naturalEnd = true;
 
   try {
     Module = await RtxModule();                 // WASM laden (MODULARIZE)
-    set('Bereit. Wähle einen .retrotrax-Song.');
+    set('Bereit. Wähle einen .retrotrax-Song.', 'ok');
   } catch (e) {
-    set('FEHLER beim Laden der Engine: ' + e);
+    set('FEHLER beim Laden der Engine: ' + e, 'err');
     return;
+  }
+
+  function ensureAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    gain = audioCtx.createGain();
+    gain.gain.value = volEl.value / 100;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.78;
+    gain.connect(analyser);
+    analyser.connect(audioCtx.destination);
   }
 
   // Gemeinsamer Helfer: interleaved-Float-Puffer aus dem WASM-Heap -> WebAudio.
@@ -116,8 +250,9 @@
     const files = [...fileEl.files];
     if (!files.length) return;
     stopPlayback();
-    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    set('Lese…');
+    pausedAt = 0; updateProgress();
+    ensureAudio();
+    set('Lese…', 'busy');
     try {
       const bufs = await Promise.all(files.map(async f =>
         ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
@@ -135,33 +270,129 @@
       }
       audioBuffer = r.buf;
       playEl.disabled = false;
+      titleEl.textContent = '♪ ' + label;
+      tlenEl.textContent = fmtTime(audioBuffer.duration);
       set('„' + label + '“ geladen: ' + r.info + ', ' +
-          (r.frames / r.outSr).toFixed(1) + ' s. Bereit zum Abspielen.');
+          (r.frames / r.outSr).toFixed(1) + ' s. Bereit zum Abspielen.', 'ok');
     } catch (e) {
-      audioBuffer = null; playEl.disabled = true;
-      set('FEHLER: ' + e.message);
+      audioBuffer = null; playEl.disabled = true; titleEl.textContent = '';
+      tlenEl.textContent = '0:00';
+      set('FEHLER: ' + e.message, 'err');
     }
   });
 
   function stopPlayback() {
-    if (source) { try { source.stop(); } catch(_){} source.disconnect(); source = null; }
+    if (source) {
+      naturalEnd = false;
+      try { source.stop(); } catch(_){}
+      source.disconnect(); source = null;
+    }
+    playing = false;
     stopEl.disabled = true;
+    playEl.textContent = '▶︎ Abspielen';
+  }
+
+  function startFrom(offset) {
+    stopPlayback();
+    source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(gain);
+    naturalEnd = true;
+    source.onended = () => {
+      if (!naturalEnd) return;                 // manueller Stopp/Pause/Seek
+      playing = false; pausedAt = 0;
+      stopEl.disabled = true;
+      playEl.textContent = '▶︎ Abspielen';
+      set('Fertig. 🎵', 'ok');
+    };
+    source.start(0, offset);
+    startedAt = audioCtx.currentTime - offset;
+    playing = true;
+    stopEl.disabled = false;
+    playEl.textContent = '⏸ Pause';
+    set('▶︎ Läuft…', 'ok');
   }
 
   playEl.addEventListener('click', async () => {
     if (!audioBuffer) return;
+    ensureAudio();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    stopPlayback();
-    source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioCtx.destination);
-    source.onended = () => { stopEl.disabled = true; };
-    source.start();
-    stopEl.disabled = false;
-    set('▶︎ Läuft…');
+    if (playing) {                              // Pause
+      pausedAt = Math.min(audioCtx.currentTime - startedAt, audioBuffer.duration);
+      stopPlayback();
+      set('⏸ Pausiert bei ' + fmtTime(pausedAt), 'busy');
+    } else {
+      startFrom(pausedAt || 0);
+    }
   });
 
-  stopEl.addEventListener('click', () => { stopPlayback(); set('Gestoppt.'); });
+  stopEl.addEventListener('click', () => {
+    stopPlayback(); pausedAt = 0; updateProgress();
+    set('Gestoppt.', '');
+  });
+
+  // Klick auf den Balken = Spulen
+  barEl.addEventListener('click', (ev) => {
+    if (!audioBuffer) return;
+    const rect = barEl.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+    const t = frac * audioBuffer.duration;
+    if (playing) { startFrom(t); }
+    else { pausedAt = t; updateProgress(); set('Position: ' + fmtTime(t), ''); }
+  });
+
+  volEl.addEventListener('input', () => {
+    if (gain) gain.gain.value = volEl.value / 100;
+    volEl.style.setProperty('--volpct', volEl.value + '%');
+  });
+  volEl.style.setProperty('--volpct', volEl.value + '%');
+
+  const fmtTime = (s) => {
+    s = Math.max(0, Math.floor(s));
+    return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+  };
+
+  function updateProgress() {
+    const dur = audioBuffer ? audioBuffer.duration : 0;
+    const pos = playing ? Math.min(audioCtx.currentTime - startedAt, dur) : pausedAt;
+    fillEl.style.width = dur ? (100 * pos / dur) + '%' : '0%';
+    tcurEl.textContent = fmtTime(pos);
+  }
+
+  // ── Spektrum-Visualizer ─────────────────────────────────────────────
+  const freq = new Uint8Array(128);
+  function drawScope() {
+    requestAnimationFrame(drawScope);
+    updateProgress();
+    const W = scope.width, H = scope.height;
+    sctx.clearRect(0, 0, W, H);
+
+    // Grundlinie
+    sctx.fillStyle = 'rgba(139,212,80,.12)';
+    sctx.fillRect(0, H - 2, W, 2);
+
+    if (!analyser) return;
+    analyser.getByteFrequencyData(freq);
+    const bars = 48, gap = 4;
+    const bw = (W - gap * (bars + 1)) / bars;
+    for (let i = 0; i < bars; i++) {
+      // Logarithmische Bin-Verteilung: tiefe Frequenzen bekommen mehr Platz
+      const bin = Math.floor(Math.pow(i / bars, 1.6) * (freq.length - 1));
+      const v = freq[bin] / 255;
+      const bh = Math.max(2, v * (H - 24));
+      const x = gap + i * (bw + gap), y = H - 2 - bh;
+      const g = sctx.createLinearGradient(0, y, 0, H);
+      g.addColorStop(0, '#ffb347');
+      g.addColorStop(.45, '#8bd450');
+      g.addColorStop(1, 'rgba(139,212,80,.25)');
+      sctx.fillStyle = g;
+      sctx.fillRect(x, y, bw, bh);
+      // "Peak-Kappe"
+      sctx.fillStyle = 'rgba(255,255,255,.5)';
+      sctx.fillRect(x, y - 3, bw, 2);
+    }
+  }
+  drawScope();
 })();
 </script>
 </body>
