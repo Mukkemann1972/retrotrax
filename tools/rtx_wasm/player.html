@@ -128,7 +128,7 @@
       <h1><span class="rt1">Retro</span><span class="rt2">Trax</span></h1>
       <span class="badge">Web-Player</span>
     </header>
-    <p class="sub">Spielt <code>.retrotrax</code>-Songs und <code>TFMX</code>-Module direkt im Browser – ganz ohne Installation.</p>
+    <p class="sub">Spielt <code>.retrotrax</code>-Songs und <code>TFMX</code>-Module direkt im Browser – ganz ohne Installation, mit Sofort-Start (Streaming).</p>
 
     <div class="scope-wrap">
       <div id="songtitle"></div>
@@ -173,9 +173,20 @@
   const sctx     = scope.getContext('2d');
   const set = (m, cls) => { statusEl.textContent = m; statusEl.className = cls || ''; };
 
-  let Module, audioCtx, source, audioBuffer = null;
-  let gain, analyser;
-  let startedAt = 0, pausedAt = 0, playing = false, naturalEnd = true;
+  const TFMX_SECONDS = 120;      // TFMX läuft endlos -> feste Spieldauer wie bisher
+  const CHUNK_FRAMES = 8192;     // Häppchengröße fürs Streaming (~0,19 s bei 44,1 kHz)
+  const AHEAD_SECONDS = 4;       // so viel Vorlauf hält der Player im Ohr
+
+  let Module, audioCtx, gain, analyser;
+  let playing = false;
+
+  // Streaming-Weg (AudioWorklet): stream = aktiver Song.
+  let workletNode = null, workletReady = false;
+  let stream = null;   // { h, kind, sr, duration, durationExact, rendered, queued, ended, pumpTimer, posSec, pausedAt }
+
+  // Rückfall-Weg (ganzer Song vorab gerendert) für Browser ohne AudioWorklet.
+  let audioBuffer = null, source = null, startedAt = 0, pausedAt = 0, naturalEnd = true;
+  const canStream = typeof AudioWorkletNode !== 'undefined';
 
   try {
     Module = await RtxModule();                 // WASM laden (MODULARIZE)
@@ -185,20 +196,194 @@
     return;
   }
 
-  function ensureAudio() {
-    if (audioCtx) return;
-    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    gain = audioCtx.createGain();
-    gain.gain.value = volEl.value / 100;
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.78;
-    gain.connect(analyser);
-    analyser.connect(audioCtx.destination);
+  // ── Audio-Setup ─────────────────────────────────────────────────────
+  // Der Worklet-FIFO: bekommt fertige Audio-Häppchen (L/R) geschickt und
+  // spielt sie lückenlos ab; meldet regelmäßig Position + Puffervorrat zurück.
+  const workletSrc = `
+    class RtxFifo extends AudioWorkletProcessor {
+      constructor () {
+        super();
+        this.q = []; this.off = 0; this.queued = 0; this.run = false;
+        this.consumed = 0; this.ended = false; this.tick = 0;
+        this.port.onmessage = (e) => {
+          const m = e.data;
+          if      (m.t === 'push')  { this.q.push(m); this.queued += m.n; }
+          else if (m.t === 'run')   { this.run = m.v; }
+          else if (m.t === 'end')   { this.ended = true; }
+          else if (m.t === 'flush') {
+            this.q = []; this.off = 0; this.queued = 0;
+            this.consumed = m.base || 0; this.ended = false;
+          }
+        };
+      }
+      process (inputs, outputs) {
+        const out = outputs[0], L = out[0], R = out.length > 1 ? out[1] : out[0];
+        let i = 0;
+        if (this.run) {
+          while (i < L.length && this.q.length) {
+            const c = this.q[0], n = Math.min(L.length - i, c.n - this.off);
+            L.set(c.l.subarray(this.off, this.off + n), i);
+            R.set(c.r.subarray(this.off, this.off + n), i);
+            this.off += n; i += n; this.queued -= n; this.consumed += n;
+            if (this.off >= c.n) { this.q.shift(); this.off = 0; }
+          }
+        }
+        for (let k = i; k < L.length; k++) { L[k] = 0; R[k] = 0; }
+        if (++this.tick >= 8) {   // alle ~23 ms Position melden
+          this.tick = 0;
+          this.port.postMessage({ t:'pos', consumed:this.consumed, queued:this.queued,
+                                  done:this.ended && this.q.length === 0 && this.run });
+        }
+        return true;
+      }
+    }
+    registerProcessor('rtx-fifo', RtxFifo);
+  `;
+
+  async function ensureAudio () {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      gain = audioCtx.createGain();
+      gain.gain.value = volEl.value / 100;
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.78;
+      gain.connect(analyser);
+      analyser.connect(audioCtx.destination);
+    }
+    if (canStream && !workletReady) {
+      const url = URL.createObjectURL(new Blob([workletSrc], { type:'application/javascript' }));
+      await audioCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      workletNode = new AudioWorkletNode(audioCtx, 'rtx-fifo',
+        { numberOfInputs:0, numberOfOutputs:1, outputChannelCount:[2] });
+      workletNode.connect(gain);
+      workletNode.port.onmessage = onWorkletMessage;
+      workletReady = true;
+    }
   }
 
-  // Gemeinsamer Helfer: interleaved-Float-Puffer aus dem WASM-Heap -> WebAudio.
-  function heapToAudioBuffer(h, frames) {
+  // ── Streaming-Steuerung ─────────────────────────────────────────────
+  const wl = (msg, transfer) => workletNode && workletNode.port.postMessage(msg, transfer || []);
+
+  function onWorkletMessage (e) {
+    if (!stream) return;
+    const m = e.data;
+    if (m.t !== 'pos') return;
+    stream.posSec = m.consumed / stream.sr;
+    stream.queued = m.queued;
+    // Nachschub anfordern, solange der Vorlauf nicht voll ist.
+    if (!stream.ended && m.queued < AHEAD_SECONDS * stream.sr) pump();
+    if (m.done && playing) {                     // Songende wirklich abgespielt
+      playing = false;
+      wl({ t:'run', v:false });
+      stream.duration = stream.posSec;           // Schätzung -> exakte Länge
+      stream.durationExact = true;
+      stream.pausedAt = 0;
+      tlenEl.textContent = fmtTime(stream.duration);
+      stopEl.disabled = true;
+      playEl.textContent = '▶︎ Abspielen';
+      set('Fertig. 🎵', 'ok');
+    }
+  }
+
+  // Häppchen rendern und in den Worklet-FIFO schieben.
+  function pump () {
+    if (!stream || stream.ended || stream.pumping) return;
+    stream.pumping = true;
+    try {
+      while (stream.queued < AHEAD_SECONDS * stream.sr) {
+        if (stream.kind === 'tfmx' && stream.rendered >= TFMX_SECONDS * stream.sr) {
+          stream.ended = true; wl({ t:'end' }); break;
+        }
+        const got = Module.ccall('rtx_stream_render', 'number',
+                                 ['number','number'], [stream.h, CHUNK_FRAMES]);
+        if (got <= 0) { stream.ended = true; wl({ t:'end' }); break; }
+        const ptr  = Module.ccall('rtx_buffer', 'number', ['number'], [stream.h]);
+        const heap = Module.HEAPF32, base = ptr >> 2;  // HEAPF32 nach Speicherwachstum frisch holen
+        const l = new Float32Array(got), r = new Float32Array(got);
+        for (let i = 0; i < got; i++) { l[i] = heap[base + 2*i]; r[i] = heap[base + 2*i + 1]; }
+        wl({ t:'push', l, r, n:got }, [l.buffer, r.buffer]);
+        stream.rendered += got;
+        stream.queued   += got;
+      }
+    } finally {
+      stream.pumping = false;
+    }
+  }
+
+  function destroyStream () {
+    if (!stream) return;
+    clearInterval(stream.pumpTimer);
+    wl({ t:'run', v:false });
+    wl({ t:'flush', base:0 });
+    Module.ccall('rtx_destroy', null, ['number'], [stream.h]);
+    stream = null;
+    playing = false;
+  }
+
+  // Song laden und Stream vorbereiten (spielt noch nicht).
+  function openStream (bufs) {
+    const sr = audioCtx.sampleRate;               // Worklet läuft mit Kontext-Rate
+    const h  = Module.ccall('rtx_create', 'number', ['number'], [sr]);
+    const mdat = bufs.find(b => isTfmx(b.bytes));
+    let kind, label, info, duration;
+    try {
+      if (mdat) {                                 // TFMX-Modul (zwei Dateien)
+        const smpl = bufs.find(b => b !== mdat);
+        if (!smpl) throw new Error('TFMX braucht ZWEI Dateien: mdat.* UND smpl.* (beide zusammen auswählen).');
+        try { Module.FS.mkdir('/work'); } catch (e) {}
+        Module.FS.writeFile('/work/mdat.song', mdat.bytes);  // "mdat." <-> "smpl." (findSmpl)
+        Module.FS.writeFile('/work/smpl.song', smpl.bytes);
+        const rc = Module.ccall('rtx_stream_start_tfmx', 'number',
+                                ['number','string'], [h, '/work/mdat.song']);
+        if (rc < 0) throw new Error('TFMX nicht abspielbar (fehlt die zweite Datei mdat/smpl?).');
+        kind = 'tfmx'; label = mdat.name; info = 'TFMX'; duration = TFMX_SECONDS;
+      } else {                                    // .retrotrax (XML-Text)
+        const xml = new TextDecoder().decode(bufs[0].bytes);
+        const nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'], [h, xml]);
+        if (nInst < 0) throw new Error('Keine gültige .retrotrax-Datei.');
+        Module.ccall('rtx_stream_start', 'number', ['number'], [h]);
+        kind = 'rtx'; label = bufs[0].name; info = nInst + ' Instrument(e)';
+        duration = Module.ccall('rtx_estimate_seconds', 'number', ['number'], [h]);
+      }
+    } catch (e) {
+      Module.ccall('rtx_destroy', null, ['number'], [h]);
+      throw e;
+    }
+    stream = { h, kind, sr, duration, durationExact: kind === 'tfmx',
+               rendered: 0, queued: 0, ended: false, posSec: 0, pausedAt: 0,
+               pumping: false, pumpTimer: 0, label, info };
+    wl({ t:'flush', base:0 });
+    pump();                                       // ersten Vorlauf füllen -> Start sofort
+    stream.pumpTimer = setInterval(pump, 250);    // Sicherheitsnetz neben den pos-Meldungen
+    return stream;
+  }
+
+  function streamSeek (t) {
+    if (!stream) return;
+    const wasPlaying = playing;
+    wl({ t:'run', v:false });
+    set('Spule… ' + fmtTime(t), 'busy');
+    // Kurz ans UI abgeben, damit der Status sichtbar wird, dann synchron spulen.
+    setTimeout(() => {
+      if (!stream) return;
+      const baseFrames = Math.floor(t * stream.sr);
+      wl({ t:'flush', base: baseFrames });
+      Module.ccall('rtx_stream_seek', 'number', ['number','number'], [stream.h, t]);
+      stream.ended    = false;
+      stream.rendered = baseFrames;               // wichtig für die TFMX-Spielzeitgrenze
+      stream.queued   = 0;
+      stream.posSec   = t;
+      stream.pausedAt = t;
+      pump();
+      if (wasPlaying) { wl({ t:'run', v:true }); playing = true; set('▶︎ Läuft…', 'ok'); }
+      else set('Position: ' + fmtTime(t), '');
+    }, 30);
+  }
+
+  // ── Rückfall: ganzer Song vorab gerendert (Browser ohne AudioWorklet) ──
+  function heapToAudioBuffer (h, frames) {
     const ptr   = Module.ccall('rtx_buffer', 'number', ['number'], [h]);   // float* L,R,L,R
     const outSr = Module.ccall('rtx_sample_rate', 'number', ['number'], [h]);
     const base  = ptr >> 2, heap = Module.HEAPF32;
@@ -208,8 +393,7 @@
     return { buf, frames, outSr };
   }
 
-  // .retrotrax (XML-Text) -> ganzer Song gerendert.
-  function renderRetrotrax(xmlText) {
+  function renderRetrotrax (xmlText) {
     const h = Module.ccall('rtx_create', 'number', ['number'], [44100]);
     try {
       const nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'], [h, xmlText]);
@@ -224,16 +408,14 @@
     }
   }
 
-  // TFMX braucht zwei Dateien (mdat + smpl). Bytes ins virtuelle Dateisystem
-  // (MEMFS) schreiben, damit der Decoder sie per Pfad findet; feste Spieldauer.
-  function renderTfmx(mdatBytes, smplBytes, seconds) {
+  function renderTfmx (mdatBytes, smplBytes, seconds) {
     try { Module.FS.mkdir('/work'); } catch (e) {}
-    Module.FS.writeFile('/work/mdat.song', mdatBytes); // "mdat." <-> "smpl." (findSmpl)
+    Module.FS.writeFile('/work/mdat.song', mdatBytes);
     Module.FS.writeFile('/work/smpl.song', smplBytes);
     const h = Module.ccall('rtx_create', 'number', ['number'], [44100]);
     try {
       const frames = Module.ccall('rtx_tfmx_render', 'number', ['number','string','number'],
-                                  [h, '/work/mdat.song', seconds || 120.0]);
+                                  [h, '/work/mdat.song', seconds || TFMX_SECONDS]);
       if (frames <= 0) throw new Error('TFMX nicht abspielbar (fehlt die zweite Datei mdat/smpl?).');
       const r = heapToAudioBuffer(h, frames);
       r.info = 'TFMX';
@@ -246,60 +428,73 @@
   const isTfmx = (bytes) => bytes.length >= 4 &&
       bytes[0]===0x54 && bytes[1]===0x46 && bytes[2]===0x4D && bytes[3]===0x58; // "TFMX"
 
+  // ── Datei laden ─────────────────────────────────────────────────────
   fileEl.addEventListener('change', async () => {
     const files = [...fileEl.files];
     if (!files.length) return;
     stopPlayback();
-    pausedAt = 0; updateProgress();
-    ensureAudio();
+    destroyStream();
+    audioBuffer = null; pausedAt = 0;
     set('Lese…', 'busy');
     try {
+      await ensureAudio();
       const bufs = await Promise.all(files.map(async f =>
         ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
 
-      const mdat = bufs.find(b => isTfmx(b.bytes));
-      let r, label;
-      if (mdat) {                                   // TFMX-Modul (zwei Dateien)
-        const smpl = bufs.find(b => b !== mdat);
-        if (!smpl) throw new Error('TFMX braucht ZWEI Dateien: mdat.* UND smpl.* (beide zusammen auswählen).');
-        r = renderTfmx(mdat.bytes, smpl.bytes);
-        label = mdat.name;
-      } else {                                      // .retrotrax (XML-Text)
-        r = renderRetrotrax(new TextDecoder().decode(bufs[0].bytes));
-        label = bufs[0].name;
+      let label, info, dur, durPrefix = '';
+      if (canStream) {                            // Streaming: Start sofort
+        const s = openStream(bufs);
+        label = s.label; info = s.info; dur = s.duration;
+        if (!s.durationExact) durPrefix = '~';
+      } else {                                    // Rückfall: komplett vorrendern
+        const mdat = bufs.find(b => isTfmx(b.bytes));
+        let r;
+        if (mdat) {
+          const smpl = bufs.find(b => b !== mdat);
+          if (!smpl) throw new Error('TFMX braucht ZWEI Dateien: mdat.* UND smpl.* (beide zusammen auswählen).');
+          r = renderTfmx(mdat.bytes, smpl.bytes);
+          label = mdat.name;
+        } else {
+          r = renderRetrotrax(new TextDecoder().decode(bufs[0].bytes));
+          label = bufs[0].name;
+        }
+        audioBuffer = r.buf; info = r.info; dur = audioBuffer.duration;
       }
-      audioBuffer = r.buf;
       playEl.disabled = false;
       titleEl.textContent = '♪ ' + label;
-      tlenEl.textContent = fmtTime(audioBuffer.duration);
-      set('„' + label + '“ geladen: ' + r.info + ', ' +
-          (r.frames / r.outSr).toFixed(1) + ' s. Bereit zum Abspielen.', 'ok');
+      tlenEl.textContent = durPrefix + fmtTime(dur);
+      updateProgress();
+      set('„' + label + '“ geladen: ' + info + ', ' + durPrefix + dur.toFixed(1) +
+          ' s. Bereit zum Abspielen.', 'ok');
     } catch (e) {
+      destroyStream();
       audioBuffer = null; playEl.disabled = true; titleEl.textContent = '';
       tlenEl.textContent = '0:00';
       set('FEHLER: ' + e.message, 'err');
     }
   });
 
-  function stopPlayback() {
-    if (source) {
+  // ── Transport (bedient beide Wege) ──────────────────────────────────
+  function stopPlayback () {
+    if (source) {                                 // Rückfall-Weg
       naturalEnd = false;
-      try { source.stop(); } catch(_){}
+      try { source.stop(); } catch (_) {}
       source.disconnect(); source = null;
     }
+    if (stream) wl({ t:'run', v:false });         // Streaming-Weg
     playing = false;
     stopEl.disabled = true;
     playEl.textContent = '▶︎ Abspielen';
   }
 
-  function startFrom(offset) {
+  function startFrom (offset) {                   // nur Rückfall-Weg
     stopPlayback();
     source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(gain);
     naturalEnd = true;
     source.onended = () => {
-      if (!naturalEnd) return;                 // manueller Stopp/Pause/Seek
+      if (!naturalEnd) return;
       playing = false; pausedAt = 0;
       stopEl.disabled = true;
       playEl.textContent = '▶︎ Abspielen';
@@ -314,10 +509,37 @@
   }
 
   playEl.addEventListener('click', async () => {
-    if (!audioBuffer) return;
-    ensureAudio();
+    await ensureAudio();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    if (playing) {                              // Pause
+
+    if (stream) {                                 // Streaming
+      if (playing) {                              // Pause
+        playing = false;
+        wl({ t:'run', v:false });
+        stream.pausedAt = stream.posSec;
+        playEl.textContent = '▶︎ Abspielen';
+        set('⏸ Pausiert bei ' + fmtTime(stream.pausedAt), 'busy');
+      } else {                                    // Abspielen/Weiter
+        if (stream.durationExact && stream.posSec >= stream.duration - 0.05) {
+          // Song war zu Ende -> von vorn. playing vorher setzen, damit
+          // streamSeek den Lauf-Zustand mitnimmt und wieder startet.
+          playing = true;
+          stopEl.disabled = false;
+          playEl.textContent = '⏸ Pause';
+          streamSeek(0);
+          return;
+        }
+        playing = true;
+        wl({ t:'run', v:true });
+        stopEl.disabled = false;
+        playEl.textContent = '⏸ Pause';
+        set('▶︎ Läuft…', 'ok');
+      }
+      return;
+    }
+
+    if (!audioBuffer) return;                     // Rückfall
+    if (playing) {
       pausedAt = Math.min(audioCtx.currentTime - startedAt, audioBuffer.duration);
       stopPlayback();
       set('⏸ Pausiert bei ' + fmtTime(pausedAt), 'busy');
@@ -327,15 +549,27 @@
   });
 
   stopEl.addEventListener('click', () => {
+    if (stream) {
+      stopPlayback();
+      streamSeek(0);
+      stream.pausedAt = 0; stream.posSec = 0;
+      updateProgress();
+      set('Gestoppt.', '');
+      return;
+    }
     stopPlayback(); pausedAt = 0; updateProgress();
     set('Gestoppt.', '');
   });
 
   // Klick auf den Balken = Spulen
   barEl.addEventListener('click', (ev) => {
-    if (!audioBuffer) return;
     const rect = barEl.getBoundingClientRect();
     const frac = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+    if (stream) {
+      streamSeek(frac * stream.duration);
+      return;
+    }
+    if (!audioBuffer) return;
     const t = frac * audioBuffer.duration;
     if (playing) { startFrom(t); }
     else { pausedAt = t; updateProgress(); set('Position: ' + fmtTime(t), ''); }
@@ -352,16 +586,22 @@
     return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
   };
 
-  function updateProgress() {
-    const dur = audioBuffer ? audioBuffer.duration : 0;
-    const pos = playing ? Math.min(audioCtx.currentTime - startedAt, dur) : pausedAt;
-    fillEl.style.width = dur ? (100 * pos / dur) + '%' : '0%';
+  function updateProgress () {
+    let dur = 0, pos = 0;
+    if (stream) {
+      dur = stream.duration;
+      pos = playing ? stream.posSec : stream.pausedAt;
+    } else if (audioBuffer) {
+      dur = audioBuffer.duration;
+      pos = playing ? Math.min(audioCtx.currentTime - startedAt, dur) : pausedAt;
+    }
+    fillEl.style.width = dur ? Math.min(100, 100 * pos / dur) + '%' : '0%';
     tcurEl.textContent = fmtTime(pos);
   }
 
   // ── Spektrum-Visualizer ─────────────────────────────────────────────
   const freq = new Uint8Array(128);
-  function drawScope() {
+  function drawScope () {
     requestAnimationFrame(drawScope);
     updateProgress();
     const W = scope.width, H = scope.height;

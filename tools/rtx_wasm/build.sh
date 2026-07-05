@@ -39,7 +39,7 @@ emcc -std=c++17 -O2 \
     -sUSE_ZLIB=1 \
     -sMODULARIZE=1 -sEXPORT_NAME=RtxModule \
     -sALLOW_MEMORY_GROWTH=1 \
-    -sEXPORTED_FUNCTIONS='["_rtx_create","_rtx_destroy","_rtx_load_retrotrax","_rtx_render","_rtx_buffer","_rtx_frames","_rtx_sample_rate","_rtx_tfmx_render","_malloc","_free"]' \
+    -sEXPORTED_FUNCTIONS='["_rtx_create","_rtx_destroy","_rtx_load_retrotrax","_rtx_render","_rtx_buffer","_rtx_frames","_rtx_sample_rate","_rtx_tfmx_render","_rtx_stream_start","_rtx_stream_start_tfmx","_rtx_stream_render","_rtx_stream_seek","_rtx_stream_ended","_rtx_estimate_seconds","_malloc","_free"]' \
     -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPF32","HEAPU8","FS"]' \
     -o tools/rtx_wasm/rtx_wasm.js
 

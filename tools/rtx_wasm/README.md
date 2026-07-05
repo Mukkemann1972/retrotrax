@@ -28,8 +28,16 @@ cd tools/rtx_wasm && python3 -m http.server 8099
 ```
 
 ## Stand / offen
-- MVP: **`.retrotrax` (Synth + Sample)** im Browser. Rendert den ganzen Song in
-  einen Puffer und spielt ihn (einfach + robust).
-- Noch offen: TFMX im Browser (der vendored Decoder lädt per Dateipfad → braucht
-  Emscriptens virtuelles Dateisystem/MEMFS), und echtes Streaming per AudioWorklet
-  statt Vorab-Render. Beides bewusst als Folgeschritt.
+- **`.retrotrax` (Synth + Sample) und TFMX** spielen im Browser (TFMX über
+  Emscriptens virtuelles Dateisystem/MEMFS, beide Dateien mdat.* + smpl.*).
+- **Streaming per AudioWorklet (Phase 4):** Der Song startet sofort — die
+  Engine rendert Häppchen (`rtx_stream_*`-API), ein Worklet-FIFO spielt sie
+  lückenlos; gespult wird per Neustart + stummem Vorspulen. Gerendert wird mit
+  der Abtastrate des AudioContext (kein Resampling nötig). Browser ohne
+  AudioWorklet bekommen automatisch den alten Komplett-Render als Rückfall.
+- Verifiziert: `native_test.cpp` beweist, dass gestreamte Häppchen **bit-genau**
+  dem Komplett-Render entsprechen (inkl. Seek); dazu Node-Lauf der echten
+  rtx_wasm.js. Die Längen-Schätzung (`rtx_estimate_seconds`) trifft auf ~0,1 s,
+  Tempo-Effekte im Song können sie verschieben — der Player korrigiert am Ende.
+- Noch offen (Ideen): Demo-Songs fest auf der Seite, MOD/XM/S3M-Wiedergabe,
+  Rendern in einen Worker auslagern (falls schwache Handys beim Nachschub ruckeln).
