@@ -10,7 +10,15 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.79 — MELLOTRON character: tape wow/flutter in the FX sampler
+## Status: v0.80 — song-building effects: sample offset, retrigger, note cut, note delay
+
+- **🟢 Four new classics in the effect column** — exactly the commands that make
+  the difference when building real songs: **9xx sample offset** (start a sample
+  mid-way — breakbeat chops; 900 = reuse the last offset), **E9x retrigger**
+  (restrike the note every x ticks — snare rolls), **ECx note cut** (mute from
+  tick x — tight and choppy) and **EDx note delay** (strike only at tick x —
+  shuffle feel, staggered chords). All documented in the help (effect column),
+  and the web player plays them automatically too
 
 - **🟢 Beginner mode (EASY ⇄ PRO):** one button up top switches the whole app
   between **EASY** (newcomer-friendly) and **PRO** (everything). In EASY the grid

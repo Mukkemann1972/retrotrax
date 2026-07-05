@@ -10,7 +10,15 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.79 — MELLOTRON-Charakter: Band-Eiern (Tape-Wow/Flutter) im FX-Sampler
+## Stand: v0.80 — Song-Bau-Effekte: Sample-Offset, Retrigger, Note-Cut, Note-Delay
+
+- **🟢 Vier neue Klassiker in der Effekt-Spalte** — genau die Befehle, die beim
+  Bauen echter Songs den Unterschied machen: **9xx Sample-Offset** (Sample
+  mittendrin starten — Breakbeat-Chops; 900 = letzten Offset wiederverwenden),
+  **E9x Retrigger** (Note alle x Ticks neu anschlagen — Snare-Wirbel),
+  **ECx Note-Cut** (ab Tick x stumm — knackig abgehackt) und **EDx Note-Delay**
+  (Anschlag erst bei Tick x — Shuffle-Gefühl, versetzte Akkorde). Alles in der
+  Hilfe (Effekt-Spalte) erklärt, und der Web-Player spielt sie automatisch mit
 
 - **🟢 Anfänger-Modus (EINFACH ⇄ PROFI):** ein Knopf oben schaltet das ganze
   Programm zwischen **EINFACH** (einsteigerfreundlich) und **PROFI** (alles) um.

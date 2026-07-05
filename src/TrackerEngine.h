@@ -529,6 +529,13 @@ private:
         int    voiceIdx = 0; // fuer Panorama beim Lautstaerke-Update
         int    note = 60;    // aktuelle Note (Basis fuer Arpeggio)
         int    vibPhase = 0; // Vibrato-Phasenzaehler (0..63)
+        // --- EDx Note-Delay: Anschlag wartet bis Tick x ---
+        int    delayTick   = 0;  // 0 = nichts wartet
+        int    pendingNote = -1; // kNoteOff = verzoegertes Note-Aus
+        int    pendingInst = -1;
+        int    pendingVol  = -1;
+        // --- 9xx Sample-Offset: gemerkter Startpunkt (900 = letzten wiederverwenden) ---
+        int    lastOffset  = 0;  // in Samples (Param * 256)
     };
 
     // Amiga-Stereo: Spuren abwechselnd leicht nach links/rechts (LRRL wie ProTracker);
@@ -657,10 +664,26 @@ private:
             // Tone-Portamento (3xx) schlaegt die Note NICHT neu an, sondern gleitet hin.
             const bool tonePorta = (c.effect == 0x3);
 
-            if (c.note == kNoteOff)
+            // EDx Note-Delay: Anschlag (oder Note-Aus) wartet bis Tick x.
+            const bool noteDelay = (c.effect == 0xE
+                                    && ((c.effectParam >> 4) & 0xF) == 0xD
+                                    && (c.effectParam & 0xF) > 0);
+
+            if (noteDelay && (c.note >= 0 || c.note == kNoteOff))
+            {
+                v.delayTick   = c.effectParam & 0xF;
+                v.pendingNote = c.note;
+                v.pendingInst = c.instrument;
+                v.pendingVol  = c.volume;
+            }
+            else if (c.note == kNoteOff)
                 releaseVoice (v);
             else if (c.note >= 0 && ! tonePorta)
+            {
                 triggerVoice (t, c.note, c.instrument, c.volume);
+                if (c.effect == 0x9)          // Sample-Offset: mittendrin starten
+                    applySampleOffset (v, c.effectParam);
+            }
 
             applyRowEffect (t, c); // Cxx/Fxx/3xx-Ziel: einmal pro Zeile (Tick 0)
 
@@ -772,6 +795,20 @@ private:
         panGains (v.voiceIdx, v.vol, v.gainL, v.gainR);
     }
 
+    // 9xx Sample-Offset: frisch angeschlagenes Sample bei Param*256 Samples
+    // starten (Breakbeat-Chops). 900 verwendet den zuletzt gemerkten Offset
+    // der Spur wieder (klassisches Tracker-Verhalten). Synth-Stimmen: wirkungslos.
+    void applySampleOffset (Voice& v, int param)
+    {
+        if (! v.active || v.inst == nullptr || v.inst->kind != Instrument::Kind::Sample)
+            return;
+        if (param > 0)
+            v.lastOffset = param * 256;
+        const int len = v.inst->data.getNumSamples();
+        if (v.lastOffset > 0 && len > 2)
+            v.pos = (double) juce::jmin (v.lastOffset, len - 2);
+    }
+
     // Einmal-pro-Zeile-Effekte (am Tick 0 ausgewertet).
     void applyRowEffect (int t, const Cell& c)
     {
@@ -799,18 +836,42 @@ private:
         }
     }
 
-    // Pro-Tick-Effekte (Arpeggio, Slides, Portamento, Vibrato, Lautstaerke-Slide).
+    // Pro-Tick-Effekte (Arpeggio, Slides, Portamento, Vibrato, Lautstaerke-Slide,
+    // Retrigger/Note-Cut/Note-Delay).
     void applyTickEffects (int tick)
     {
         for (int t = 0; t < kTracks; ++t)
         {
             auto& v = voices[t];
-            if (! v.active || v.inst == nullptr)
-                continue;
 
             const int p  = v.effectParam;
             const int px = (p >> 4) & 0xF; // obere Hex-Stelle
             const int py =  p       & 0xF; // untere Hex-Stelle
+
+            // EDx: verzoegerte Note jetzt ausloesen - auch wenn die Stimme gerade
+            // leer ist (deshalb VOR der active-Pruefung).
+            if (v.delayTick > 0 && tick == v.delayTick)
+            {
+                v.delayTick = 0;
+                if (v.pendingNote == kNoteOff)
+                    releaseVoice (v);
+                else if (v.pendingNote >= 0)
+                    triggerVoice (t, v.pendingNote, v.pendingInst, v.pendingVol);
+                v.pendingNote = -1;
+            }
+
+            // E9x: Note neu anschlagen (Snare-Wirbel) - Instrument bleibt gemerkt,
+            // darum klappt das auch, wenn das Sample schon ausgelaufen ist.
+            if (v.effect == 0xE && px == 0x9 && py > 0 && tick > 0
+                && (tick % py) == 0 && v.inst != nullptr)
+                startVoice (t, v.note, v.inst, (int) std::lround (v.vol * 64.0f));
+
+            if (! v.active || v.inst == nullptr)
+                continue;
+
+            // ECx: Note-Cut - ab Tick x stumm (die Zeile bleibt sonst unveraendert).
+            if (v.effect == 0xE && px == 0xC && tick == py)
+                setVoiceVolume (v, 0);
 
             // Effekte, die die Grund-Tonhoehe / Lautstaerke dauerhaft veraendern
             // (nur an den Zwischenticks, nicht am Zeilenanfang).
