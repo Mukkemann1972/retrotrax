@@ -143,6 +143,7 @@
 
     <div class="row">
       <label class="file">📂 Song wählen…<input id="file" type="file" multiple accept=".retrotrax,.xml,.mdat,.tfmx,.tfx,.tfm,.smpl,.sam"></label>
+      <button id="demo" disabled>🎵 Demo anhören</button>
       <button id="play" class="play" disabled>▶︎ Abspielen</button>
       <button id="stop" disabled>■ Stopp</button>
       <div class="vol">🔊<input id="vol" type="range" min="0" max="100" value="80"></div>
@@ -161,6 +162,7 @@
 (async () => {
   const statusEl = document.getElementById('status');
   const fileEl   = document.getElementById('file');
+  const demoEl   = document.getElementById('demo');
   const playEl   = document.getElementById('play');
   const stopEl   = document.getElementById('stop');
   const volEl    = document.getElementById('vol');
@@ -190,7 +192,8 @@
 
   try {
     Module = await RtxModule();                 // WASM laden (MODULARIZE)
-    set('Bereit. Wähle einen .retrotrax-Song.', 'ok');
+    demoEl.disabled = false;
+    set('Bereit. Wähle einen .retrotrax-Song – oder hör direkt in die Demo rein.', 'ok');
   } catch (e) {
     set('FEHLER beim Laden der Engine: ' + e, 'err');
     return;
@@ -428,19 +431,13 @@
   const isTfmx = (bytes) => bytes.length >= 4 &&
       bytes[0]===0x54 && bytes[1]===0x46 && bytes[2]===0x4D && bytes[3]===0x58; // "TFMX"
 
-  // ── Datei laden ─────────────────────────────────────────────────────
-  fileEl.addEventListener('change', async () => {
-    const files = [...fileEl.files];
-    if (!files.length) return;
+  // ── Song laden (gemeinsamer Weg für Dateiauswahl UND Demo-Knopf) ────
+  async function loadBuffers (bufs) {
     stopPlayback();
     destroyStream();
     audioBuffer = null; pausedAt = 0;
-    set('Lese…', 'busy');
     try {
       await ensureAudio();
-      const bufs = await Promise.all(files.map(async f =>
-        ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
-
       let label, info, dur, durPrefix = '';
       if (canStream) {                            // Streaming: Start sofort
         const s = openStream(bufs);
@@ -471,8 +468,34 @@
       audioBuffer = null; playEl.disabled = true; titleEl.textContent = '';
       tlenEl.textContent = '0:00';
       set('FEHLER: ' + e.message, 'err');
+      throw e;
+    }
+  }
+
+  fileEl.addEventListener('change', async () => {
+    const files = [...fileEl.files];
+    if (!files.length) return;
+    set('Lese…', 'busy');
+    const bufs = await Promise.all(files.map(async f =>
+      ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+    await loadBuffers(bufs).catch(() => {});
+  });
+
+  // ── Demo-Song: liegt als songs/*.retrotrax neben dem Player ─────────
+  const DEMO = { file: 'songs/startrekker-groove.retrotrax', title: 'Startrekker Groove' };
+  demoEl.addEventListener('click', async () => {
+    set('Hole Demo-Song…', 'busy');
+    try {
+      const resp = await fetch(DEMO.file);
+      if (!resp.ok) throw new Error('Demo-Song nicht gefunden (' + resp.status + ')');
+      const bytes = new Uint8Array(await resp.arrayBuffer());
+      await loadBuffers([{ name: DEMO.title, bytes }]);
+      if (!playEl.disabled && !playing) playEl.click();   // Demo startet direkt
+    } catch (e) {
+      set('FEHLER: ' + e.message, 'err');
     }
   });
+  if (location.hash === '#demo') demoEl.click();  // Link direkt zur Demo
 
   // ── Transport (bedient beide Wege) ──────────────────────────────────
   function stopPlayback () {
