@@ -913,23 +913,35 @@ private:
     // VU-Spitzenpegel einer Spur hochziehen (max im aktuellen Block).
     void bumpTrackLevel (int vi, float pk)
     {
+        if (! trackAudible (vi))
+            return; // stumme Spur zeigt keinen Pegel
         if (vi >= 0 && vi < kTracks && pk > trackLevel[vi].load (std::memory_order_relaxed))
             trackLevel[vi].store (pk, std::memory_order_relaxed);
     }
 
     void render (juce::AudioBuffer<float>& buffer, int offset, int num)
     {
-        const int outCh = buffer.getNumChannels();
+        bool scratchReady = false;
         for (auto& v : voices)
         {
             if (! v.active || v.inst == nullptr)
                 continue;
 
-            // Solo/Mute: eine stumme bzw. nicht ge-solote Spur wird nicht hoerbar
-            // gemacht - der Sequencer (Tick/Zeile) laeuft aber unveraendert weiter,
-            // sodass die Spur beim Aufheben sofort wieder an der richtigen Stelle ist.
-            if (! trackAudible (v.voiceIdx))
-                continue;
+            // Solo/Mute: eine stumme bzw. nicht ge-solote Spur rechnet ganz normal
+            // weiter (Position, Huellkurve, Ausblendung), rendert aber in einen
+            // Wegwerf-Puffer. Sonst friert die Stimme mitten in der Note ein und
+            // spielt beim Aufheben einen veralteten Rest zur falschen Zeit weiter.
+            const bool audible = trackAudible (v.voiceIdx);
+            if (! audible && ! scratchReady)
+            {
+                if (muteScratch.getNumChannels() < buffer.getNumChannels()
+                    || muteScratch.getNumSamples() < offset + num)
+                    muteScratch.setSize (buffer.getNumChannels(), offset + num);
+                muteScratch.clear();
+                scratchReady = true;
+            }
+            juce::AudioBuffer<float>& out = audible ? buffer : muteScratch;
+            const int outCh = out.getNumChannels();
 
             // Vorhoer-Note nach Ablauf der Gate-Zeit automatisch loslassen.
             if (v.gate > 0)
@@ -945,12 +957,12 @@ private:
             if (v.inst->kind == Instrument::Kind::Synth)
             {
                 if (v.inst->engine == Instrument::Engine::RealChip)
-                    renderSynthChip (buffer, v, offset, num, outCh);
+                    renderSynthChip (out, v, offset, num, outCh);
                 else
-                    renderSynthClassic (buffer, v, offset, num, outCh);
+                    renderSynthClassic (out, v, offset, num, outCh);
             }
             else
-                renderSample (buffer, v, offset, num, outCh);
+                renderSample (out, v, offset, num, outCh);
         }
     }
 
@@ -1428,6 +1440,10 @@ private:
     }
 
     Voice voices[kTracks + 1]; // +1 = Vorhoer-Stimme
+
+    // Wegwerf-Puffer fuer stumme Spuren: sie rendern hier hinein, damit ihr
+    // Zustand (Position/Huellkurve) normal weiterlaeuft, ohne hoerbar zu sein.
+    juce::AudioBuffer<float> muteScratch;
     SidChip sidChips[kTracks + 1]; // ein echter reSIDfp-Chip pro Stimme (inkl. Vorhoeren)
     std::unique_ptr<Instrument> preview; // Sample der ST-Disks-Vorschau
     std::unique_ptr<Instrument> kitPads[kPads]; // Drum-Kit: 16 Pads (eigene Samples)
