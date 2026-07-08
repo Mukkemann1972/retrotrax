@@ -13,8 +13,9 @@ gebaut; `player.html` rendert einen Song und spielt ihn über WebAudio.
 ## Nativ prüfen (jederzeit, ohne Emscripten)
 ```bash
 g++ -std=c++17 -O2 -DRETROTRAX_NO_JUCE -DHAVE_CXX17 -I src -I libs/residfp \
+    -I libs/tfmxdecoder \
     tools/rtx_wasm/rtx_wasm.cpp tools/rtx_wasm/native_test.cpp \
-    build/libresidfp.a -lpthread -lz -o build/rtx_wasm_test
+    build/libresidfp.a build/libtfmxdecoder.a -lpthread -lz -o build/rtx_wasm_test
 ./build/rtx_wasm_test tools/rtx_cli/test_song.retrotrax
 ```
 (Verifiziert: Synth- und Sample-Songs rendern identisch zur CLI.)
