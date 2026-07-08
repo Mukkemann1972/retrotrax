@@ -529,6 +529,16 @@ private:
         int    voiceIdx = 0; // fuer Panorama beim Lautstaerke-Update
         int    note = 60;    // aktuelle Note (Basis fuer Arpeggio)
         int    vibPhase = 0; // Vibrato-Phasenzaehler (0..63)
+        // Gemerkte Effekt-Parameter (klassisch: 300/400/5xy/6xy laufen mit den
+        // zuletzt gesetzten Werten weiter, die Spur vergisst sie nicht).
+        int    vibSpeed   = 0; // Vibrato-Tempo (4xy: x)
+        int    vibDepth   = 0; // Vibrato-Tiefe (4xy: y)
+        int    portaSpeed = 0; // Tone-Portamento-Tempo (3xx)
+        // --- 7xy Tremolo: Lautstaerke wobbelt um v.vol, ohne sie zu veraendern ---
+        int    tremPhase  = 0; // Phasenzaehler (0..63)
+        int    tremSpeed  = 0; // gemerktes Tempo (7xy: x)
+        int    tremDepth  = 0; // gemerkte Tiefe (7xy: y)
+        bool   tremActive = false; // Pegel ist ausgelenkt -> beim naechsten Tick ohne 7xy zuruecksetzen
         // --- EDx Note-Delay: Anschlag wartet bis Tick x ---
         int    delayTick   = 0;  // 0 = nichts wartet
         int    pendingNote = -1; // kNoteOff = verzoegertes Note-Aus
@@ -661,8 +671,8 @@ private:
             v.effect      = c.effect;
             v.effectParam = c.effectParam;
 
-            // Tone-Portamento (3xx) schlaegt die Note NICHT neu an, sondern gleitet hin.
-            const bool tonePorta = (c.effect == 0x3);
+            // Tone-Portamento (3xx, 5xy) schlaegt die Note NICHT neu an, sondern gleitet hin.
+            const bool tonePorta = (c.effect == 0x3 || c.effect == 0x5);
 
             // EDx Note-Delay: Anschlag (oder Note-Aus) wartet bis Tick x.
             const bool noteDelay = (c.effect == 0xE
@@ -722,6 +732,7 @@ private:
         v.step        = v.baseStep;
         v.portaTarget = v.baseStep;
         v.vibPhase    = 0;
+        v.tremPhase   = 0;
         // Tape-Wow: jede Note startet mit eigener Phase (sonst eiern alle im Gleichtakt) -
         // deterministisch aus der Note abgeleitet, damit es reproduzierbar bleibt.
         v.wowPhase    = std::fmod ((double) note * 1.94161, juce::MathConstants<double>::twoPi);
@@ -830,6 +841,14 @@ private:
             case 0x3: // Tone-Portamento: Ziel ist die Note dieser Zeile
                 if (c.note >= 0 && v.inst != nullptr)
                     v.portaTarget = stepForNote (v.inst, c.note);
+                if (c.effectParam > 0)
+                    v.portaSpeed = c.effectParam; // 300 gleitet mit dem gemerkten Tempo weiter
+                break;
+
+            case 0x5: // Porta + Lautstaerke-Slide: neue Note wird neues Gleitziel,
+                      // das Tempo bleibt das zuletzt per 3xx gesetzte
+                if (c.note >= 0 && v.inst != nullptr)
+                    v.portaTarget = stepForNote (v.inst, c.note);
                 break;
 
             default: break;
@@ -881,14 +900,14 @@ private:
                     v.baseStep *= std::pow (2.0, (p / 64.0) / 12.0);
                 else if (v.effect == 0x2)   // Slide runter
                     v.baseStep *= std::pow (2.0, -(p / 64.0) / 12.0);
-                else if (v.effect == 0x3)   // Tone-Portamento Richtung Ziel
-                {
-                    const double r = std::pow (2.0, (p / 64.0) / 12.0);
+                else if (v.effect == 0x3 || v.effect == 0x5) // Tone-Portamento Richtung Ziel
+                {                                            // (5xy: mit gemerktem Tempo)
+                    const double r = std::pow (2.0, (v.portaSpeed / 64.0) / 12.0);
                     if (v.baseStep < v.portaTarget) v.baseStep = juce::jmin (v.portaTarget, v.baseStep * r);
                     else                            v.baseStep = juce::jmax (v.portaTarget, v.baseStep / r);
                 }
-                else if (v.effect == 0xA)   // Lautstaerke-Slide: x hoch, y runter
-                    setVoiceVolume (v, (int) std::lround (v.vol * 64.0) + px - py);
+                if (v.effect == 0xA || v.effect == 0x5 || v.effect == 0x6) // Lautstaerke-Slide:
+                    setVoiceVolume (v, (int) std::lround (v.vol * 64.0) + px - py); // x hoch, y runter
             }
 
             // Step jede Tick frisch aus baseStep; Arpeggio/Vibrato legen einen
@@ -901,11 +920,35 @@ private:
                 const int off = sel == 0 ? 0 : (sel == 1 ? px : py);
                 v.step = stepForNote (v.inst, v.note + off);
             }
-            else if (v.effect == 0x4) // Vibrato: x = Tempo, y = Tiefe
-            {
-                v.vibPhase = (v.vibPhase + px) & 0x3F;
+            else if (v.effect == 0x4 || v.effect == 0x6) // Vibrato: x = Tempo, y = Tiefe
+            {                                            // (6xy: mit gemerkten Werten weiter)
+                if (v.effect == 0x4)
+                {
+                    if (px > 0) v.vibSpeed = px;
+                    if (py > 0) v.vibDepth = py;
+                }
+                v.vibPhase = (v.vibPhase + v.vibSpeed) & 0x3F;
                 const double s = std::sin (v.vibPhase * juce::MathConstants<double>::twoPi / 64.0);
-                v.step = v.baseStep * std::pow (2.0, (s * (py / 16.0)) / 12.0);
+                v.step = v.baseStep * std::pow (2.0, (s * (v.vibDepth / 16.0)) / 12.0);
+            }
+
+            // 7xy Tremolo: wie Vibrato, nur auf die Lautstaerke. Der Pegel pendelt
+            // sinusfoermig um v.vol; die Grund-Lautstaerke selbst bleibt unberuehrt,
+            // damit sie nach dem Effekt (oder bei Cxx/Axy) wieder stimmt.
+            if (v.effect == 0x7)
+            {
+                if (px > 0) v.tremSpeed = px;
+                if (py > 0) v.tremDepth = py;
+                v.tremPhase = (v.tremPhase + v.tremSpeed) & 0x3F;
+                const double s = std::sin (v.tremPhase * juce::MathConstants<double>::twoPi / 64.0);
+                const float eff = juce::jlimit (0.0f, 1.0f, v.vol + (float) (s * v.tremDepth / 16.0));
+                panGains (v.voiceIdx, eff, v.gainL, v.gainR);
+                v.tremActive = true;
+            }
+            else if (v.tremActive) // Effekt zu Ende -> Pegel zurueck auf den Grundwert
+            {
+                v.tremActive = false;
+                panGains (v.voiceIdx, v.vol, v.gainL, v.gainR);
             }
         }
     }
