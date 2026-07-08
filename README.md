@@ -10,7 +10,7 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.80 — song-building effects: sample offset, retrigger, note cut, note delay
+## Status: v0.81 — fix: muted tracks resume cleanly
 
 - **🟢 Four new classics in the effect column** — exactly the commands that make
   the difference when building real songs: **9xx sample offset** (start a sample

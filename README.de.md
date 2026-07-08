@@ -10,7 +10,7 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.80 — Song-Bau-Effekte: Sample-Offset, Retrigger, Note-Cut, Note-Delay
+## Stand: v0.81 — Fix: stumme Spuren laufen beim Wiedereinschalten sauber weiter
 
 - **🟢 Vier neue Klassiker in der Effekt-Spalte** — genau die Befehle, die beim
   Bauen echter Songs den Unterschied machen: **9xx Sample-Offset** (Sample
