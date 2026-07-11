@@ -851,6 +851,32 @@ private:
                     v.portaTarget = stepForNote (v.inst, c.note);
                 break;
 
+            case 0xE: // Erweiterte Effekte, die EINMAL pro Zeile wirken (Fine-Slides).
+            {         // Die "feinen" Geschwister von 1xx/2xx/Axy: nicht pro Tick,
+                      // sondern nur einmal am Zeilenanfang um den kleinen Betrag y.
+                const int px = (c.effectParam >> 4) & 0xF;
+                const int py =  c.effectParam       & 0xF;
+                switch (px)
+                {
+                    case 0x1: // E1x Fine Porta hoch: Tonhoehe einmal um y/64 Halbtoene anheben
+                        v.baseStep *= std::pow (2.0, (py / 64.0) / 12.0);
+                        break;
+                    case 0x2: // E2x Fine Porta runter
+                        v.baseStep *= std::pow (2.0, -(py / 64.0) / 12.0);
+                        break;
+                    case 0xA: // EAx Fine Volume-Slide hoch: Lautstaerke einmal um y anheben
+                        if (v.active)
+                            setVoiceVolume (v, (int) std::lround (v.vol * 64.0) + py);
+                        break;
+                    case 0xB: // EBx Fine Volume-Slide runter
+                        if (v.active)
+                            setVoiceVolume (v, (int) std::lround (v.vol * 64.0) - py);
+                        break;
+                    default: break; // E9x/ECx/EDx sind Pro-Tick-Effekte, hier nichts tun
+                }
+                break;
+            }
+
             default: break;
         }
     }
