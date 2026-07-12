@@ -187,7 +187,10 @@ public:
         sampleRate = newSampleRate;
         samplesUntilTick = 0.0;
         for (auto& v : voices)
+        {
             v.active = false;
+            v.pan = -2.0f; // Panorama-Vorgabe zuruecksetzen (LRRL)
+        }
         for (auto& c : sidChips)
             c.prepare (newSampleRate); // echte reSIDfp-Chips an die Ausgaberate anpassen
     }
@@ -250,7 +253,10 @@ public:
         const juce::ScopedLock sl (lock);
         playing = false;
         for (auto& v : voices)
+        {
             v.active = false;
+            v.pan = -2.0f; // Panorama zurueck auf Amiga-LRRL-Vorgabe; 8xx wird beim Abspielen neu gesetzt
+        }
     }
 
     // Instrument tauschen; Stimmen, die noch auf dem alten Sample spielen, werden gestoppt.
@@ -527,6 +533,7 @@ private:
         int    effect = -1;
         int    effectParam = 0;
         int    voiceIdx = 0; // fuer Panorama beim Lautstaerke-Update
+        float  pan = -2.0f;  // 8xx-Panorama: -1 links .. +1 rechts; -2 = ungesetzt -> Amiga-LRRL-Vorgabe (bleibt ueber Noten erhalten)
         int    note = 60;    // aktuelle Note (Basis fuer Arpeggio)
         int    vibPhase = 0; // Vibrato-Phasenzaehler (0..63)
         // Gemerkte Effekt-Parameter (klassisch: 300/400/5xy/6xy laufen mit den
@@ -550,14 +557,19 @@ private:
 
     // Amiga-Stereo: Spuren abwechselnd leicht nach links/rechts (LRRL wie ProTracker);
     // die Vorhoer-/MIDI-Stimme (voiceIdx == kTracks) bleibt mittig. vol = 0..1.
-    static void panGains (int voiceIdx, float vol, float& gL, float& gR)
+    // pan: -1..+1 setzt das Panorama (8xx). pan <= -1.5 = ungesetzt -> LRRL-Vorgabe.
+    static void panGains (int voiceIdx, float pan, float vol, float& gL, float& gR)
     {
-        float pan = 0.0f; // -1 = links, +1 = rechts
-        if (voiceIdx >= 0 && voiceIdx < kTracks)
+        if (pan <= -1.5f) // ungesetzt: klassisches Amiga-LRRL je nach Spur
         {
-            static const float pattern[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-            pan = pattern[voiceIdx % 4] * 0.40f; // 40 % Breite, angenehm auch im Kopfhoerer
+            pan = 0.0f; // -1 = links, +1 = rechts
+            if (voiceIdx >= 0 && voiceIdx < kTracks)
+            {
+                static const float pattern[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+                pan = pattern[voiceIdx % 4] * 0.40f; // 40 % Breite, angenehm auch im Kopfhoerer
+            }
         }
+        pan = juce::jlimit (-1.0f, 1.0f, pan);
         const float angle = (pan + 1.0f) * 0.25f * juce::MathConstants<float>::pi;
         gL = std::cos (angle) * vol; // gleiche Leistung links/rechts (Mitte = 0.707)
         gR = std::sin (angle) * vol;
@@ -739,7 +751,7 @@ private:
         v.flutPhase   = 0.0;
         v.voiceIdx    = voiceIdx;
         v.vol         = (volume >= 0 ? juce::jmin (volume, 64) : 64) / 64.0f;
-        panGains (voiceIdx, v.vol, v.gainL, v.gainR);
+        panGains (voiceIdx, v.pan, v.vol, v.gainL, v.gainR);
         v.fadeOut = 0;
         v.gate    = -1; // nur das Vorhoeren setzt ein automatisches Note-Aus
         if (synth)
@@ -803,7 +815,7 @@ private:
     void setVoiceVolume (Voice& v, int vol0to64)
     {
         v.vol = juce::jlimit (0, 64, vol0to64) / 64.0f;
-        panGains (v.voiceIdx, v.vol, v.gainL, v.gainR);
+        panGains (v.voiceIdx, v.pan, v.vol, v.gainL, v.gainR);
     }
 
     // 9xx Sample-Offset: frisch angeschlagenes Sample bei Param*256 Samples
@@ -836,6 +848,14 @@ private:
                     speed = c.effectParam;
                 else if (c.effectParam >= 0x20)
                     bpm = (float) c.effectParam;
+                break;
+
+            case 0x8: // 8xx Panning: 00 = links, 80 = Mitte, FF = rechts.
+                      // Setzt das Panorama der Spur dauerhaft (bleibt fuer die
+                      // naechsten Noten erhalten), ueberschreibt das Amiga-LRRL.
+                v.pan = juce::jlimit (-1.0f, 1.0f, (c.effectParam - 128) / 128.0f);
+                if (v.active)
+                    panGains (v.voiceIdx, v.pan, v.vol, v.gainL, v.gainR);
                 break;
 
             case 0x3: // Tone-Portamento: Ziel ist die Note dieser Zeile
@@ -968,13 +988,13 @@ private:
                 v.tremPhase = (v.tremPhase + v.tremSpeed) & 0x3F;
                 const double s = std::sin (v.tremPhase * juce::MathConstants<double>::twoPi / 64.0);
                 const float eff = juce::jlimit (0.0f, 1.0f, v.vol + (float) (s * v.tremDepth / 16.0));
-                panGains (v.voiceIdx, eff, v.gainL, v.gainR);
+                panGains (v.voiceIdx, v.pan, eff, v.gainL, v.gainR);
                 v.tremActive = true;
             }
             else if (v.tremActive) // Effekt zu Ende -> Pegel zurueck auf den Grundwert
             {
                 v.tremActive = false;
-                panGains (v.voiceIdx, v.vol, v.gainL, v.gainR);
+                panGains (v.voiceIdx, v.pan, v.vol, v.gainL, v.gainR);
             }
         }
     }

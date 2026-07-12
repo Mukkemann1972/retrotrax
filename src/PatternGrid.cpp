@@ -299,6 +299,8 @@ juce::String PatternGrid::effectHelp (int effect, int param)
                                        "tone portamento: glide to the new note");
         case 0x4: return pre + loc::t ("Vibrato: Tempo ", "vibrato: speed ") + juce::String (x)
                              + loc::t (", Tiefe ", ", depth ") + juce::String (y);
+        case 0x8: return pre + loc::t ("Panorama: 00 = links, 80 = Mitte, FF = rechts",
+                                       "panning: 00 = left, 80 = center, FF = right");
         case 0xA: return pre + loc::t ("Lautstaerke-Slide: +", "volume slide: +") + juce::String (x)
                              + loc::t (" / -", " / -") + juce::String (y) + loc::t (" pro Tick", " per tick");
         case 0xC: return pre + loc::t ("Lautstaerke setzen auf ", "set volume to ")

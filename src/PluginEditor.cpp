@@ -1092,8 +1092,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.82 | Fine-Slides: E1x/E2x Feinstimmung, EAx/EBx feine Lautstaerke",
-                        "v0.82 | fine slides: E1x/E2x fine tune, EAx/EBx fine volume"),
+    g.drawText (loc::t ("v0.83 | 8xx Panning: Spur ins Stereo legen (00 links, 80 Mitte, FF rechts)",
+                        "v0.83 | 8xx panning: place a track in stereo (00 left, 80 center, FF right)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
