@@ -233,6 +233,10 @@ public:
         songLoopCount = 0; // neuer Durchlauf beginnt (fuer den Offline-Export)
         pendingBreakRow = -1; // Pattern-Break/Position-Jump zuruecksetzen
         pendingPosJump  = -1;
+        pendingLoopRow   = -1; // E6x-Sprung und -Marke zuruecksetzen
+        patternLoopRow   = 0;
+        patternLoopCount = 0;
+        rowDelayCount    = 0; // EEx-Zeilenhalt zuruecksetzen
         // Song-Modus: vorn in der Reihenfolge starten. Loop-Modus: aktuelles Pattern.
         if (songMode.load())
         {
@@ -462,6 +466,12 @@ public:
     // wirken beim naechsten Zeilenwechsel (originalgetreue Modul-Wiedergabe).
     int pendingBreakRow = -1; // Dxx: Zielzeile (-1 = keiner)
     int pendingPosJump  = -1; // Bxx: Ziel-Position in der Reihenfolge (-1 = keiner)
+    // --- E6x Pattern-Loop: Zeilen-Bereich mehrfach wiederholen, OHNE Pattern zu wechseln ---
+    int pendingLoopRow   = -1; // E6x: Zielzeile fuer den naechsten Zeilenwechsel (-1 = keiner)
+    int patternLoopRow   = 0;  // E60 markiert hier die Sprungmarke (Start des Loops)
+    int patternLoopCount = 0;  // 0 = kein Loop aktiv; sonst verbleibende Wiederholungen
+    // --- EEx Pattern-Delay: aktuelle Zeile zusaetzliche Tick-Zyklen lang halten ---
+    int rowDelayCount    = 0;  // verbleibende volle Tick-Zyklen, bevor die naechste Zeile drankommt
     // True direkt nach play() im Song-Modus: der allererste Zeilen-Umlauf bleibt
     // bei order[0], statt songPos schon 0->1 hochzuzaehlen (sonst wird das erste
     // Pattern der Reihenfolge uebersprungen).
@@ -618,7 +628,13 @@ private:
         if (++currentTick >= speed.load())
         {
             currentTick = 0;
-            advanceRow();
+            // EEx Pattern-Delay: statt zur naechsten Zeile zu gehen, diesen Tick-
+            // Zyklus noch (rowDelayCount)-mal wiederholen - die Zeile feuert dabei
+            // NICHT neu, nur der Fortschritt zur naechsten Zeile wartet.
+            if (rowDelayCount > 0)
+                --rowDelayCount;
+            else
+                advanceRow();
         }
         applyTickEffects (currentTick);
     }
@@ -637,6 +653,7 @@ private:
                 sp = juce::jlimit (0, juce::jmax (0, orderLen - 1), sp);
                 songPos = sp;
                 playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
+                patternLoopRow = 0; patternLoopCount = 0; // neues Pattern: alte E6x-Marke verfaellt
             }
             // Loop-Modus (ein Pattern): Dxx springt zur Zielzeile im selben Pattern,
             // Bxx faengt vorn an.
@@ -644,7 +661,14 @@ private:
             row = juce::jlimit (0, kRows - 1, row);
             pendingPosJump  = -1;
             pendingBreakRow = -1;
+            pendingLoopRow  = -1; // Bxx/Dxx haben Vorrang vor einem gleichzeitigen E6x
             songStartPending = false; // ein Sprung auf Zeile 0 verbraucht den Start
+        }
+        else if (pendingLoopRow >= 0)
+        {
+            // E6x Pattern-Loop: zurueck zur Marke, GLEICHES Pattern (kein Positions-Wechsel).
+            row = pendingLoopRow;
+            pendingLoopRow = -1;
         }
         else
         {
@@ -669,6 +693,7 @@ private:
                         playPattern = juce::jlimit (0, kMaxPatterns - 1, order[sp]);
                     }
                 }
+                patternLoopRow = 0; patternLoopCount = 0; // neues/umgelaufenes Pattern: E6x-Marke verfaellt
             }
         }
         currentRow = row;
@@ -715,6 +740,29 @@ private:
                 pendingPosJump = juce::jmax (0, c.effectParam);
             else if (c.effect == 0xD)
                 pendingBreakRow = juce::jlimit (0, kRows - 1, c.effectParam);
+            else if (c.effect == 0xE)
+            {
+                const int ex = (c.effectParam >> 4) & 0xF;
+                const int ey =  c.effectParam       & 0xF;
+                if (ex == 0x6) // E6x Pattern-Loop
+                {
+                    if (ey == 0)
+                        patternLoopRow = row; // E60: hier ist die Sprungmarke
+                    else
+                    {
+                        if (patternLoopCount == 0)
+                            patternLoopCount = ey;   // erster Antritt: Wiederholzaehler setzen
+                        else
+                            --patternLoopCount;       // wiederholter Antritt: runterzaehlen
+
+                        if (patternLoopCount > 0)
+                            pendingLoopRow = patternLoopRow; // zurueck zur Marke
+                        // bei 0: normal weiterlaufen, Zaehler bleibt 0 fuer die naechste Nutzung
+                    }
+                }
+                else if (ex == 0xE && ey > 0) // EEx Pattern-Delay: Zeile y Tick-Zyklen laenger halten
+                    rowDelayCount = juce::jmax (rowDelayCount, ey);
+            }
         }
     }
 
@@ -892,7 +940,7 @@ private:
                         if (v.active)
                             setVoiceVolume (v, (int) std::lround (v.vol * 64.0) - py);
                         break;
-                    default: break; // E9x/ECx/EDx sind Pro-Tick-Effekte, hier nichts tun
+                    default: break; // E6x/E9x/ECx/EDx/EEx werden woanders behandelt (advanceRow/applyTickEffects)
                 }
                 break;
             }
