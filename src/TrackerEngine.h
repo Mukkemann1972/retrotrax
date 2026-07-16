@@ -430,8 +430,34 @@ public:
                 samplesUntilTick -= chunk;
             }
             render (buffer, offset, chunk);
+            applyLedFilter (buffer, offset, chunk);
             offset += chunk;
             numSamples -= chunk;
+        }
+    }
+
+    // E0x: fester Ein-Pol-Tiefpass auf der fertigen Summe, wie das Amiga-"LED"-
+    // Filter am Audioausgang. Feste Grenzfrequenz, keine Resonanz - genau der
+    // dumpfe/matte Charakter, den man am echten Amiga per Taste umschaltete.
+    void applyLedFilter (juce::AudioBuffer<float>& buffer, int offset, int numSamples)
+    {
+        if (! ledFilterOn.load() || numSamples <= 0)
+            return;
+        constexpr float fc = 4900.0f; // ueblicher Naeherungswert fuer den Amiga-LED-Filter
+        const float rc = 1.0f / (juce::MathConstants<float>::twoPi * fc);
+        const float dt = 1.0f / (float) sampleRate;
+        const float a  = dt / (rc + dt);
+        const int numCh = juce::jmin (2, buffer.getNumChannels());
+        for (int ch = 0; ch < numCh; ++ch)
+        {
+            float* data = buffer.getWritePointer (ch, offset);
+            float z = ledFilterZ[ch];
+            for (int i = 0; i < numSamples; ++i)
+            {
+                z += a * (data[i] - z);
+                data[i] = z;
+            }
+            ledFilterZ[ch] = z;
         }
     }
 
@@ -477,6 +503,14 @@ public:
     // bei order[0], statt songPos schon 0->1 hochzuzaehlen (sonst wird das erste
     // Pattern der Reihenfolge uebersprungen).
     bool songStartPending = false;
+
+    // --- E0x LED-Filter: globaler Amiga-"LED"-Tiefpass auf der Summe ----------
+    // Auf echter Amiga-Hardware sass ein einziger Analogfilter hinter ALLEN
+    // Kanaelen (kein Pro-Spur-Effekt, anders als der SID-Filter oben) - E0x
+    // schaltet ihn fuer den gesamten Mix. Default aus (transparent), bis ein
+    // E0x im Pattern ihn einschaltet.
+    std::atomic<bool> ledFilterOn { false };
+    float ledFilterZ[2] = { 0.0f, 0.0f }; // Ein-Pol-Tiefpass-Speicher pro Kanal, blockuebergreifend
 
     // --- Solo / Mute pro Spur (wie in jeder DAW und jedem alten Tracker) ------
     // Reine Wiedergabe-Schalter: der Sequencer laeuft weiter, nur der Ton einer
@@ -927,6 +961,10 @@ private:
                 const int py =  c.effectParam       & 0xF;
                 switch (px)
                 {
+                    case 0x0: // E0x LED-Filter: 0 = aus, ungleich 0 = an (wirkt auf die ganze Summe)
+                        ledFilterOn.store (py != 0);
+                        break;
+
                     case 0x1: // E1x Fine Porta hoch: Tonhoehe einmal um y/64 Halbtoene anheben
                         v.baseStep *= std::pow (2.0, (py / 64.0) / 12.0);
                         break;
