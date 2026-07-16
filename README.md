@@ -10,9 +10,21 @@ A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker I
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.81 — fix: muted tracks resume cleanly
+## Status: v0.85 — MIDI velocity + humanize: real touch counts now
 
-- **🟢 Four new classics in the effect column** — exactly the commands that make
+- **🟢 MIDI velocity + humanize (v0.85):** a connected MIDI keyboard/pad
+  controller used to be completely ignored (always full volume) — now real
+  velocity counts, both while previewing and while live-recording (REC). For
+  finger-drumming on a computer keyboard (which has no real touch), the drum
+  sampler gets a new **HUMANIZE** switch: a light random velocity variation
+  instead of always stubbornly full volume
+- **🟢 E6x pattern loop + EEx pattern delay (v0.84):** repeat or hold specific
+  pattern rows on purpose — classic break rows and stutter effects
+- **🟢 8xx panning (v0.83):** stereo panorama per track, 00 = left, 80 = centre,
+  FF = right — overrides the fixed Amiga LRRL wherever you want it
+- **🟢 Fine-slides (v0.82):** E1x/E2x fine pitch and EAx/EBx fine volume, act
+  once per row instead of per tick — the "quiet" siblings of the slides
+- Four new classics in the effect column — exactly the commands that make
   the difference when building real songs: **9xx sample offset** (start a sample
   mid-way — breakbeat chops; 900 = reuse the last offset), **E9x retrigger**
   (restrike the note every x ticks — snare rolls), **ECx note cut** (mute from

@@ -202,7 +202,30 @@ void RetroTraxProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     {
         const auto msg = metadata.getMessage();
         if (msg.isNoteOn())
-            engine.audition (msg.getNoteNumber(), currentInstrument.load());
+        {
+            // Echte Anschlagstaerke vom MIDI-Keyboard/Pad-Controller (0..64 statt
+            // immer voll) - wirkt beim Vorhoeren UND, waehrend REC laeuft, auch
+            // auf die aufgenommene Note im Pattern (wie ein mitgeschnittenes Spiel).
+            const int velocity = juce::jlimit (1, 64, (int) juce::roundToInt (msg.getFloatVelocity() * 64.0f));
+            const int note = msg.getNoteNumber();
+            const int inst = currentInstrument.load();
+            engine.audition (note, inst, -1, velocity);
+            if (engine.playing.load() && engine.recording.load())
+            {
+                const int rrow = engine.currentRow.load();
+                const int ppat = engine.displayPattern();
+                const int track = cursorTrack.load();
+                if (rrow >= 0 && rrow < TrackerEngine::kRows
+                    && ppat >= 0 && ppat < TrackerEngine::kMaxPatterns
+                    && track >= 0 && track < TrackerEngine::kTracks)
+                {
+                    auto& cell = engine.patterns[ppat][rrow][track];
+                    cell.note       = juce::jlimit (0, TrackerEngine::kMaxNote, note);
+                    cell.instrument = inst;
+                    cell.volume     = velocity;
+                }
+            }
+        }
         else if (msg.isChannelPressure())
             engine.midiPressure (msg.getChannelPressureValue() / 127.0f);
         else if (msg.isAftertouch())

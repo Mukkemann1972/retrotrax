@@ -12,6 +12,8 @@ PatternGrid::PatternGrid (RetroTraxProcessor& processor)
 
 void PatternGrid::timerCallback()
 {
+    proc.cursorTrack.store (cursorTrack); // fuers Audio-Thread-MIDI (Live-Aufnahme)
+
     const bool playing = engine.playing.load();
 
     // Start des Abspielens: aktuelle Bearbeitungsstelle merken, damit der Cursor
@@ -416,6 +418,11 @@ void PatternGrid::enterDrum (int pad)
     if (pad < 0 || pad >= TrackerEngine::kInstruments)
         return;
     engine.audition (60, pad); // Slot = Pad-Index (Kit -> Slots 1-16 vorausgesetzt)
+    // Eine Tastatur kennt keinen echten Anschlag; mit HUMANIZE gibt's stattdessen
+    // eine leichte zufaellige Schwankung statt immer stur voller Lautstaerke.
+    const int humanVol = proc.humanizeVelocity.load()
+        ? 46 + juce::Random::getSystemRandom().nextInt (19) // 46..64
+        : -1;
     if (engine.playing.load())
     {
         if (engine.recording.load())
@@ -428,6 +435,7 @@ void PatternGrid::enterDrum (int pad)
                 auto& cell = engine.patterns[ppat][rrow][cursorTrack];
                 cell.note       = 60;
                 cell.instrument = pad;
+                cell.volume     = humanVol;
             }
         }
         repaint();
@@ -439,6 +447,7 @@ void PatternGrid::enterDrum (int pad)
     auto& cell = engine.cells[cursorRow][cursorTrack];
     cell.note       = 60;
     cell.instrument = pad;
+    cell.volume     = humanVol;
     moveCursor (1, 0);
 }
 

@@ -10,9 +10,21 @@ Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracke
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.81 — Fix: stumme Spuren laufen beim Wiedereinschalten sauber weiter
+## Stand: v0.85 — MIDI-Velocity + Humanize: echter Anschlag zaehlt jetzt
 
-- **🟢 Vier neue Klassiker in der Effekt-Spalte** — genau die Befehle, die beim
+- **🟢 MIDI-Velocity + Humanize (v0.85):** ein angeschlossenes MIDI-Keyboard/
+  Pad-Controller wurde bisher komplett ignoriert (immer volle Lautstaerke) —
+  jetzt zaehlt die echte Anschlagstaerke, sowohl beim Vorhoeren als auch beim
+  Live-Mitschneiden (REC). Fuers Trommeln per Computertastatur (die keinen
+  echten Anschlag kennt) gibt's im Drumsampler den neuen **HUMANIZE**-Schalter:
+  eine leichte zufaellige Velocity-Schwankung statt stur immer voller Lautstaerke
+- **🟢 E6x Pattern-Loop + EEx Pattern-Delay (v0.84):** Zeilen im Pattern gezielt
+  wiederholen oder anhalten — klassische Break-Zeilen und Stotter-Effekte
+- **🟢 8xx Panning (v0.83):** Stereo-Panorama pro Spur, 00 = links, 80 = Mitte,
+  FF = rechts — ueberschreibt das feste Amiga-LRRL, wo gewuenscht
+- **🟢 Fine-Slides (v0.82):** E1x/E2x Feinstimmung und EAx/EBx feine Lautstaerke,
+  wirken einmal pro Zeile statt pro Tick — die "leisen" Geschwister der Slides
+- Vier neue Klassiker in der Effekt-Spalte — genau die Befehle, die beim
   Bauen echter Songs den Unterschied machen: **9xx Sample-Offset** (Sample
   mittendrin starten — Breakbeat-Chops; 900 = letzten Offset wiederverwenden),
   **E9x Retrigger** (Note alle x Ticks neu anschlagen — Snare-Wirbel),

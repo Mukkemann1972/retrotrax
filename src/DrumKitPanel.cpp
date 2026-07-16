@@ -20,6 +20,18 @@ DrumKitPanel::DrumKitPanel (RetroTraxProcessor& processor) : proc (processor)
                     : "Drum input OFF: the keys are normal notes again.");
     };
 
+    addAndMakeVisible (humanizeButton);
+    humanizeButton.setClickingTogglesState (true);
+    humanizeButton.onClick = [this]
+    {
+        const bool on = humanizeButton.getToggleState();
+        proc.humanizeVelocity = on;
+        setHint (on ? "Humanize AN: getippte Drum-Eingabe bekommt leichte Velocity-Schwankung statt immer voller Lautstaerke."
+                    : "Humanize AUS: getippte Drum-Eingabe schreibt wieder immer volle Lautstaerke.",
+                 on ? "Humanize ON: typed drum input gets a light velocity variation instead of always full volume."
+                    : "Humanize OFF: typed drum input writes full volume again.");
+    };
+
     addAndMakeVisible (kitsButton);
     kitsButton.onClick = [this]
     {
@@ -128,6 +140,9 @@ void DrumKitPanel::applyLanguage()
     drumInputButton.setButtonText (loc::t ("DRUM-EINGABE", "DRUM INPUT"));
     drumInputButton.setTooltip (loc::t ("Tasten 1234/QWER/ASDF/YXCV legen die Pads direkt in die Spur (Panel schliessen, dann tippen). Erst ALLE IN SLOTS.",
                                         "Keys 1234/QWER/ASDF/ZXCV put the pads straight into the track (close the panel, then type). Do ALL TO SLOTS first."));
+    humanizeButton.setButtonText (loc::t ("HUMANIZE", "HUMANIZE"));
+    humanizeButton.setTooltip (loc::t ("Getippte Drum-Eingabe bekommt leichte Velocity-Schwankung statt immer voller Lautstaerke (Tastatur kennt keinen echten Anschlag).",
+                                       "Typed drum input gets a light velocity variation instead of always full volume (a keyboard has no real touch)."));
     loadButton.setButtonText   (loc::t ("LADEN", "LOAD"));
     loadButton.setTooltip (loc::t ("Sample-Datei in das gewaehlte Pad laden",
                                    "Load a sample file into the selected pad"));
@@ -168,6 +183,7 @@ void DrumKitPanel::refresh()
         padNames[p]  = name;
     }
     drumInputButton.setToggleState (proc.drumInput.load(), juce::dontSendNotification);
+    humanizeButton.setToggleState (proc.humanizeVelocity.load(), juce::dontSendNotification);
     refreshPadControls();
 }
 
@@ -444,6 +460,8 @@ void DrumKitPanel::resized()
         kitsButton.setBounds (top.removeFromRight (90));
         top.removeFromRight (8);
         drumInputButton.setBounds (top.removeFromRight (150));
+        top.removeFromRight (8);
+        humanizeButton.setBounds (top.removeFromRight (110));
         titleLabel.setBounds (top);
     }
     area.removeFromTop (8);

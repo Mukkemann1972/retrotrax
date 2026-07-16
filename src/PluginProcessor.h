@@ -152,6 +152,12 @@ public:
     std::atomic<int> currentInstrument { 0 };
     std::atomic<int> currentOctave { 5 };
     std::atomic<bool> drumInput { false }; // Drum-Eingabe (Pad-Tasten -> Spur), im Drumsampler geschaltet
+    // Getippte Drum-Eingabe (Tastatur hat keine echte Anschlagstaerke) bekommt bei
+    // AN eine leichte zufaellige Velocity-Schwankung statt immer voller Lautstaerke.
+    std::atomic<bool> humanizeVelocity { false };
+    // Spiegelt PatternGrid::cursorTrack (vom UI-Timer nachgefuehrt), damit auch
+    // eingehendes MIDI im Audio-Thread weiss, in welche Spur live aufgenommen wird.
+    std::atomic<int> cursorTrack { 0 };
 
     // --- Spektrum-Anzeige: Ringpuffer des Ausgangs-Mixes (Mono) -----------------
     // Der Audio-Thread schreibt den fertigen Stereo-Mix (gemittelt) hier hinein;

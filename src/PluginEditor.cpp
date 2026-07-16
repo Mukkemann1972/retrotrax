@@ -1092,8 +1092,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.84 | E6x Pattern-Loop + EEx Pattern-Delay: Zeilen wiederholen/anhalten",
-                        "v0.84 | E6x pattern loop + EEx pattern delay: repeat/hold rows"),
+    g.drawText (loc::t ("v0.85 | MIDI-Velocity + Humanize: echter Anschlag zaehlt jetzt",
+                        "v0.85 | MIDI velocity + humanize: real touch counts now"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

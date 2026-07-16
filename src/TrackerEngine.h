@@ -286,10 +286,11 @@ public:
     // Sofort anspielen (Vorhoeren beim Eintippen / MIDI-Eingang), eigene Extra-Stimme.
     // gateSamples > 0: Note nach dieser Dauer automatisch loslassen (Note-Aus) -
     // so demonstriert das SID-Fenster die ganze Huellkurve inkl. Ausklang.
-    void audition (int note, int instrumentIdx, int gateSamples = -1)
+    // volume: -1 = voll, sonst 0..64 - z.B. echte MIDI-Anschlagstaerke.
+    void audition (int note, int instrumentIdx, int gateSamples = -1, int volume = -1)
     {
         const juce::ScopedLock sl (lock);
-        triggerVoice (kTracks, note, instrumentIdx, -1);
+        triggerVoice (kTracks, note, instrumentIdx, volume);
         voices[kTracks].gate = gateSamples;
     }
 
