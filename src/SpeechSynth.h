@@ -28,8 +28,18 @@ namespace SpeechSynth
     {
         Params p;
         p.character = c;
-        if (c == Character::Sam) { p.pitchHz = 100.0f; p.speed = 1.15f; }
-        else                     { p.pitchHz = 85.0f;  p.speed = 0.95f; }
+        if (c == Character::Sam)
+        {
+            // SAM: kleiner/heller "Vokaltrakt" (hoehere Formanten -> blecherner,
+            // nasaler C64-Chip-Charakter), hoehere Tonlage, etwas engerer Mund.
+            p.pitchHz = 115.0f; p.speed = 1.15f; p.throat = -0.35f; p.mouth = 0.35f;
+        }
+        else
+        {
+            // Narrator: groesserer/dunklerer "Vokaltrakt" (tiefere Formanten ->
+            // wärmerer Amiga-Erzaehler-Charakter), tiefere Tonlage, offenerer Mund.
+            p.pitchHz = 75.0f;  p.speed = 0.95f; p.throat = 0.30f;  p.mouth = 0.60f;
+        }
         return p;
     }
 
@@ -345,6 +355,16 @@ namespace SpeechSynth
         int writePos = 0;
         const float xfadeMs = 6.0f;
         const int xfadeSamples = (int) (xfadeMs * 0.001 * sampleRate);
+        const double totalEstSamples = juce::jmax (1.0, estMs * 0.001 * sampleRate);
+
+        // Formanten-Nachlauf (Amiga-Vorbild: "formant positions move fairly
+        // smoothly as we speak") - ohne das springen f1/f2/f3 an JEDER
+        // Phonem-Grenze hart auf den naechsten Zielwert, das klingt kantig/
+        // schwerer verstaendlich. Ein sanftes Nachziehen (~12ms) glaettet
+        // Uebergaenge zwischen Lauten, ohne Konsonanten zu verwaschen.
+        double f1S = 0.0, f2S = 0.0, f3S = 0.0;
+        bool formantSmoothInit = false;
+        const double formantSmoothCoeff = 1.0 - std::exp (-1.0 / (0.012 * sampleRate));
 
         for (size_t idx = 0; idx < phs.size(); ++idx)
         {
@@ -372,10 +392,18 @@ namespace SpeechSynth
                 f2 = juce::jlimit (400.0f, 3200.0f, f2);
                 f3 = juce::jlimit (1200.0f, 6000.0f, f3);
 
-                const float bwBase = sam ? 70.0f : 110.0f; // SAM enger/blecherner, Narrator weicher
-                r1.set (f1, bwBase * pi.bw, sampleRate);
-                r2.set (f2, (bwBase + 40.0f) * pi.bw, sampleRate);
-                r3.set (f3, (bwBase + 80.0f) * pi.bw, sampleRate);
+                if (! formantSmoothInit) { f1S = f1; f2S = f2; f3S = f3; formantSmoothInit = true; }
+                else
+                {
+                    f1S += (f1 - f1S) * formantSmoothCoeff;
+                    f2S += (f2 - f2S) * formantSmoothCoeff;
+                    f3S += (f3 - f3S) * formantSmoothCoeff;
+                }
+
+                const float bwBase = sam ? 55.0f : 135.0f; // SAM eng/scharf-blechern, Narrator deutlich weicher/runder
+                r1.set ((float) f1S, bwBase * pi.bw, sampleRate);
+                r2.set ((float) f2S, (bwBase + 40.0f) * pi.bw, sampleRate);
+                r3.set ((float) f3S, (bwBase + 80.0f) * pi.bw, sampleRate);
 
                 float exc = 0.0f;
                 if (pi.type != PhType::Silence && pi.voiced)
@@ -385,7 +413,13 @@ namespace SpeechSynth
                     jitterPhase += 1.0;
                     const float jitter = sam ? (float) std::sin (jitterPhase * 0.017) * 0.02f
                                               : (float) std::sin (jitterPhase * 0.009) * 0.006f;
-                    const double f0 = juce::jmax (40.0f, params.pitchHz * (1.0f + jitter));
+                    // Sanfte Tonhoehen-Kontur statt Dauerton (Amiga-Vorbild: Pitch
+                    // faellt/steigt natuerlich mit der Satzposition statt monoton
+                    // zu bleiben) - leichte Deklination ueber die ganze Phrase.
+                    const double declineFrac = juce::jlimit (0.0, 1.0,
+                        (double) (writePos + n) / totalEstSamples);
+                    const float declinePitch = 1.0f - 0.12f * (float) declineFrac;
+                    const double f0 = juce::jmax (40.0f, params.pitchHz * declinePitch * (1.0f + jitter));
                     phase += f0 / sampleRate;
                     if (phase >= 1.0) phase -= 1.0;
                     if (sam)
