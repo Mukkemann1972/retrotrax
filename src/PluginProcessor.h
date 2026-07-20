@@ -56,6 +56,15 @@ public:
     // Veraendert die SID-Parameter eines Slots in-place (legt nichts neu an).
     void editSid (int slot, std::function<void (TrackerEngine::Instrument&)> fn);
 
+    // --- Sprachsynthese (Formant-Synthese, eigener Code, siehe SpeechSynth.h) ---
+    // Macht aus dem Slot ein frisches Sprach-Instrument (Default-Text gerendert).
+    void makeSpeechInstrument (int slot, int character);
+    // true, wenn der Slot ein Sample ist, das per Sprachsynthese erzeugt wurde.
+    bool isSpeechInstrument (int slot) const;
+    // Rendert den Slot mit den aktuell im Instrument gespeicherten Sprach-
+    // Parametern (Text/Charakter/Speed/Pitch/Throat/Mouth) neu - nach editSample.
+    void renderSpeech (int slot);
+
     // --- Akai-Sampler-Filter (Sample-Instrumente) -----------------------------
     // true, wenn der Slot ein Sample mit Klangdaten ist (also filterbar).
     bool isSampleSlot (int slot) const;

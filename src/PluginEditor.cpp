@@ -23,7 +23,7 @@ namespace
 }
 
 RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p),
+    : AudioProcessorEditor (&p), proc (p), grid (p), diskBrowser (p), sidPanel (p), speechPanel (p),
       kitPanel (p), editPanel (p), fxPanel (p), spectrumPanel (p), kbPanel (p)
 {
     loc::load(); // gespeicherte Sprache (oder Systemsprache) bestimmen
@@ -34,6 +34,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addChildComponent (diskBrowser); // unsichtbar, bis SAMPLES gedrueckt wird
     addChildComponent (helpPanel);   // unsichtbar, bis ? gedrueckt wird
     addChildComponent (sidPanel);    // unsichtbar, bis SID gedrueckt wird
+    addChildComponent (speechPanel); // unsichtbar, bis SPRACH gedrueckt wird
     addChildComponent (kitPanel);    // unsichtbar, bis KIT gedrueckt wird
     addChildComponent (editPanel);   // unsichtbar, bis FAIRLIGHT gedrueckt wird
     addChildComponent (fxPanel);     // unsichtbar, bis FX gedrueckt wird
@@ -43,6 +44,7 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
     addAndMakeVisible (recButton);
     addAndMakeVisible (loadMenuButton);
     addAndMakeVisible (sidButton);
+    addAndMakeVisible (speechButton);
     addAndMakeVisible (kitButton);
     addAndMakeVisible (editButton);
     addAndMakeVisible (fxButton);
@@ -307,6 +309,36 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         instDot.repaint();
     };
 
+    // SPRACH: aktuellen Slot zu einer Sprachsynthese (Robo-Stimme) machen und den Editor oeffnen.
+    speechButton.onClick = [this]
+    {
+        const int slot = proc.currentInstrument.load();
+        if (! proc.isSpeechInstrument (slot))
+            proc.makeSpeechInstrument (slot, 0); // ersetzt den Slot-Inhalt (SAM-Charakter als Start)
+        refreshInstrumentBox();
+        instDot.colour = rt::instColour (slot);
+        instDot.repaint();
+
+        hideAllOverlays();
+        speechPanel.refresh();
+        speechPanel.setVisible (true);
+        speechButton.setToggleState (true, juce::dontSendNotification);
+        speechPanel.toFront (false);
+        speechPanel.grabKeyboardFocus();
+    };
+    speechPanel.onClose = [this]
+    {
+        speechPanel.setVisible (false);
+        speechButton.setToggleState (false, juce::dontSendNotification);
+        grid.grabKeyboardFocus();
+    };
+    speechPanel.onChanged = [this]
+    {
+        refreshInstrumentBox();
+        instDot.colour = rt::instColour (proc.currentInstrument.load());
+        instDot.repaint();
+    };
+
     kitButton.onClick = [this]
     {
         hideAllOverlays();
@@ -487,6 +519,7 @@ void RetroTraxEditor::applyBeginnerMode (bool justSwitchedOn)
     // sieht nur das Noetigste, der Profi hat alles. Nimmt nichts weg (umschaltbar).
     const bool adv = ! beginnerMode;
     sidButton.setVisible (adv);
+    speechButton.setVisible (adv);
     kitButton.setVisible (adv);
     editButton.setVisible (adv);
     fxButton.setVisible (adv);
@@ -560,12 +593,14 @@ void RetroTraxEditor::hideAllOverlays()
     diskBrowser.setVisible (false);
     helpPanel.setVisible (false);
     sidPanel.setVisible (false);
+    speechPanel.setVisible (false);
     kitPanel.setVisible (false);
     editPanel.setVisible (false);
     fxPanel.setVisible (false);
     spectrumPanel.setVisible (false);
     kbPanel.setVisible (false);
     sidButton.setToggleState (false, juce::dontSendNotification);
+    speechButton.setToggleState (false, juce::dontSendNotification);
     kitButton.setToggleState (false, juce::dontSendNotification);
     editButton.setToggleState (false, juce::dontSendNotification);
     fxButton.setToggleState (false, juce::dontSendNotification);
@@ -1045,6 +1080,8 @@ void RetroTraxEditor::applyLanguage()
 
     sidButton.setTooltip (loc::t ("Aktuellen Slot zu einem SID-Synth machen (Wellenform + Huellkurve)",
                                   "Turn the current slot into a SID synth (waveform + envelope)"));
+    speechButton.setTooltip (loc::t ("Aktuellen Slot zu einer Sprachsynthese machen - Text tippen, Robo-Stimme spielen",
+                                     "Turn the current slot into a speech synth - type text, play a robot voice"));
     kitButton.setButtonText (loc::t ("DRUMSAMPLER", "DRUMSAMPLER"));
     kitButton.setTooltip (loc::t ("Drumsampler: 16 Pads im MPC60/SP-1200-Stil - trommeln, Drum-Eingabe in die Spur, Samples in Slots",
                                   "Drumsampler: 16 pads MPC60/SP-1200 style - drum, drum-input to track, samples to slots"));
@@ -1067,6 +1104,7 @@ void RetroTraxEditor::applyLanguage()
     diskBrowser.applyLanguage();
     helpPanel.applyLanguage();
     sidPanel.applyLanguage();
+    speechPanel.applyLanguage();
     spectrumPanel.applyLanguage();
     kbPanel.applyLanguage();
     repaint();
@@ -1092,8 +1130,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.86 | E0x LED-Filter: dumpfer Amiga-Tiefpass auf der Summe",
-                        "v0.86 | E0x LED filter: muffled Amiga lowpass on the mix"),
+    g.drawText (loc::t ("v0.87 | SPRACH: eigene Formant-Sprachsynthese (SAM/Narrator)",
+                        "v0.87 | SPEECH: built-in formant speech synth (SAM/Narrator)"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }
@@ -1156,6 +1194,8 @@ void RetroTraxEditor::resized()
     controls.removeFromLeft (10);
     sidButton.setBounds (controls.removeFromLeft (64));
     controls.removeFromLeft (6);
+    speechButton.setBounds (controls.removeFromLeft (76));
+    controls.removeFromLeft (6);
     kitButton.setBounds (controls.removeFromLeft (118));
     controls.removeFromLeft (6);
     editButton.setBounds (controls.removeFromLeft (96));
@@ -1195,6 +1235,7 @@ void RetroTraxEditor::resized()
     diskBrowser.setBounds (gridArea); // liegt als Overlay genau ueber dem Grid
     helpPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     sidPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
+    speechPanel.setBounds (gridArea); // ebenfalls Overlay ueber dem Grid
     kitPanel.setBounds (gridArea);    // ebenfalls Overlay ueber dem Grid
     editPanel.setBounds (gridArea);   // ebenfalls Overlay ueber dem Grid
     fxPanel.setBounds (gridArea);     // ebenfalls Overlay ueber dem Grid

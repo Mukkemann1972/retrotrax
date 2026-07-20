@@ -5,6 +5,7 @@
 #include "XmImport.h"
 #include "S3mImport.h"
 #include "ItImport.h"
+#include "SpeechSynth.h"
 
 // Schreibt einen Float-Puffer als 16-Bit-WAV (Grabber/Chop/Edit). Definition weiter unten.
 static bool writeWavBuffer (const juce::File& file, const juce::AudioBuffer<float>& buf, double rate);
@@ -433,6 +434,72 @@ void RetroTraxProcessor::makeWaveform (int slot, int type)
     engine.setInstrument (slot, std::move (inst));
 }
 
+// Kurzer, sprechbarer Anzeigename aus dem Text ableiten (max. ~18 Zeichen).
+static juce::String speechName (const juce::String& text)
+{
+    auto t = text.trim();
+    if (t.isEmpty())
+        return "Sprache";
+    if (t.length() > 18)
+        t = t.substring (0, 18).trim() + "...";
+    return t;
+}
+
+void RetroTraxProcessor::makeSpeechInstrument (int slot, int character)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return;
+    auto inst = std::make_unique<TrackerEngine::Instrument>();
+    inst->kind = TrackerEngine::Instrument::Kind::Sample;
+
+    const auto ch = (character == 1) ? SpeechSynth::Character::Narrator : SpeechSynth::Character::Sam;
+    const auto dp = SpeechSynth::defaultParams (ch);
+    inst->speechText      = (character == 1) ? "Hello. I am your Amiga." : "Hello. I am your speech chip.";
+    inst->speechCharacter = character;
+    inst->speechSpeed     = dp.speed;
+    inst->speechPitch     = dp.pitchHz;
+    inst->speechThroat    = dp.throat;
+    inst->speechMouth     = dp.mouth;
+
+    const double sr = 22050.0;
+    SpeechSynth::Params p { ch, dp.speed, dp.pitchHz, dp.throat, dp.mouth };
+    SpeechSynth::render (inst->speechText, p, sr, inst->data);
+    inst->sourceRate = sr;
+    inst->name = speechName (inst->speechText);
+    engine.setInstrument (slot, std::move (inst));
+}
+
+bool RetroTraxProcessor::isSpeechInstrument (int slot) const
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return false;
+    const juce::ScopedLock sl (engine.lock);
+    const auto& p = engine.instruments[slot];
+    return p != nullptr && p->kind == TrackerEngine::Instrument::Kind::Sample
+        && p->speechText.isNotEmpty();
+}
+
+void RetroTraxProcessor::renderSpeech (int slot)
+{
+    if (slot < 0 || slot >= TrackerEngine::kInstruments)
+        return;
+    const juce::ScopedLock sl (engine.lock);
+    auto& p = engine.instruments[slot];
+    if (p == nullptr || p->kind != TrackerEngine::Instrument::Kind::Sample)
+        return;
+
+    const auto ch = (p->speechCharacter == 1) ? SpeechSynth::Character::Narrator : SpeechSynth::Character::Sam;
+    SpeechSynth::Params sp { ch, p->speechSpeed, p->speechPitch, p->speechThroat, p->speechMouth };
+    juce::AudioBuffer<float> buf;
+    const double sr = 22050.0;
+    if (SpeechSynth::render (p->speechText, sp, sr, buf))
+    {
+        p->data       = std::move (buf);
+        p->sourceRate = sr;
+        p->name       = speechName (p->speechText);
+    }
+}
+
 bool RetroTraxProcessor::isSid (int slot) const
 {
     if (slot < 0 || slot >= TrackerEngine::kInstruments)
@@ -563,6 +630,12 @@ bool RetroTraxProcessor::getSample (int slot, TrackerEngine::Instrument& out) co
     out.decay         = p->decay;
     out.sustain       = p->sustain;
     out.release       = p->release;
+    out.speechText      = p->speechText;
+    out.speechCharacter = p->speechCharacter;
+    out.speechSpeed      = p->speechSpeed;
+    out.speechPitch      = p->speechPitch;
+    out.speechThroat     = p->speechThroat;
+    out.speechMouth      = p->speechMouth;
     return true;
 }
 
@@ -1065,6 +1138,17 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 e->setAttribute ("s", ip->sustain);
                 e->setAttribute ("rel", ip->release);
             }
+            // Sprachsynthese-Parameter (nur falls per SPRECHEN-Knopf erzeugt) -
+            // ermoeglicht spaeteres Nachbearbeiten/Neu-Rendern des Textes.
+            if (ip->speechText.isNotEmpty())
+            {
+                e->setAttribute ("spktxt",   ip->speechText);
+                e->setAttribute ("spkchar",  ip->speechCharacter);
+                e->setAttribute ("spkspd",   ip->speechSpeed);
+                e->setAttribute ("spkpitch", ip->speechPitch);
+                e->setAttribute ("spkthr",   ip->speechThroat);
+                e->setAttribute ("spkmth",   ip->speechMouth);
+            }
         }
     }
 
@@ -1255,6 +1339,12 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                     ip->decay         = (float) e->getDoubleAttribute ("d", 0.18);
                     ip->sustain       = (float) e->getDoubleAttribute ("s", 0.65);
                     ip->release       = (float) e->getDoubleAttribute ("rel", 0.25);
+                    ip->speechText      = e->getStringAttribute ("spktxt");
+                    ip->speechCharacter = e->getIntAttribute ("spkchar", 0);
+                    ip->speechSpeed     = (float) e->getDoubleAttribute ("spkspd", 1.0);
+                    ip->speechPitch     = (float) e->getDoubleAttribute ("spkpitch", 100.0);
+                    ip->speechThroat    = (float) e->getDoubleAttribute ("spkthr", 0.0);
+                    ip->speechMouth     = (float) e->getDoubleAttribute ("spkmth", 0.5);
                 }
             }
         }

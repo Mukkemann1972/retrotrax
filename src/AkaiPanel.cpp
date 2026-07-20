@@ -178,7 +178,7 @@ AkaiPanel::AkaiPanel (RetroTraxProcessor& processor) : proc (processor)
 
 void AkaiPanel::applyLanguage()
 {
-    titleLabel.setText (loc::t ("AKAI-SAMPLER", "AKAI SAMPLER"),
+    titleLabel.setText (loc::t ("SAMPLER-EFFEKTE", "SAMPLER EFFECTS"),
                         juce::dontSendNotification);
     presetLabel.setText (loc::t ("VINTAGE-CHARAKTER", "VINTAGE CHARACTER"), juce::dontSendNotification);
     for (int i = 0; i < presetButtons.size() && i < kNumAkaiPresets; ++i)

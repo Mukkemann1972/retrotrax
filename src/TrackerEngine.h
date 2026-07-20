@@ -130,6 +130,19 @@ public:
         bool  ampEnv        = false;
         float gain          = 1.0f;   // Lautstaerke 0..2 (1 = unveraendert)
 
+        // --- Sprachsynthese (nur bei kind == Sample, per SPRECHEN-Knopf erzeugt) ---
+        // Eigene Formant-Synthese (SpeechSynth.h): getippter Text wird zu einer
+        // Robo-Stimme gerendert und wie ein normales Sample in data abgelegt -
+        // Akai-Filter/12-Bit/Drive/Loop wirken danach ganz normal mit. speechText
+        // leer = kein Sprach-Instrument (normales Sample). Charakter 0 = SAM
+        // (schrill/blechern, C64-Vibe), 1 = NARRATOR (weicher/dumpfer, Amiga-Vibe).
+        juce::String speechText;
+        int   speechCharacter = 0;
+        float speechSpeed     = 1.0f;
+        float speechPitch     = 100.0f;
+        float speechThroat    = 0.0f;
+        float speechMouth     = 0.5f;
+
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
         Wave  wave        = Wave::Pulse;
