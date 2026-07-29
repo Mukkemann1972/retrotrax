@@ -21,6 +21,16 @@ HelpPanel::HelpPanel()
     closeButton.onClick = [this] { if (onClose) onClose(); };
     addAndMakeVisible (closeButton);
 
+    // Freiwillig, nie aufdringlich: oeffnet die Ko-fi-Seite im Browser.
+    kofiButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff72a4f2)); // Ko-fi-Blau
+    kofiButton.setColour (juce::TextButton::textColourOffId, rt::bg);
+    kofiButton.setTooltip ("ko-fi.com/mukkemann");
+    kofiButton.onClick = []
+    {
+        juce::URL ("https://ko-fi.com/mukkemann").launchInDefaultBrowser();
+    };
+    addAndMakeVisible (kofiButton);
+
     setWantsKeyboardFocus (true);
     rebuild();
 }
@@ -28,6 +38,7 @@ HelpPanel::HelpPanel()
 void HelpPanel::applyLanguage()
 {
     closeButton.setButtonText (loc::t ("SCHLIESSEN", "CLOSE"));
+    kofiButton.setButtonText (loc::t ("KAFFEE SPENDIEREN (KO-FI)", "BUY ME A COFFEE (KO-FI)"));
     rebuild();
     repaint();
 }
@@ -1023,6 +1034,57 @@ void HelpPanel::rebuild()
             "RetroTrax is and stays free. If it brings you joy, the Mukkemann\n"
             "universe would love a coffee on Ko-fi. Thank you for being here! <3") });
 
+    topics.add ({ loc::t ("Entstehung", "How it's made"),
+        loc::t (
+            "WIE RETROTRAX ENTSTEHT - ECHTE ERFAHRUNG TRIFFT KI\n"
+            "==================================================\n\n"
+            "Dieser Tracker schreibt sich nicht selbst - aber er entsteht auch nicht\n"
+            "allein von Alex. Ehrlich aufgeschluesselt, wer/was woran gebaut hat:\n\n"
+            "ALEX (aka Mukkemann) - Vision, Entscheidungen, echte Tests\n"
+            "  Setzt die Richtung: was ein Tracker koennen muss, wie er klingen und\n"
+            "  aussehen soll. Entscheidet bei Zielkonflikten. Testet jede Version auf\n"
+            "  echter Hardware, bevor sie veroeffentlicht wird - viele Details (Effekt-\n"
+            "  Spalte, SID-Filter, Block-Bearbeitung) kommen aus eigener Erfahrung mit\n"
+            "  Musik machen, nicht aus dem Lehrbuch.\n\n"
+            "CLAUDE - Code, Architektur, DSP\n"
+            "  Schreibt den Code jedes Bausteins im Dialog mit Alex, von der ersten\n"
+            "  Idee bis zum fertigen Test. Baut dabei mit, was schiefgehen kann:\n"
+            "  Klangtests gegen echte Signale, GUI-Tests, und die Regel, dass jedes\n"
+            "  Feature einen Hilfe-Eintrag bekommt - ohne Vorwissen verstaendlich.\n\n"
+            "Nicht jeder Baustein ist zu gleichen Teilen von beiden - aber jeder hat\n"
+            "beide Perspektiven durchlaufen: technisch machbar (Claude), musikalisch\n"
+            "sinnvoll und auf echter Hardware bestaetigt (Alex).\n\n"
+            "UNTERSTUETZEN\n"
+            "  RetroTrax bleibt kostenlos, offen (GPL-3.0) und werbefrei, ohne Abo und\n"
+            "  ohne versteckte Kosten - kein Zwang, nur wer mag. Auf Ko-fi kannst du\n"
+            "  einen Kaffee spendieren, falls dir das hier hilft.\n"
+            "  Der Knopf unten links oeffnet die Seite: ko-fi.com/mukkemann\n\n"
+            "Musik machen statt Musik kaufen - fuer alle, ohne teure Hardware.",
+
+            "HOW RETROTRAX IS MADE - REAL EXPERIENCE MEETS AI\n"
+            "===============================================\n\n"
+            "This tracker doesn't write itself - but it isn't built by Alex alone\n"
+            "either. Here's an honest breakdown of who/what built what:\n\n"
+            "ALEX (aka Mukkemann) - vision, decisions, real testing\n"
+            "  Sets the direction: what a tracker must do, how it should sound and\n"
+            "  look. Decides when goals collide. Tests every version on real hardware\n"
+            "  before release - many details (effect column, SID filter, block edit)\n"
+            "  come from actually making music, not from a textbook.\n\n"
+            "CLAUDE - code, architecture, DSP\n"
+            "  Writes the code for every building block in dialogue with Alex, from\n"
+            "  first idea to finished test. Builds in what can go wrong: audio tests\n"
+            "  against real signals, GUI tests, and the rule that every feature gets\n"
+            "  a help entry - understandable without prior knowledge.\n\n"
+            "Not every part is a 50/50 split - but every part passed through both\n"
+            "perspectives: technically sound (Claude), musically useful and confirmed\n"
+            "on real hardware (Alex).\n\n"
+            "SUPPORT\n"
+            "  RetroTrax stays free, open (GPL-3.0) and ad-free, no subscription and\n"
+            "  no hidden costs - no pressure, only if you feel like it. On Ko-fi you\n"
+            "  can buy a coffee if this thing helps you.\n"
+            "  The button at the bottom left opens the page: ko-fi.com/mukkemann\n\n"
+            "Make music instead of buying it - for everyone, without expensive gear.") });
+
     currentTopic = juce::jlimit (0, topics.size() - 1, keep);
     topicList.updateContent();
     topicList.selectRow (currentTopic);
@@ -1100,6 +1162,8 @@ void HelpPanel::resized()
 
     auto bottom = area.removeFromBottom (30);
     closeButton.setBounds (bottom.removeFromRight (110).reduced (0, 2));
+    bottom.removeFromRight (8);
+    kofiButton.setBounds (bottom.removeFromLeft (240).reduced (0, 2));
     area.removeFromBottom (6);
 
     topicList.setBounds (area.removeFromLeft (210));

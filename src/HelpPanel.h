@@ -48,6 +48,7 @@ private:
     juce::ListBox topicList { "help-topics", &model };
     juce::TextEditor bodyView;
     juce::TextButton closeButton { "SCHLIESSEN" };
+    juce::TextButton kofiButton { "KAFFEE SPENDIEREN (KO-FI)" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HelpPanel)
 };
