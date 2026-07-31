@@ -682,8 +682,8 @@ void RetroTraxEditor::saveSongClicked()
     // selben Ordner, den man im Dialog aussucht. Tippt man einen Namen mit .wav,
     // wird der Song als WAV exportiert; sonst als .retrotrax gespeichert.
     songChooser = std::make_unique<juce::FileChooser> (
-        loc::t ("Song speichern (RetroTrax oder WAV)", "Save song (RetroTrax or WAV)"),
-        start, "*.retrotrax;*.wav");
+        loc::t ("Song speichern (RetroTrax, RTX oder WAV)", "Save song (RetroTrax, RTX or WAV)"),
+        start, "*.retrotrax;*.rtx;*.wav");
 
     songChooser->launchAsync (juce::FileBrowserComponent::saveMode
                                   | juce::FileBrowserComponent::warnAboutOverwriting,
@@ -701,6 +701,28 @@ void RetroTraxEditor::saveSongClicked()
                 hintLabel.setText (ok ? msg
                                       : loc::t ("WAV-Export fehlgeschlagen: ", "WAV export failed: ") + msg,
                                    juce::dontSendNotification);
+                return;
+            }
+
+            // .rtx gewuenscht? -> gepackter Export fuer den Replayer/Web-Player.
+            // Klingt identisch, ist aber viel kleiner; zum WEITERARBEITEN bleibt
+            // .retrotrax das Format (dort stecken auch die Drum-Pads drin).
+            if (file.getFileExtension().toLowerCase() == ".rtx")
+            {
+                if (proc.saveSongPacked (file))
+                {
+                    const auto kb = juce::String (file.getSize() / 1024.0, 1);
+                    hintLabel.setText (loc::t ("Gepackt gespeichert (", "Saved packed (") + kb
+                                           + loc::t (" KB) - klingt gleich, gut zum Mitschicken. Zum Weiterarbeiten .retrotrax nehmen.",
+                                                     " KB) - same sound, good for sharing. Use .retrotrax to keep editing."),
+                                       juce::dontSendNotification);
+                }
+                else
+                {
+                    hintLabel.setText (loc::t ("Gepacktes Speichern fehlgeschlagen - Schreibrechte pruefen.",
+                                               "Packed save failed - check write permissions."),
+                                       juce::dontSendNotification);
+                }
                 return;
             }
 
@@ -728,7 +750,7 @@ void RetroTraxEditor::loadSongClicked()
     const auto start = currentSongFile.existsAsFile() ? currentSongFile : songsFolder();
 
     songChooser = std::make_unique<juce::FileChooser> (
-        loc::t ("Song oeffnen", "Open song"), start, "*.retrotrax");
+        loc::t ("Song oeffnen", "Open song"), start, "*.retrotrax;*.rtx");
 
     songChooser->launchAsync (juce::FileBrowserComponent::openMode
                                   | juce::FileBrowserComponent::canSelectFiles,
@@ -737,6 +759,28 @@ void RetroTraxEditor::loadSongClicked()
             const auto file = fc.getResult();
             if (file == juce::File())
                 return; // abgebrochen
+
+            // Gepacktes .rtx laesst sich auch wieder oeffnen (ohne Drum-Pads,
+            // die stecken nur im vollen .retrotrax).
+            if (file.getFileExtension().toLowerCase() == ".rtx")
+            {
+                if (! proc.loadSongPacked (file))
+                {
+                    hintLabel.setText ("\"" + file.getFileName()
+                                           + loc::t ("\" ist keine gueltige .rtx-Datei.",
+                                                     "\" is not a valid .rtx file."),
+                                       juce::dontSendNotification);
+                    return;
+                }
+                currentSongFile = juce::File();   // gepackt = Export, nicht der Arbeitsstand
+                syncUiFromState();
+                hintLabel.setText (loc::t ("Gepackten Song \"", "Packed song \"")
+                                       + file.getFileNameWithoutExtension()
+                                       + loc::t ("\" geoeffnet (ohne Drum-Pads).",
+                                                 "\" opened (without drum pads)."),
+                                   juce::dontSendNotification);
+                return;
+            }
 
             juce::StringArray missing;
             if (! proc.loadSong (file, missing))

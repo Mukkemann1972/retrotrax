@@ -6,6 +6,7 @@
 #include "S3mImport.h"
 #include "ItImport.h"
 #include "SpeechSynth.h"
+#include "rt_rtx.h"
 
 // Schreibt einen Float-Puffer als 16-Bit-WAV (Grabber/Chop/Edit). Definition weiter unten.
 static bool writeWavBuffer (const juce::File& file, const juce::AudioBuffer<float>& buf, double rate);
@@ -1442,6 +1443,36 @@ bool RetroTraxProcessor::saveSong (const juce::File& file)
     auto xml = stateToXml();
     file.getParentDirectory().createDirectory();
     return xml->writeTo (file);
+}
+
+// Gepackter Export fuers Mitschicken/Einbauen (Web-Player, Spiele, Demos).
+// Traegt alles, was zum KLINGEN noetig ist - Tempo, Reihenfolge, Instrumente
+// samt Sampler-Charakter und die belegten Pattern-Zellen. Die Drum-Pads sind
+// bewusst nicht dabei (der Sequencer spielt nur Slot-Instrumente); zum
+// Weiterarbeiten bleibt also .retrotrax das Format der Wahl.
+bool RetroTraxProcessor::saveSongPacked (const juce::File& file)
+{
+    const std::vector<uint8_t> bytes = rtrtx::pack (engine);
+    if (bytes.empty())
+        return false;
+    file.getParentDirectory().createDirectory();
+    juce::FileOutputStream out (file);
+    if (! out.openedOk())
+        return false;
+    out.setPosition (0);
+    out.truncate();
+    return out.write (bytes.data(), bytes.size());
+}
+
+bool RetroTraxProcessor::loadSongPacked (const juce::File& file)
+{
+    juce::MemoryBlock mb;
+    if (! file.loadFileAsData (mb) || mb.getSize() < 16)
+        return false;
+
+    engine.stop();                        // beim Oeffnen nie mitten im Abspielen bleiben
+    playbackMode = PlaybackMode::Tracker;
+    return rtrtx::load ((const uint8_t*) mb.getData(), mb.getSize(), engine) >= 0;
 }
 
 bool RetroTraxProcessor::loadSong (const juce::File& file, juce::StringArray& missingSamples)

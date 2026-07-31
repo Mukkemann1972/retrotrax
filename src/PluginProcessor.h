@@ -120,6 +120,9 @@ public:
     // Song als .retrotrax-Datei speichern bzw. oeffnen. loadSong sammelt in
     // 'missingSamples' die Namen der Samples, deren Datei nicht (mehr) da ist.
     bool saveSong (const juce::File& file);
+    // Gepacktes .rtx (kompakt, fuer Replayer/Web) - siehe rt_rtx.h
+    bool saveSongPacked (const juce::File& file);
+    bool loadSongPacked (const juce::File& file);
     bool loadSong (const juce::File& file, juce::StringArray& missingSamples);
 
     // Komplett leere Seite: stoppt, raeumt alle Instrumente/Pads/Pattern-Zellen

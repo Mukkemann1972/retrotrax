@@ -41,7 +41,15 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <zlib.h>
+
+// zlib: der JUCE-freie Replayer nimmt die System-zlib direkt. Im Plugin-Build
+// gibt es die nicht auf dem Include-Pfad (JUCE bringt zlib zwar mit, aber ohne
+// oeffentliche Header) - dort laufen wir ueber JUCEs eigene Streams. Beide Wege
+// erzeugen/lesen dasselbe zlib-Format (RFC1950, windowBits=0 -> erstes Byte 0x78),
+// die Dateien sind also zwischen Plugin und Replayer austauschbar.
+#ifdef RETROTRAX_NO_JUCE
+  #include <zlib.h>
+#endif
 
 namespace rtrtx
 {
@@ -109,6 +117,7 @@ namespace rtrtx
     };
 
     // --- zlib ---------------------------------------------------------------
+#ifdef RETROTRAX_NO_JUCE
     inline std::vector<uint8_t> deflateBytes (const std::vector<uint8_t>& in)
     {
         uLongf cap = compressBound ((uLong) in.size());
@@ -127,6 +136,31 @@ namespace rtrtx
         const int r = uncompress (out.data(), &destLen, src, (uLong) srcLen);
         return r == Z_OK && destLen == (uLongf) expected;
     }
+#else
+    inline std::vector<uint8_t> deflateBytes (const std::vector<uint8_t>& in)
+    {
+        juce::MemoryOutputStream mo;
+        {
+            // windowBits=0 -> zlib-Format (genau wie die <D>-Bloecke im XML)
+            juce::GZIPCompressorOutputStream gz (mo, 9, 0);
+            gz.write (in.data(), in.size());
+        }   // erst der Destruktor schreibt den Rest raus
+        const auto* p = (const uint8_t*) mo.getData();
+        return std::vector<uint8_t> (p, p + mo.getDataSize());
+    }
+
+    inline bool inflateBytes (const uint8_t* src, size_t srcLen,
+                              std::vector<uint8_t>& out, size_t expected)
+    {
+        if (expected == 0) { out.clear(); return true; }
+        juce::MemoryInputStream mi (src, srcLen, false);
+        juce::GZIPDecompressorInputStream gz (&mi, false,
+                                              juce::GZIPDecompressorInputStream::zlibFormat,
+                                              (juce::int64) expected);
+        out.resize (expected);
+        return gz.read (out.data(), (int) expected) == (int) expected;
+    }
+#endif
 
     // --- Sample-Daten <-> int16 ---------------------------------------------
     // Die Engine haelt Samples als float = int16 / 32768 (siehe rt_sample.h).
