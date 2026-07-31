@@ -48,5 +48,9 @@ cd tools/rtx_wasm && python3 -m http.server 8099
   Für `.rtx` zusätzlich: `native_test.cpp <song.retrotrax> <song.rtx>` vergleicht
   beide Fassungen Wert für Wert, und der gestreamte `.rtx`-Weg wurde per Node
   gegen den XML-Komplett-Render geprüft — bit-identisch.
-- Noch offen (Ideen): mehr Demo-Songs fest auf der Seite, MOD/XM/S3M-Wiedergabe,
+- **Demo-Songs** stehen in `songs/demos.json` (`[{ "file": "...", "title": "..." }]`).
+  Neuen Song dazulegen = Datei nach `songs/` kopieren und eine Zeile eintragen;
+  ab zwei Einträgen zeigt der Player ein Auswahlfeld neben dem Demo-Knopf. Fehlt
+  die Liste, bleibt der eine fest verdrahtete Song übrig (Player läuft weiter).
+- Noch offen (Ideen): MOD/XM/S3M-Wiedergabe,
   Rendern in einen Worker auslagern (falls schwache Handys beim Nachschub ruckeln).

@@ -158,6 +158,7 @@
     <div class="row">
       <label class="file">📂 Song wählen…<input id="file" type="file" multiple accept=".retrotrax,.rtx,.xml,.mdat,.tfmx,.tfx,.tfm,.smpl,.sam"></label>
       <button id="demo" disabled>🎵 Demo anhören</button>
+      <select id="demolist" style="display:none"></select>
       <button id="play" class="play" disabled>▶︎ Abspielen</button>
       <button id="stop" disabled>■ Stopp</button>
       <div class="vol">🔊<input id="vol" type="range" min="0" max="100" value="80"></div>
@@ -183,6 +184,7 @@
   const statusEl = document.getElementById('status');
   const fileEl   = document.getElementById('file');
   const demoEl   = document.getElementById('demo');
+  const demoListEl = document.getElementById('demolist');
   const playEl   = document.getElementById('play');
   const stopEl   = document.getElementById('stop');
   const volEl    = document.getElementById('vol');
@@ -522,21 +524,49 @@
     await loadBuffers(bufs).catch(() => {});
   });
 
-  // ── Demo-Song: liegt neben dem Player. Gepackt (.rtx), damit übers Netz
-  //    nur ~15 statt ~44 KB gehen; die .retrotrax-Fassung bleibt daneben liegen.
-  const DEMO = { file: 'songs/startrekker-groove.rtx', title: 'Startrekker Groove' };
-  demoEl.addEventListener('click', async () => {
-    set('Hole Demo-Song…', 'busy');
+  // ── Demo-Songs: stehen in songs/demos.json, damit neue Songs nur dort
+  //    eingetragen werden müssen. Fehlt die Datei, bleibt der bisherige
+  //    eine Song fest verdrahtet – der Player funktioniert also weiter.
+  //    Gepackt (.rtx): ~15 statt ~44 KB über die Leitung, gleicher Klang.
+  const DEMO_FALLBACK = [{ file: 'startrekker-groove.rtx', title: 'Startrekker Groove' }];
+  let demos = DEMO_FALLBACK;
+
+  (async () => {
     try {
-      const resp = await fetch(DEMO.file);
+      const resp = await fetch('songs/demos.json');
+      if (!resp.ok) return;                       // keine Liste -> Rückfall
+      const list = await resp.json();
+      if (Array.isArray(list) && list.length) demos = list;
+    } catch (e) { /* Liste optional - stillschweigend beim Rückfall bleiben */ }
+
+    if (demos.length > 1) {                       // erst ab zwei Songs eine Auswahl zeigen
+      demoListEl.innerHTML = '';
+      demos.forEach((d, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = d.title || d.file;
+        demoListEl.appendChild(o);
+      });
+      demoListEl.style.display = '';
+    }
+  })();
+
+  async function playDemo (d) {
+    set('Hole „' + (d.title || d.file) + '“…', 'busy');
+    try {
+      const resp = await fetch('songs/' + d.file);
       if (!resp.ok) throw new Error('Demo-Song nicht gefunden (' + resp.status + ')');
       const bytes = new Uint8Array(await resp.arrayBuffer());
-      await loadBuffers([{ name: DEMO.title, bytes }]);
+      await loadBuffers([{ name: d.title || d.file, bytes }]);
       if (!playEl.disabled && !playing) playEl.click();   // Demo startet direkt
     } catch (e) {
       set('FEHLER: ' + e.message, 'err');
     }
-  });
+  }
+
+  demoEl.addEventListener('click', () => playDemo(demos[demoListEl.selectedIndex >= 0
+                                                        ? demoListEl.selectedIndex : 0]));
+  demoListEl.addEventListener('change', () => playDemo(demos[demoListEl.selectedIndex]));
   if (location.hash === '#demo') demoEl.click();  // Link direkt zur Demo
 
   // ── Transport (bedient beide Wege) ──────────────────────────────────
