@@ -100,6 +100,46 @@ namespace juce
             if (start < 0) start = 0;
             return String (start < (int) s_.size() ? s_.substr ((size_t) start) : std::string());
         }
+        // substring(start, end) - end ist exklusiv, wie bei JUCE; beide Grenzen
+        // werden auf die Laenge geklemmt, ein leeres Stueck ist erlaubt.
+        String substring (int start, int end) const
+        {
+            const int len = (int) s_.size();
+            if (start < 0) start = 0;
+            if (end > len) end = len;
+            if (start >= len || end <= start) return String();
+            return String (s_.substr ((size_t) start, (size_t) (end - start)));
+        }
+        // true, wenn JEDES Zeichen in 'chars' vorkommt (leerer Text -> true).
+        bool containsOnly (const String& chars) const
+        {
+            for (char c : s_)
+                if (chars.s_.find (c) == std::string::npos)
+                    return false;
+            return true;
+        }
+        // Fuehrende Ganzzahl lesen (wie JUCE: kein Treffer -> 0).
+        int getIntValue() const
+        {
+            try { return std::stoi (s_); } catch (...) { return 0; }
+        }
+        String trim() const
+        {
+            const char* ws = " \t\r\n\f\v";
+            const auto a = s_.find_first_not_of (ws);
+            if (a == std::string::npos) return String();
+            const auto b = s_.find_last_not_of (ws);
+            return String (s_.substr (a, b - a + 1));
+        }
+        // Aus einem NICHT nullterminierten Puffer fester Laenge; ein enthaltenes
+        // \0 beendet den Text (MOD-Namen sind so aufgefuellt).
+        static String fromUTF8 (const char* p, int len)
+        {
+            if (p == nullptr || len <= 0) return String();
+            int n = 0;
+            while (n < len && p[n] != '\0') ++n;
+            return String (std::string (p, (size_t) n));
+        }
 
         const char* toRawUTF8() const { return s_.c_str(); }
         const std::string& toStdString() const { return s_; }

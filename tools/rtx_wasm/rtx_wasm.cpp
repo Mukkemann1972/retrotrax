@@ -12,7 +12,12 @@
 // Nativ testbar mit g++ (RTX_API = extern "C") -> tools/rtx_wasm/native_test.cpp.
 
 #include "TrackerEngine.h"
+#include "ItImport.h"
+#include "ModImport.h"
+#include "S3mImport.h"
+#include "XmImport.h"
 #include "rt_load.h"
+#include "rt_mod.h"
 #include "rt_rtx.h"
 #include "rt_tfmx.h"
 
@@ -80,6 +85,61 @@ RTX_API int rtx_load_rtx (void* h, const unsigned char* data, int len)
     auto* p = static_cast<RtxPlayer*> (h);
     if (p == nullptr || data == nullptr || len <= 0) return -1;
     p->instruments = rtrtx::load (data, (size_t) len, p->engine);
+    return p->instruments;
+}
+
+// MOD/XM/S3M/IT laden. Der Pfad zeigt ins virtuelle Dateisystem (wie bei TFMX),
+// weil die Importer eine Datei lesen. Die Endung ist unzuverlaessig, darum sagt
+// der Aufrufer die Art: 0 = automatisch (an der Kennung erkennen), 1 = MOD,
+// 2 = XM, 3 = S3M, 4 = IT. Rueckgabe: Zahl geladener Samples (>=0) oder -1.
+RTX_API int rtx_load_mod (void* h, const char* path, int kind)
+{
+    auto* p = static_cast<RtxPlayer*> (h);
+    if (p == nullptr || path == nullptr) return -1;
+
+    const juce::File file (path);
+    if (! file.existsAsFile()) return -1;
+
+    if (kind == 0)
+    {
+        // Kennungen: XM ganz vorn, S3M "SCRM" bei 44, IT "IMPM" ganz vorn.
+        juce::MemoryBlock mb;
+        if (file.loadFileAsData (mb))
+        {
+            const auto* b = (const char*) mb.getData();
+            const size_t n = mb.getSize();
+            if      (n >= 17 && std::string (b, 17) == "Extended Module: ") kind = 2;
+            else if (n >= 48 && std::string (b + 44, 4) == "SCRM")          kind = 3;
+            else if (n >=  4 && std::string (b, 4)      == "IMPM")          kind = 4;
+            else                                                            kind = 1;
+        }
+        else return -1;
+    }
+
+    p->engine.stop();
+    rtmod::clearPatterns (p->engine);
+
+    if (kind == 2)
+    {
+        auto song = XmImport::parse (file);
+        if (! song.ok) return -1;
+        p->instruments = rtmod::applySamples (song.samples, (int) song.samples.size(), p->engine);
+        rtmod::applyPatternsAndOrder (song, p->engine, true);
+    }
+    else if (kind == 3 || kind == 4)
+    {
+        const auto song = (kind == 3) ? S3mImport::parse (file) : ItImport::parse (file);
+        if (! song.ok) return -1;
+        p->instruments = rtmod::applySamplesCopy (song.samples, (int) song.samples.size(), p->engine);
+        rtmod::applyPatternsAndOrder (song, p->engine, true);
+    }
+    else
+    {
+        auto song = ModImport::parse (file);
+        if (! song.ok) return -1;
+        p->instruments = rtmod::applySamples (song.samples, 31, p->engine);
+        rtmod::applyPatternsAndOrder (song, p->engine, false);
+    }
     return p->instruments;
 }
 

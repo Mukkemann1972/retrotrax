@@ -52,5 +52,12 @@ cd tools/rtx_wasm && python3 -m http.server 8099
   Neuen Song dazulegen = Datei nach `songs/` kopieren und eine Zeile eintragen;
   ab zwei Einträgen zeigt der Player ein Auswahlfeld neben dem Demo-Knopf. Fehlt
   die Liste, bleibt der eine fest verdrahtete Song übrig (Player läuft weiter).
-- Noch offen (Ideen): MOD/XM/S3M-Wiedergabe,
-  Rendern in einen Worker auslagern (falls schwache Handys beim Nachschub ruckeln).
+- **MOD / XM / S3M / IT im Browser**: die Importer aus dem Plugin sind jetzt
+  auch JUCE-frei baubar (`#ifdef RETROTRAX_NO_JUCE` wie bei TrackerEngine).
+  Das Einraeumen in die Engine steht einmal in `src/rt_mod.h` und wird von
+  Plugin und Replayer geteilt. C-API: `rtx_load_mod(handle, pfad, kind)` mit
+  `kind` 0=automatisch/1=MOD/2=XM/3=S3M/4=IT; die Bytes legt der Player wie bei
+  TFMX ins virtuelle Dateisystem. Der Player erkennt das Format an der Kennung
+  (XM vorn, S3M "SCRM" bei 44, IT "IMPM" vorn, MOD-Signatur bei 1080).
+- Noch offen (Ideen): Rendern in einen Worker auslagern (falls schwache Handys
+  beim Nachschub ruckeln).
