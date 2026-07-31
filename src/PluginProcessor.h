@@ -193,6 +193,19 @@ public:
     std::atomic<float> eqLow        { 0.0f };   // Bass  +/- dB (0 = flach)
     std::atomic<float> eqMid        { 0.0f };   // Mitten +/- dB
     std::atomic<float> eqHigh       { 0.0f };   // Hoehen +/- dB
+    // Neu in v0.89 - alle nach dem gleichen Muster: MIX 0 = aus, damit
+    // bestehende Songs unveraendert klingen.
+    std::atomic<float> distDrive    { 0.5f };   // Zerre: wie hart angefahren wird
+    std::atomic<float> distMix      { 0.0f };   // 0 = aus
+    std::atomic<float> compThreshDb { -18.0f }; // Kompressor: ab wo er greift
+    std::atomic<float> compRatio    { 4.0f };   // 1 = nichts, 20 = harte Bremse
+    std::atomic<float> compMix      { 0.0f };   // 0 = aus (dazwischen = parallel)
+    std::atomic<float> flangRateHz  { 0.25f };  // Flanger: Geschwindigkeit
+    std::atomic<float> flangDepth   { 0.6f };   // Tiefe des Durchfahrens
+    std::atomic<float> flangMix     { 0.0f };   // 0 = aus
+    std::atomic<float> phaseRateHz  { 0.4f };   // Phaser: Geschwindigkeit
+    std::atomic<float> phaseDepth   { 0.7f };   // Tiefe
+    std::atomic<float> phaseMix     { 0.0f };   // 0 = aus
 
 private:
     std::unique_ptr<TrackerEngine::Instrument> createInstrument (const juce::File& file);
@@ -213,6 +226,14 @@ private:
     int    echoWrite    = 0;
     double fxSampleRate = 44100.0;
     juce::Reverb reverb;                // juce::Reverb (in juce_audio_basics)
+
+    // --- Speicher der neuen Master-Effekte (nur Audio-Thread) ---------------
+    juce::AudioBuffer<float> flangBuf;  // kurze Verzoegerungsleitung (Flanger)
+    int    flangWrite = 0;
+    double flangPhase = 0.0;            // Position im Schwingen (0..1)
+    double phasePhase = 0.0;
+    float  phaseZ[2][4] = {};           // 4 Allpass-Stufen je Kanal (Phaser)
+    float  compEnv[2]   = { 0.0f, 0.0f }; // Huellkurvenfolger je Kanal
     float  eqZ[2][3][2] = {};           // EQ-Biquad-Speicher: [Kanal][Filter][z1/z2]
 
     // Wiedergabe-Pfad: normaler Tracker ODER der TFMX-Replayer. Laden eines TFMX

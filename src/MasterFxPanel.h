@@ -6,7 +6,8 @@
 #include "Localisation.h"
 
 // Master-FX-Sektion: Effekte, die auf den GANZEN Mix wirken (wie Renoises
-// Master-Track). Hier wohnen Echo (Delay) und Hall (Reverb). Standard AUS
+// Master-Track): Zerre, Flanger, Phaser, Echo, Hall, EQ und Kompressor -
+// in dieser Reihenfolge durchlaufen (siehe applyMasterFx). Standard AUS
 // (Mix 0) - der Klang bleibt unveraendert, bis man aufdreht. Overlay wie die
 // anderen Panels; Werte werden im Song (.retrotrax) mitgespeichert.
 class MasterFxPanel : public juce::Component
@@ -41,6 +42,22 @@ private:
     // 3-Band-EQ.
     juce::Label      eqHead, eqLowLabel, eqMidLabel, eqHighLabel;
     juce::Slider     eqLowSlider, eqMidSlider, eqHighSlider;
+
+    // Zerre (Distortion).
+    juce::Label      distHead, distDriveLabel, distMixLabel;
+    juce::Slider     distDriveSlider, distMixSlider;
+
+    // Kompressor.
+    juce::Label      compHead, compThrLabel, compRatioLabel, compMixLabel;
+    juce::Slider     compThrSlider, compRatioSlider, compMixSlider;
+
+    // Flanger.
+    juce::Label      flangHead, flangRateLabel, flangDepthLabel, flangMixLabel;
+    juce::Slider     flangRateSlider, flangDepthSlider, flangMixSlider;
+
+    // Phaser.
+    juce::Label      phaseHead, phaseRateLabel, phaseDepthLabel, phaseMixLabel;
+    juce::Slider     phaseRateSlider, phaseDepthSlider, phaseMixSlider;
 
     juce::TextButton closeButton { "SCHLIESSEN" };
     bool loading = false;

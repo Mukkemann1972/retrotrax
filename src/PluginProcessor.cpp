@@ -77,16 +77,155 @@ void RetroTraxProcessor::prepareToPlay (double sampleRate, int)
     echoWrite = 0;
     reverb.setSampleRate (sampleRate);
     reverb.reset();
+
+    // Flanger braucht nur eine kurze Leitung (bis ~20 ms reicht fuer 1+6 ms
+    // Verzoegerung samt Reserve). Phaser und Kompressor haben keinen Puffer,
+    // nur ein paar Zustandswerte - die hier auf Null setzen, damit nach einem
+    // Neustart nichts Altes nachklingt.
+    flangBuf.setSize (2, juce::jmax (8, (int) (sampleRate * 0.02)));
+    flangBuf.clear();
+    flangWrite = 0;
+    flangPhase = 0.0;
+    phasePhase = 0.0;
+    for (auto& c : phaseZ) for (auto& z : c) z = 0.0f;
+    compEnv[0] = compEnv[1] = 0.0f;
 }
 
-// Master-FX auf den fertigen Stereo-Mix: erst Echo (Delay mit Rueckkopplung),
-// dann Hall. Beide standardmaessig AUS (Mix 0) -> der Klang bleibt unveraendert.
+// Master-FX auf den fertigen Stereo-Mix, in dieser Reihenfolge:
+//   Zerre -> Flanger -> Phaser -> Echo -> Hall -> EQ -> Kompressor
+// Erst wird der Klang geformt (Zerre), dann bewegt (Flanger/Phaser), dann in
+// den Raum gestellt (Echo/Hall), dann im Ton zurechtgerueckt (EQ), und ganz
+// zuletzt zusammengehalten (Kompressor) - so wie an einem echten Mischpult.
+// ALLE stehen standardmaessig auf MIX 0 = aus -> bestehende Songs klingen
+// unveraendert, und die Reihenfolge von Echo/Hall/EQ untereinander ist die
+// gleiche geblieben wie vorher.
 void RetroTraxProcessor::applyMasterFx (juce::AudioBuffer<float>& buffer)
 {
     const int n  = buffer.getNumSamples();
     const int ch = buffer.getNumChannels();
     if (n <= 0 || ch <= 0)
         return;
+
+    // --- Zerre (Distortion) --------------------------------------------------
+    // Ganz am Anfang der Kette: sie FORMT den Klang, danach kommen Raum und Ton
+    // drauf. Weiche tanh-Kennlinie (wie der Drive am Sampler) statt hartem
+    // Abschneiden - saettigt musikalisch, statt digital zu knacken. Die
+    // Ausgangsdaempfung 1/(1+drive*2) haelt die Lautstaerke ungefaehr gleich,
+    // damit Aufdrehen nicht einfach "lauter" heisst.
+    {
+        const float dmix = distMix.load();
+        if (dmix > 0.0001f)
+        {
+            const float drive = juce::jlimit (0.0f, 1.0f, distDrive.load());
+            const float gain  = 1.0f + drive * 24.0f;      // 1 .. 25fach anfahren
+            const float comp  = 1.0f / (1.0f + drive * 2.0f);
+            for (int c = 0; c < juce::jmin (ch, 2); ++c)
+            {
+                float* d = buffer.getWritePointer (c);
+                for (int i = 0; i < n; ++i)
+                {
+                    const float dry = d[i];
+                    const float wet = std::tanh (dry * gain) * comp;
+                    d[i] = dry * (1.0f - dmix) + wet * dmix;
+                }
+            }
+        }
+    }
+
+    // --- Flanger (kurze, schwingende Verzoegerung) ---------------------------
+    // Der klassische "Duesenjet": eine Verzoegerung von wenigen Millisekunden,
+    // die langsam hin- und herfaehrt. Weil sich verzoegertes und trockenes
+    // Signal ausloeschen bzw. verstaerken, wandert ein Kammfilter durchs
+    // Spektrum. Die beiden Kanaele laufen um eine Viertelschwingung versetzt,
+    // das macht das Ganze breit.
+    {
+        const float fmix = flangMix.load();
+        if (fmix > 0.0001f && flangBuf.getNumSamples() > 4)
+        {
+            const int   size  = flangBuf.getNumSamples();
+            const float depth = juce::jlimit (0.0f, 1.0f, flangDepth.load());
+            const float rate  = juce::jlimit (0.01f, 8.0f, flangRateHz.load());
+            const double inc  = rate / fxSampleRate;
+            const float base  = (float) (0.001 * fxSampleRate);   // 1 ms Grundverzoegerung
+            const float sweep = (float) (0.006 * fxSampleRate) * depth; // bis +6 ms
+            const int   nch   = juce::jmin (ch, 2);
+
+            double ph = flangPhase;
+            for (int c = 0; c < nch; ++c)
+            {
+                float* d    = buffer.getWritePointer (c);
+                float* line = flangBuf.getWritePointer (c);
+                int    w    = flangWrite;
+                ph = flangPhase + (c == 1 ? 0.25 : 0.0);   // Kanal 2 versetzt
+                for (int i = 0; i < n; ++i)
+                {
+                    const float lfo = 0.5f - 0.5f * std::cos ((float) (ph * 2.0 * juce::MathConstants<double>::pi));
+                    float delay = base + sweep * lfo;
+                    if (delay < 1.0f) delay = 1.0f;
+                    if (delay > (float) (size - 2)) delay = (float) (size - 2);
+
+                    // Zwischen zwei Stuetzstellen interpolieren, sonst knirscht
+                    // das Wandern hoerbar.
+                    const int   di = (int) delay;
+                    const float df = delay - (float) di;
+                    int r0 = w - di;      if (r0 < 0) r0 += size;
+                    int r1 = r0 - 1;      if (r1 < 0) r1 += size;
+                    const float wet = line[r0] * (1.0f - df) + line[r1] * df;
+
+                    const float dry = d[i];
+                    line[w] = dry + wet * 0.35f;            // etwas Rueckkopplung
+                    d[i] = dry * (1.0f - fmix) + wet * fmix;
+                    if (++w >= size) w = 0;
+                    ph += inc; if (ph >= 1.0) ph -= 1.0;
+                }
+                if (c == nch - 1) flangWrite = w;
+            }
+            flangPhase += inc * n;
+            flangPhase -= std::floor (flangPhase);
+        }
+    }
+
+    // --- Phaser (schwingende Allpass-Kette) ----------------------------------
+    // Verwandt mit dem Flanger, aber weicher: vier Allpass-Stufen drehen die
+    // Phase abhaengig von der Frequenz; zusammen mit dem trockenen Signal
+    // entstehen wandernde Kerben. Kein Kammfilter, sondern ein "Wusch".
+    {
+        const float pmix = phaseMix.load();
+        if (pmix > 0.0001f)
+        {
+            const float depth = juce::jlimit (0.0f, 1.0f, phaseDepth.load());
+            const float rate  = juce::jlimit (0.01f, 8.0f, phaseRateHz.load());
+            const double inc  = rate / fxSampleRate;
+            const int   nch   = juce::jmin (ch, 2);
+
+            for (int c = 0; c < nch; ++c)
+            {
+                float* d  = buffer.getWritePointer (c);
+                double ph = phasePhase + (c == 1 ? 0.25 : 0.0);
+                for (int i = 0; i < n; ++i)
+                {
+                    const float lfo = 0.5f - 0.5f * std::cos ((float) (ph * 2.0 * juce::MathConstants<double>::pi));
+                    // Kerbe wandert zwischen ~200 Hz und ~2 kHz
+                    const double fc = 200.0 + 1800.0 * (double) (lfo * depth);
+                    const double t  = std::tan (juce::MathConstants<double>::pi * fc / fxSampleRate);
+                    const float  a  = (float) ((t - 1.0) / (t + 1.0));
+
+                    float x = d[i];
+                    const float dry = x;
+                    for (int st = 0; st < 4; ++st)
+                    {
+                        const float y = a * x + phaseZ[c][st];
+                        phaseZ[c][st] = x - a * y;
+                        x = y;
+                    }
+                    d[i] = dry * (1.0f - pmix) + x * pmix;
+                    ph += inc; if (ph >= 1.0) ph -= 1.0;
+                }
+            }
+            phasePhase += inc * n;
+            phasePhase -= std::floor (phasePhase);
+        }
+    }
 
     // --- Echo (Stereo-Delay mit Rueckkopplung) -------------------------------
     const float mix = echoMix.load();
@@ -149,6 +288,69 @@ void RetroTraxProcessor::applyMasterFx (juce::AudioBuffer<float>& buffer)
                 x = bMd.run (x, eqZ[c][1][0], eqZ[c][1][1]);
                 x = bHi.run (x, eqZ[c][2][0], eqZ[c][2][1]);
                 d[i] = x;
+            }
+        }
+    }
+
+    // --- Kompressor (ganz am Ende: haelt den fertigen Mix zusammen) ----------
+    // Klassischer Huellkurven-Kompressor: wird es lauter als die Schwelle,
+    // wird der Ueberschuss im eingestellten Verhaeltnis zurueckgenommen.
+    // Schnelles Ansprechen (5 ms), gemuetliches Loslassen (120 ms) - das ist
+    // der "Klebstoff"-Bereich, nicht das Pumpen. Die Anhebung danach macht
+    // wett, was die Schwelle wegnimmt, damit Aufdrehen nach "dichter" klingt
+    // und nicht nach "leiser". MIX unter 100% = Parallel-Kompression: das
+    // trockene Signal bleibt daneben stehen, Anschlaege bleiben lebendig.
+    {
+        const float cmix = compMix.load();
+        if (cmix > 0.0001f)
+        {
+            const float thr   = juce::jlimit (-60.0f, 0.0f, compThreshDb.load());
+            const float ratio = juce::jlimit (1.0f, 20.0f, compRatio.load());
+            const float thrLin = std::pow (10.0f, thr / 20.0f);
+            // Aufholverstaerkung: die Haelfte dessen, was bei voller Aussteuerung
+            // weggenommen wuerde - vorsichtig genug, um nicht zu uebersteuern.
+            const float makeup = std::pow (10.0f, (-thr * (1.0f - 1.0f / ratio) * 0.5f) / 20.0f);
+
+            const float atk = std::exp (-1.0f / (float) (0.005 * fxSampleRate));
+            const float rel = std::exp (-1.0f / (float) (0.120 * fxSampleRate));
+
+            for (int c = 0; c < juce::jmin (ch, 2); ++c)
+            {
+                float* d = buffer.getWritePointer (c);
+                float  e = compEnv[c];
+
+                // Kaltstart abfangen: steht der Huellkurvenfolger noch auf Null
+                // (erster Block, oder gerade eingeschaltet), waere er die ersten
+                // Millisekunden "blind" - es gaebe keine Bremsung, die
+                // Aufholverstaerkung wirkte aber schon. Ergebnis waere ein
+                // deutlich zu lauter Knall am Anfang. Darum einmal mit dem
+                // tatsaechlichen Pegel vorbelegen, dann greift er ab dem ersten
+                // Sample richtig.
+                if (e <= 0.0f)
+                {
+                    float first = 0.0f;
+                    for (int i = 0; i < juce::jmin (n, 64); ++i)
+                        first = juce::jmax (first, std::abs (d[i]));
+                    e = first;
+                }
+
+                for (int i = 0; i < n; ++i)
+                {
+                    const float dry = d[i];
+                    const float lvl = std::abs (dry);
+                    e = lvl > e ? atk * (e - lvl) + lvl : rel * (e - lvl) + lvl;
+
+                    float g = 1.0f;
+                    if (e > thrLin && e > 1.0e-9f)
+                    {
+                        // Ueberschuss ueber der Schwelle im Verhaeltnis kuerzen
+                        const float over = e / thrLin;
+                        g = std::pow (over, 1.0f / ratio - 1.0f);
+                    }
+                    const float wet = dry * g * makeup;
+                    d[i] = dry * (1.0f - cmix) + wet * cmix;
+                }
+                compEnv[c] = e;
             }
         }
     }
@@ -1054,6 +1256,17 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
     xml->setAttribute ("eqLow",    (double) eqLow.load());
     xml->setAttribute ("eqMid",    (double) eqMid.load());
     xml->setAttribute ("eqHigh",   (double) eqHigh.load());
+    xml->setAttribute ("distDrive", (double) distDrive.load());
+    xml->setAttribute ("distMix",   (double) distMix.load());
+    xml->setAttribute ("compThr",   (double) compThreshDb.load());
+    xml->setAttribute ("compRatio", (double) compRatio.load());
+    xml->setAttribute ("compMix",   (double) compMix.load());
+    xml->setAttribute ("flangRate", (double) flangRateHz.load());
+    xml->setAttribute ("flangDepth",(double) flangDepth.load());
+    xml->setAttribute ("flangMix",  (double) flangMix.load());
+    xml->setAttribute ("phaseRate", (double) phaseRateHz.load());
+    xml->setAttribute ("phaseDepth",(double) phaseDepth.load());
+    xml->setAttribute ("phaseMix",  (double) phaseMix.load());
 
     // Song-Reihenfolge + Modus (Reihenfolge als Liste von Pattern-Nummern).
     {
@@ -1231,6 +1444,18 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
     eqLow        = (float) xml.getDoubleAttribute ("eqLow",    0.0);
     eqMid        = (float) xml.getDoubleAttribute ("eqMid",    0.0);
     eqHigh       = (float) xml.getDoubleAttribute ("eqHigh",   0.0);
+    // Fehlen die neuen Werte (aelterer Song), bleibt jeder Effekt auf MIX 0 = aus.
+    distDrive    = (float) xml.getDoubleAttribute ("distDrive", 0.5);
+    distMix      = (float) xml.getDoubleAttribute ("distMix",   0.0);
+    compThreshDb = (float) xml.getDoubleAttribute ("compThr",  -18.0);
+    compRatio    = (float) xml.getDoubleAttribute ("compRatio", 4.0);
+    compMix      = (float) xml.getDoubleAttribute ("compMix",   0.0);
+    flangRateHz  = (float) xml.getDoubleAttribute ("flangRate", 0.25);
+    flangDepth   = (float) xml.getDoubleAttribute ("flangDepth",0.6);
+    flangMix     = (float) xml.getDoubleAttribute ("flangMix",  0.0);
+    phaseRateHz  = (float) xml.getDoubleAttribute ("phaseRate", 0.4);
+    phaseDepth   = (float) xml.getDoubleAttribute ("phaseDepth",0.7);
+    phaseMix     = (float) xml.getDoubleAttribute ("phaseMix",  0.0);
 
     // Alte Instrumente leeren, damit Slots eines frueheren Songs nicht zurueckbleiben.
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
