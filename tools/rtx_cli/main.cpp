@@ -1,12 +1,16 @@
 // rtx_cli - JUCE-freier RetroTrax-Replayer (Phase 2a).
 //
 //   Ohne Argument : Smoke-Test (Engine hochfahren, Stille rendern).
-//   <song.retrotrax> [out.wav] : Song laden und zu WAV rendern.
+//   <song.retrotrax|song.rtx> [out.wav] : Song laden und zu WAV rendern.
+//   pack <song.retrotrax> <song.rtx>    : gepacktes Binaerformat schreiben
+//                                         (prueft sich selbst: rendert beide
+//                                          Fassungen und vergleicht sie Bit fuer Bit)
 //
 // Kann: .retrotrax (bpm/swing/order, Synth- UND Sample-Instrumente aus
-// eingebetteten <D>-Daten = Base64 + zlib-inflate, Pattern-Zellen) sowie
-// TFMX-Module (.mdat/.tfmx, Phase 1b -> feste Spieldauer zu WAV).
-// Das Format wird an der Datei-Kennung erkannt ("TFMX" = TFMX, sonst XML).
+// eingebetteten <D>-Daten = Base64 + zlib-inflate, Pattern-Zellen), das
+// gepackte .rtx sowie TFMX-Module (.mdat/.tfmx, Phase 1b -> feste Spieldauer
+// zu WAV). Das Format wird an der Datei-Kennung erkannt ("TFMX" = TFMX,
+// "RTX1" = gepackt, sonst XML).
 //
 // Bauen (JUCE-frei; -lz fuer zlib, libtfmxdecoder.a fuer TFMX):
 //   g++ -std=c++17 -O2 -DRETROTRAX_NO_JUCE -DHAVE_CXX17 -I src -I libs/residfp \
@@ -15,6 +19,7 @@
 
 #include "TrackerEngine.h"
 #include "rt_load.h"
+#include "rt_rtx.h"
 #include "rt_tfmx.h"
 
 #include <cmath>
@@ -32,9 +37,82 @@ static std::string readFile (const std::string& path)
     return ss.str();
 }
 
+// --- pack: .retrotrax -> .rtx, mit Selbstpruefung ---------------------------
+// Packen ist nur dann etwas wert, wenn danach EXAKT dasselbe klingt. Darum
+// rendert dieser Weg beide Fassungen und vergleicht die Audiodaten Bit fuer Bit.
+static int packCommand (const std::string& inPath, const std::string& outPath, double sr)
+{
+    const std::string xml = readFile (inPath);
+    if (xml.empty())
+    {
+        std::printf ("FEHLER: konnte '%s' nicht lesen (leer?).\n", inPath.c_str());
+        return 1;
+    }
+
+    TrackerEngine src;
+    const int n = rtload::loadRetrotrax (xml, src);
+    if (n < 0)
+    {
+        std::printf ("FEHLER: '%s' ist kein RETROTRAX-Dokument.\n", inPath.c_str());
+        return 1;
+    }
+
+    const std::vector<uint8_t> packed = rtrtx::pack (src);
+    if (packed.empty())
+    {
+        std::printf ("FEHLER: Packen fehlgeschlagen.\n");
+        return 1;
+    }
+
+    {
+        std::ofstream out (outPath, std::ios::binary);
+        out.write ((const char*) packed.data(), (long) packed.size());
+    }
+
+    // Gegenprobe: aus der gepackten Datei neu laden und beide rendern.
+    TrackerEngine dst;
+    const int n2 = rtrtx::load (packed, dst);
+    if (n2 < 0)
+    {
+        std::printf ("FEHLER: gepackte Datei laesst sich nicht wieder lesen.\n");
+        return 1;
+    }
+
+    // Fuer den Vergleich muss die XML-Fassung frisch geladen werden, weil das
+    // Rendern die Engine laufen laesst (Zustand veraendert sich).
+    TrackerEngine refEngine;
+    rtload::loadRetrotrax (xml, refEngine);
+    std::vector<float> a, b;
+    const long fa = rtload::renderSong (refEngine, a, sr);
+    const long fb = rtload::renderSong (dst, b, sr);
+
+    const bool same = (fa == fb) && (a.size() == b.size())
+                      && (a.empty() || std::memcmp (a.data(), b.data(), a.size() * sizeof (float)) == 0);
+
+    const double xmlKB = (double) xml.size() / 1024.0;
+    const double rtxKB = (double) packed.size() / 1024.0;
+    std::printf ("Gepackt: %s -> %s\n", inPath.c_str(), outPath.c_str());
+    std::printf ("  Instrumente=%d (gelesen: %d)  Zellen/Struktur+Samples gepackt\n", n, n2);
+    std::printf ("  %.1f KB (.retrotrax)  ->  %.1f KB (.rtx)   = %.0f%% kleiner\n",
+                 xmlKB, rtxKB, (1.0 - rtxKB / xmlKB) * 100.0);
+    std::printf ("  Klangprobe: %ld vs %ld Frames -> %s\n", fa, fb,
+                 same ? "BIT-IDENTISCH" : "UNTERSCHIEDLICH (!!)");
+    return same ? 0 : 2;
+}
+
 int main (int argc, char** argv)
 {
     const double sr = 44100.0;
+
+    if (argc >= 2 && std::string (argv[1]) == "pack")
+    {
+        if (argc < 4)
+        {
+            std::printf ("Nutzung: %s pack <song.retrotrax> <song.rtx>\n", argv[0]);
+            return 1;
+        }
+        return packCommand (argv[2], argv[3], sr);
+    }
 
     if (argc < 2)
     {
@@ -80,10 +158,16 @@ int main (int argc, char** argv)
     }
 
     TrackerEngine engine;
-    const int n = rtload::loadRetrotrax (xml, engine);
+    int n = -1;
+    if (xml.rfind ("RTX1", 0) == 0)   // gepacktes Binaerformat
+        n = rtrtx::load ((const uint8_t*) xml.data(), xml.size(), engine);
+    else
+        n = rtload::loadRetrotrax (xml, engine);
+
     if (n < 0)
     {
-        std::printf ("FEHLER: '%s' ist kein RETROTRAX-Dokument.\n", inPath.c_str());
+        std::printf ("FEHLER: '%s' ist weder ein RETROTRAX-Dokument noch eine .rtx-Datei.\n",
+                     inPath.c_str());
         return 1;
     }
 
