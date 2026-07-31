@@ -20,6 +20,7 @@ extern "C" {
     void*  rtx_create (double sampleRate);
     void   rtx_destroy (void* h);
     int    rtx_load_retrotrax (void* h, const char* xml);
+    int    rtx_load_rtx (void* h, const unsigned char* data, int len);
     int    rtx_render (void* h, double maxSeconds);
     float* rtx_buffer (void* h);
     int    rtx_frames (void* h);
@@ -65,6 +66,24 @@ int main (int argc, char** argv)
     // Komplett-Render fuer den Vergleich sichern (rtx_stream_* nutzt denselben Puffer).
     std::vector<float> full (buf, buf + (size_t) n * 2);
     rtx_destroy (h);
+
+    // ── Gepacktes .rtx (optionales 2. Argument) muss identisch klingen ────────
+    bool rtxOk = true;
+    if (argc >= 3)
+    {
+        std::ifstream rin (argv[2], std::ios::binary);
+        std::ostringstream rss; rss << rin.rdbuf();
+        const std::string packed = rss.str();
+        void* hp = rtx_create (44100.0);
+        const int pi = rtx_load_rtx (hp, (const unsigned char*) packed.data(), (int) packed.size());
+        const int pf = pi >= 0 ? rtx_render (hp, 600.0) : 0;
+        const float* pb = rtx_buffer (hp);
+        rtxOk = pi >= 0 && pf == n && pb != nullptr
+             && std::memcmp (full.data(), pb, full.size() * sizeof (float)) == 0;
+        std::printf (".rtx: Instrumente=%d frames=%d (%zu KB statt %zu KB)  identisch=%s\n",
+                     pi, pf, packed.size() / 1024, xml.size() / 1024, rtxOk ? "JA" : "NEIN");
+        rtx_destroy (hp);
+    }
 
     // ── Streaming-API pruefen: Haeppchen muessen exakt dasselbe Audio ergeben ──
     void* hs = rtx_create (44100.0);
@@ -114,7 +133,7 @@ int main (int argc, char** argv)
     }
     rtx_destroy (hs);
 
-    const bool ok = n > 0 && peak > 0.001 && sameAudio && seekOk;
+    const bool ok = n > 0 && peak > 0.001 && sameAudio && seekOk && rtxOk;
     std::printf (ok ? "ALLE TESTS OK\n" : "TEST FEHLGESCHLAGEN\n");
     return ok ? 0 : 3;
 }

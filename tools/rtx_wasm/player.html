@@ -142,7 +142,7 @@
       <h1><span class="rt1">Retro</span><span class="rt2">Trax</span></h1>
       <span class="badge">Web-Player</span>
     </header>
-    <p class="sub">Spielt <code>.retrotrax</code>-Songs und <code>TFMX</code>-Module direkt im Browser – ganz ohne Installation, mit Sofort-Start (Streaming).</p>
+    <p class="sub">Spielt <code>.retrotrax</code>- und gepackte <code>.rtx</code>-Songs sowie <code>TFMX</code>-Module direkt im Browser – ganz ohne Installation, mit Sofort-Start (Streaming).</p>
 
     <div class="scope-wrap">
       <div id="songtitle"></div>
@@ -156,7 +156,7 @@
     </div>
 
     <div class="row">
-      <label class="file">📂 Song wählen…<input id="file" type="file" multiple accept=".retrotrax,.xml,.mdat,.tfmx,.tfx,.tfm,.smpl,.sam"></label>
+      <label class="file">📂 Song wählen…<input id="file" type="file" multiple accept=".retrotrax,.rtx,.xml,.mdat,.tfmx,.tfx,.tfm,.smpl,.sam"></label>
       <button id="demo" disabled>🎵 Demo anhören</button>
       <button id="play" class="play" disabled>▶︎ Abspielen</button>
       <button id="stop" disabled>■ Stopp</button>
@@ -362,12 +362,16 @@
                                 ['number','string'], [h, '/work/mdat.song']);
         if (rc < 0) throw new Error('TFMX nicht abspielbar (fehlt die zweite Datei mdat/smpl?).');
         kind = 'tfmx'; label = mdat.name; info = 'TFMX'; duration = TFMX_SECONDS;
-      } else {                                    // .retrotrax (XML-Text)
-        const xml = new TextDecoder().decode(bufs[0].bytes);
-        const nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'], [h, xml]);
-        if (nInst < 0) throw new Error('Keine gültige .retrotrax-Datei.');
+      } else {                                    // .retrotrax (XML-Text) oder gepacktes .rtx
+        const packed = isRtx(bufs[0].bytes);
+        const nInst = packed
+          ? loadPackedBytes(h, bufs[0].bytes)
+          : Module.ccall('rtx_load_retrotrax', 'number', ['number','string'],
+                         [h, new TextDecoder().decode(bufs[0].bytes)]);
+        if (nInst < 0) throw new Error('Keine gültige .retrotrax- oder .rtx-Datei.');
         Module.ccall('rtx_stream_start', 'number', ['number'], [h]);
-        kind = 'rtx'; label = bufs[0].name; info = nInst + ' Instrument(e)';
+        kind = 'rtx'; label = bufs[0].name;
+        info = nInst + ' Instrument(e)' + (packed ? ', gepackt' : '');
         duration = Module.ccall('rtx_estimate_seconds', 'number', ['number'], [h]);
       }
     } catch (e) {
@@ -416,15 +420,20 @@
     return { buf, frames, outSr };
   }
 
-  function renderRetrotrax (xmlText) {
+  // Nimmt die Rohbytes: XML-Text (.retrotrax) oder gepacktes .rtx.
+  function renderRetrotrax (bytes) {
     const h = Module.ccall('rtx_create', 'number', ['number'], [44100]);
     try {
-      const nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'], [h, xmlText]);
-      if (nInst < 0) throw new Error('Keine gültige .retrotrax-Datei.');
+      const packed = isRtx(bytes);
+      const nInst = packed
+        ? loadPackedBytes(h, bytes)
+        : Module.ccall('rtx_load_retrotrax', 'number', ['number','string'],
+                       [h, new TextDecoder().decode(bytes)]);
+      if (nInst < 0) throw new Error('Keine gültige .retrotrax- oder .rtx-Datei.');
       const frames = Module.ccall('rtx_render', 'number', ['number','number'], [h, 600.0]);
       if (frames <= 0) throw new Error('Song ergab kein Audio (leer?).');
       const r = heapToAudioBuffer(h, frames);
-      r.info = nInst + ' Instrument(e)';
+      r.info = nInst + ' Instrument(e)' + (packed ? ', gepackt' : '');
       return r;
     } finally {
       Module.ccall('rtx_destroy', null, ['number'], [h]);
@@ -450,6 +459,18 @@
 
   const isTfmx = (bytes) => bytes.length >= 4 &&
       bytes[0]===0x54 && bytes[1]===0x46 && bytes[2]===0x4D && bytes[3]===0x58; // "TFMX"
+  const isRtx = (bytes) => bytes.length >= 4 &&
+      bytes[0]===0x52 && bytes[1]===0x54 && bytes[2]===0x58 && bytes[3]===0x31; // "RTX1"
+
+  // .rtx ist binär -> Bytes in den WASM-Speicher legen statt als Text zu übergeben.
+  function loadPackedBytes (h, bytes) {
+    const p = Module._malloc(bytes.length);
+    Module.HEAPU8.set(bytes, p);
+    const n = Module.ccall('rtx_load_rtx', 'number', ['number','number','number'],
+                           [h, p, bytes.length]);
+    Module._free(p);
+    return n;
+  }
 
   // ── Song laden (gemeinsamer Weg für Dateiauswahl UND Demo-Knopf) ────
   async function loadBuffers (bufs) {
@@ -472,7 +493,7 @@
           r = renderTfmx(mdat.bytes, smpl.bytes);
           label = mdat.name;
         } else {
-          r = renderRetrotrax(new TextDecoder().decode(bufs[0].bytes));
+          r = renderRetrotrax(bufs[0].bytes);
           label = bufs[0].name;
         }
         audioBuffer = r.buf; info = r.info; dur = audioBuffer.duration;
@@ -501,8 +522,9 @@
     await loadBuffers(bufs).catch(() => {});
   });
 
-  // ── Demo-Song: liegt als songs/*.retrotrax neben dem Player ─────────
-  const DEMO = { file: 'songs/startrekker-groove.retrotrax', title: 'Startrekker Groove' };
+  // ── Demo-Song: liegt neben dem Player. Gepackt (.rtx), damit übers Netz
+  //    nur ~15 statt ~44 KB gehen; die .retrotrax-Fassung bleibt daneben liegen.
+  const DEMO = { file: 'songs/startrekker-groove.rtx', title: 'Startrekker Groove' };
   demoEl.addEventListener('click', async () => {
     set('Hole Demo-Song…', 'busy');
     try {

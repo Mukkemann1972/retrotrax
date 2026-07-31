@@ -36,9 +36,17 @@ cd tools/rtx_wasm && python3 -m http.server 8099
   lückenlos; gespult wird per Neustart + stummem Vorspulen. Gerendert wird mit
   der Abtastrate des AudioContext (kein Resampling nötig). Browser ohne
   AudioWorklet bekommen automatisch den alten Komplett-Render als Rückfall.
+- **Gepacktes `.rtx`** (siehe `src/rt_rtx.h`): der Player erkennt es an der
+  Kennung `RTX1` und lädt es über `rtx_load_rtx` — sonst identischer Weg
+  (Streaming inklusive). Der Demo-Song wird als `.rtx` geholt: ~15 statt ~44 KB
+  über die Leitung, gleicher Klang. Packen mit
+  `./build/rtx_cli pack song.retrotrax song.rtx`.
 - Verifiziert: `native_test.cpp` beweist, dass gestreamte Häppchen **bit-genau**
   dem Komplett-Render entsprechen (inkl. Seek); dazu Node-Lauf der echten
   rtx_wasm.js. Die Längen-Schätzung (`rtx_estimate_seconds`) trifft auf ~0,1 s,
   Tempo-Effekte im Song können sie verschieben — der Player korrigiert am Ende.
-- Noch offen (Ideen): Demo-Songs fest auf der Seite, MOD/XM/S3M-Wiedergabe,
+  Für `.rtx` zusätzlich: `native_test.cpp <song.retrotrax> <song.rtx>` vergleicht
+  beide Fassungen Wert für Wert, und der gestreamte `.rtx`-Weg wurde per Node
+  gegen den XML-Komplett-Render geprüft — bit-identisch.
+- Noch offen (Ideen): mehr Demo-Songs fest auf der Seite, MOD/XM/S3M-Wiedergabe,
   Rendern in einen Worker auslagern (falls schwache Handys beim Nachschub ruckeln).

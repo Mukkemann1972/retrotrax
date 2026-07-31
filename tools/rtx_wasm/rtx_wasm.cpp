@@ -13,6 +13,7 @@
 
 #include "TrackerEngine.h"
 #include "rt_load.h"
+#include "rt_rtx.h"
 #include "rt_tfmx.h"
 
 #include <algorithm>
@@ -69,6 +70,16 @@ RTX_API int rtx_load_retrotrax (void* h, const char* xml)
     auto* p = static_cast<RtxPlayer*> (h);
     if (p == nullptr || xml == nullptr) return -1;
     p->instruments = rtload::loadRetrotrax (std::string (xml), p->engine);
+    return p->instruments;
+}
+
+// Gepacktes .rtx laden (Rohbytes, da binaer -> Laenge muss mit). Sonst genau
+// wie rtx_load_retrotrax: danach rtx_render oder rtx_stream_start.
+RTX_API int rtx_load_rtx (void* h, const unsigned char* data, int len)
+{
+    auto* p = static_cast<RtxPlayer*> (h);
+    if (p == nullptr || data == nullptr || len <= 0) return -1;
+    p->instruments = rtrtx::load (data, (size_t) len, p->engine);
     return p->instruments;
 }
 
