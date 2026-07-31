@@ -10,7 +10,15 @@ A VST3/CLAP/AU/LV2 plugin and standalone app in the spirit of ProTracker, FastTr
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.85 — MIDI velocity + humanize: real touch counts now
+## Status: v0.88 — `.rtx`: songs small enough to pass around
+
+- **🟢 Packed `.rtx` format (v0.88):** a second, packed song format next to
+  `.retrotrax` — same music, note for note, at roughly a third of the size
+  (43 KB → 15 KB for the demo song). Just type a `.rtx` file extension when
+  saving. Classic Amiga samples are 8-bit but were stored as 16-bit; RetroTrax
+  now detects that per sample and halves it **without losing a single bit**.
+  Keep using `.retrotrax` for editing — `.rtx` is for sharing and embedding,
+  and the web player reads it directly
 
 - **🟢 MIDI velocity + humanize (v0.85):** a connected MIDI keyboard/pad
   controller used to be completely ignored (always full volume) — now real
@@ -198,6 +206,27 @@ A project from the Mukkemann universe.
 | Digits (on instrument/volume column) | Type a value |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
 | `Ctrl+C` / `Ctrl+V` / `Ctrl+X` | Copy / paste / cut track |
+
+## Installing
+
+Grab the zip for your system from the [latest release](https://github.com/Mukkemann1972/retrotrax/releases),
+unpack it, and copy the folder you need:
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| **Standalone** | run it from anywhere | run it from anywhere | run it from anywhere |
+| **VST3** | `C:\Program Files\Common Files\VST3` | `~/Library/Audio/Plug-Ins/VST3` | `~/.vst3` |
+| **CLAP** | `C:\Program Files\Common Files\CLAP` | `~/Library/Audio/Plug-Ins/CLAP` | `~/.clap` |
+| **AU** (Logic, GarageBand) | — | `~/Library/Audio/Plug-Ins/Components` | — |
+| **LV2** (Ardour, Qtractor) | — | — | `~/.lv2` |
+
+**macOS:** the builds are not code-signed or notarised, so macOS puts downloaded
+plugins in quarantine and your DAW will not see them. One command per file frees
+them, for example:
+
+```bash
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Mukkemann RetroTrax.component"
+```
 
 ## Building from source
 
