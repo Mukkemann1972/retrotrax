@@ -44,6 +44,21 @@ target_include_directories(tfmxdecoder PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libs/t
 target_compile_features(tfmxdecoder PUBLIC cxx_std_17)
 set_target_properties(tfmxdecoder PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# Welche Plugin-Formate gebaut werden.
+#   VST3 + Standalone: ueberall (CLAP kommt weiter unten dazu).
+#   AU:  gibt es NUR auf dem Mac - ohne AU koennen Logic und GarageBand das
+#        Plugin gar nicht laden, das sind auf dem Mac die meisten Nutzer.
+#   LV2: das freie Format der Linux-Welt (Ardour, Qtractor, Carla).
+# Beide werden nur dort angeschaltet, wo sie auch gebaut werden koennen.
+set(RETROTRAX_FORMATS VST3 Standalone)
+if(APPLE)
+    list(APPEND RETROTRAX_FORMATS AU)
+endif()
+if(UNIX AND NOT APPLE)
+    list(APPEND RETROTRAX_FORMATS LV2)
+endif()
+message(STATUS "RetroTrax: Formate = ${RETROTRAX_FORMATS}")
+
 juce_add_plugin(RetroTrax
     PRODUCT_NAME "Mukkemann RetroTrax"
     VERSION ${PROJECT_VERSION}
@@ -52,7 +67,8 @@ juce_add_plugin(RetroTrax
     BUNDLE_ID de.mukkemann.retrotrax
     PLUGIN_MANUFACTURER_CODE Mukk
     PLUGIN_CODE Rtrx
-    FORMATS VST3 Standalone
+    FORMATS ${RETROTRAX_FORMATS}
+    LV2URI https://printvision-future.de/plugins/retrotrax
     NEEDS_CURL TRUE
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE

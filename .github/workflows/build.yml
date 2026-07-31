@@ -50,15 +50,22 @@ jobs:
       - name: Bauen
         run: cmake --build build --config Release -j 4
 
-      # Standalone + VST3 in EIN Zip packen — auf dem nativen Runner, damit
+      # Alle gebauten Formate in EIN Zip packen — auf dem nativen Runner, damit
       # unter macOS/Linux das Ausfuehrungs-Bit und Symlinks erhalten bleiben.
+      # Welche Ordner es gibt, haengt vom System ab (AU nur macOS, LV2 nur
+      # Linux) — darum wird geschaut, was wirklich da ist, statt fest zu listen.
       - name: Paket schnueren (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $ver = "${{ github.ref_name }}" -replace '^v',''
           $dest = "RetroTrax-Windows-$ver.zip"
-          Compress-Archive -Path "build/RetroTrax_artefacts/Release/Standalone/*","build/RetroTrax_artefacts/Release/VST3/*","build/RetroTrax_artefacts/Release/CLAP/*" -DestinationPath $dest
+          $src = "build/RetroTrax_artefacts/Release"
+          $paths = @("Standalone","VST3","CLAP") |
+                   Where-Object { Test-Path "$src/$_" } |
+                   ForEach-Object { "$src/$_/*" }
+          Write-Host "Packe: $($paths -join ', ')"
+          Compress-Archive -Path $paths -DestinationPath $dest
           echo "ASSET=$dest" >> $env:GITHUB_ENV
 
       - name: Paket schnueren (Unix)
@@ -67,7 +74,15 @@ jobs:
         run: |
           ver="${GITHUB_REF_NAME#v}"
           dest="RetroTrax-${{ matrix.name }}-${ver}.zip"
-          ( cd build/RetroTrax_artefacts/Release && zip -ry "$OLDPWD/$dest" Standalone VST3 CLAP )
+          (
+            cd build/RetroTrax_artefacts/Release
+            dirs=""
+            for d in Standalone VST3 CLAP AU LV2; do
+              [ -d "$d" ] && dirs="$dirs $d"
+            done
+            echo "Packe:$dirs"
+            zip -ry "$OLDPWD/$dest" $dirs
+          )
           echo "ASSET=$dest" >> "$GITHUB_ENV"
 
       - name: Ergebnis hochladen

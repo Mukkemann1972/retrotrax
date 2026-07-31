@@ -6,7 +6,7 @@
 
 **[⬇ Download (Windows / macOS / Linux)](https://github.com/Mukkemann1972/retrotrax/releases/latest)**
 
-A VST3/CLAP plugin and standalone app in the spirit of ProTracker, FastTracker II and
+A VST3/CLAP/AU/LV2 plugin and standalone app in the spirit of ProTracker, FastTracker II and
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
@@ -125,7 +125,8 @@ A project from the Mukkemann universe.
 - Pattern grid in classic ProTracker style: the cursor row stays centered, the pattern scrolls
 - Computer keyboard as piano
 - MIDI input for previewing notes
-- Runs as a VST3 **and** CLAP inside any DAW **and** as a standalone program
+- Runs as **VST3, CLAP, AU** (macOS — Logic, GarageBand) and **LV2** (Linux — Ardour)
+  inside any DAW **and** as a standalone program
 
 ## Roadmap
 
@@ -212,7 +213,9 @@ cmake --build build -j2
 ```
 
 Results end up in `build/RetroTrax_artefacts/Release/`:
-`Standalone/` (app), `VST3/` and `CLAP/` (plugins for your DAW).
+`Standalone/` (app), `VST3/` and `CLAP/` (plugins for your DAW), plus `AU/` when
+building on macOS and `LV2/` when building on Linux. Those two are added
+automatically for the platform that can use them — no extra flags needed.
 
 ## Support ❤️
 

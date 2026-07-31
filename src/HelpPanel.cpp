@@ -75,7 +75,8 @@ void HelpPanel::rebuild()
             "fuer alle, die ohne teure Hardware Musik machen wollen: Ideen von frueher,\n"
             "Komfort von heute.\n\n"
             "Projekt: github.com/Mukkemann1972/retrotrax  -  Ko-fi: ko-fi.com (Mukkemann)\n"
-            "Laeuft als VST3, CLAP und als eigenstaendiges Programm.\n"
+            "Laeuft als VST3, CLAP, AU (Mac: Logic/GarageBand), LV2 (Linux)\n"
+            "und als eigenstaendiges Programm.\n"
             "Das Logo erscheint beim Start (Klick/Taste ueberspringt).",
             "Mukkemann RetroTrax - Free Open Source Music Tracker.\n\n"
             "Amiga sampling and real C64 SID sound in ONE tool, mixed in a single\n"
@@ -83,7 +84,8 @@ void HelpPanel::rebuild()
             "who wants to make music without expensive hardware: ideas from the past,\n"
             "comfort of today.\n\n"
             "Project: github.com/Mukkemann1972/retrotrax  -  Ko-fi: ko-fi.com (Mukkemann)\n"
-            "Runs as VST3, CLAP and a standalone app.\n"
+            "Runs as VST3, CLAP, AU (Mac: Logic/GarageBand), LV2 (Linux)\n"
+            "and as a standalone app.\n"
             "The logo shows on startup (click/key to skip).") });
 
     topics.add ({ loc::t ("Schnellstart", "Quick start"),
