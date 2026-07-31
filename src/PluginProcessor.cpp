@@ -1292,6 +1292,22 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("kind", "synth");
             e->setAttribute ("name", ip->name);
             e->setAttribute ("eng",  (int) ip->engine);
+            if (ip->engine == TrackerEngine::Instrument::Engine::Fm)
+            {
+                // FM: Algorithmus, Rueckkopplung und die vier Operatoren.
+                e->setAttribute ("fmAlgo", ip->fmAlgo);
+                e->setAttribute ("fmFb",   ip->fmFeedback);
+                for (int o = 0; o < TrackerEngine::Instrument::kFmOps; ++o)
+                {
+                    const juce::String k ("fm" + juce::String (o));
+                    e->setAttribute (k + "r",  ip->fmRatio[o]);
+                    e->setAttribute (k + "l",  ip->fmLevel[o]);
+                    e->setAttribute (k + "a",  ip->fmAttack[o]);
+                    e->setAttribute (k + "d",  ip->fmDecay[o]);
+                    e->setAttribute (k + "s",  ip->fmSustain[o]);
+                    e->setAttribute (k + "rl", ip->fmRelease[o]);
+                }
+            }
             e->setAttribute ("wave", (int) ip->wave);
             e->setAttribute ("pw",  ip->pulseWidth);
             e->setAttribute ("a",   ip->attack);
@@ -1478,7 +1494,22 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                 auto inst = std::make_unique<TrackerEngine::Instrument>();
                 inst->kind       = TrackerEngine::Instrument::Kind::Synth;
                 inst->engine     = (TrackerEngine::Instrument::Engine)
-                                       juce::jlimit (0, 1, e->getIntAttribute ("eng", 0)); // alt -> Classic
+                                       juce::jlimit (0, 2, e->getIntAttribute ("eng", 0)); // alt -> Classic
+                if (inst->engine == TrackerEngine::Instrument::Engine::Fm)
+                {
+                    inst->fmAlgo     = juce::jlimit (0, 7, e->getIntAttribute ("fmAlgo", 0));
+                    inst->fmFeedback = (float) e->getDoubleAttribute ("fmFb", 0.0);
+                    for (int o = 0; o < TrackerEngine::Instrument::kFmOps; ++o)
+                    {
+                        const juce::String k ("fm" + juce::String (o));
+                        inst->fmRatio[o]   = (float) e->getDoubleAttribute (k + "r",  1.0);
+                        inst->fmLevel[o]   = (float) e->getDoubleAttribute (k + "l",  o == 0 ? 1.0 : 0.0);
+                        inst->fmAttack[o]  = (float) e->getDoubleAttribute (k + "a",  0.002);
+                        inst->fmDecay[o]   = (float) e->getDoubleAttribute (k + "d",  0.25);
+                        inst->fmSustain[o] = (float) e->getDoubleAttribute (k + "s",  0.8);
+                        inst->fmRelease[o] = (float) e->getDoubleAttribute (k + "rl", 0.25);
+                    }
+                }
                 inst->wave       = (TrackerEngine::Instrument::Wave)
                                        juce::jlimit (0, 3, e->getIntAttribute ("wave", 2));
                 inst->pulseWidth = (float) e->getDoubleAttribute ("pw",  0.5);

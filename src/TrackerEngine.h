@@ -44,7 +44,11 @@ public:
         // Welcher Klangmotor: der selbstgebaute (wie seit jeher) oder die echte
         // reSIDfp-Chip-Emulation. Pro Instrument frei waehlbar; Standard bleibt
         // Classic, damit bestehende Songs unveraendert klingen.
-        enum class Engine { Classic, RealChip };
+        // Klangmotor eines Synth-Instruments:
+        //   Classic  = der selbstgebaute Oszillator (wie seit jeher, Standard)
+        //   RealChip = echte reSIDfp-C64-Emulation
+        //   Fm       = 4-Operatoren-FM (Mega Drive / DX7 / AdLib-Welt)
+        enum class Engine { Classic, RealChip, Fm };
 
         Kind kind = Kind::Sample;
 
@@ -145,6 +149,23 @@ public:
 
         // --- SID-Synth (nur bei kind == Synth) ---
         Engine engine     = Engine::Classic; // Klangmotor: selbstgebaut oder echter Chip
+
+        // --- FM (nur bei engine == Fm) ---------------------------------------
+        // Vier Operatoren, wie im Mega Drive (YM2612) und in der DX/OPN-Familie.
+        // Jeder Operator ist ein Sinus mit eigener Tonhoehe (als Vielfaches der
+        // Note) und eigener Huellkurve. Wer auf wen einwirkt, sagt der Algorithmus.
+        // Das Prinzip: ein Operator, der auf einen anderen zeigt, aendert dessen
+        // Phase - aus einem simplen Sinus wird so ein komplexer Klang. Wer am Ende
+        // der Kette steht, ist hoerbar ("Traeger"), die anderen sind Modulatoren.
+        static constexpr int kFmOps = 4;
+        float fmRatio[kFmOps]   = { 1.0f, 1.0f, 1.0f, 1.0f };  // Vielfaches der Notentonhoehe
+        float fmLevel[kFmOps]   = { 1.0f, 0.0f, 0.0f, 0.0f };  // Ausgangsstaerke 0..1
+        float fmAttack[kFmOps]  = { 0.002f, 0.002f, 0.002f, 0.002f };
+        float fmDecay[kFmOps]   = { 0.25f, 0.25f, 0.25f, 0.25f };
+        float fmSustain[kFmOps] = { 0.8f, 0.8f, 0.8f, 0.8f };
+        float fmRelease[kFmOps] = { 0.25f, 0.25f, 0.25f, 0.25f };
+        int   fmAlgo      = 0;      // 0..7, siehe fmAlgorithm()
+        float fmFeedback  = 0.0f;   // Rueckkopplung von Operator 1 auf sich selbst
         Wave  wave        = Wave::Pulse;
         float pulseWidth  = 0.5f;   // 0..1, nur fuer die Puls-Welle
         float attack      = 0.004f; // Huellkurve in Sekunden / Sustain als Pegel 0..1
@@ -585,6 +606,11 @@ private:
         double       modPhase = 0.0;        // Phase des zweiten Oszillators (Ring/Sync)
         double       pwmPhase = 0.0;        // Phase des Pulsweiten-LFO
         double       uniPhase[2] = { 0.0, 0.0 }; // Phasen der gestapelten Unisono-Stimmen
+        // --- FM-Status (Engine::Fm) ---
+        double       fmPhase[4]  = { 0.0, 0.0, 0.0, 0.0 }; // Phase je Operator
+        float        fmEnv[4]    = { 0.0f, 0.0f, 0.0f, 0.0f };
+        int          fmStage[4]  = { 0, 0, 0, 0 };   // 0 leer, 1 A, 2 D, 3 S, 4 R
+        float        fmFbMem     = 0.0f;             // letzter Ausgang von Op1 (Rueckkopplung)
         double       wowPhase  = 0.0;       // Phase der Tape-Wow-LFO (Mellotron-Eiern)
         double       flutPhase = 0.0;       // Phase des schnelleren Flutter-Anteils
         // --- Effekt-Status der laufenden Zeile ---
@@ -872,7 +898,23 @@ private:
                 v.uniPhase[0] = 0.33; // leicht versetzte Startphasen -> sofort breit
                 v.uniPhase[1] = 0.66;
             }
-            v.fadeIn = 0;
+            if (inst->engine == Instrument::Engine::Fm)
+            {
+                // Alle vier Operatoren starten gemeinsam bei Phase 0 - das gibt
+                // FM den typisch praezisen, immer gleichen Anschlag.
+                for (int o = 0; o < 4; ++o)
+                {
+                    v.fmPhase[o] = 0.0;
+                    v.fmEnv[o]   = 0.0f;
+                    v.fmStage[o] = 1;   // Attack
+                }
+                v.fmFbMem = 0.0f;
+                v.fadeIn  = kFade;      // winzige Blende gegen Knacken
+            }
+            else
+            {
+                v.fadeIn = 0;
+            }
         }
         else
         {
@@ -898,6 +940,8 @@ private:
         {
             if (v.inst->engine == Instrument::Engine::RealChip)
                 sidChips[v.voiceIdx].noteOff(); // Gate aus -> Chip-Huellkurve ins Release
+            else if (v.inst->engine == Instrument::Engine::Fm)
+                for (auto& st : v.fmStage) { if (st != 0) st = 4; } // alle Operatoren ins Release
             else
                 v.envStage = 4;                 // Klassisch: Release-Phase
         }
@@ -1147,6 +1191,8 @@ private:
             {
                 if (v.inst->engine == Instrument::Engine::RealChip)
                     renderSynthChip (out, v, offset, num, outCh);
+                else if (v.inst->engine == Instrument::Engine::Fm)
+                    renderSynthFm (out, v, offset, num, outCh);
                 else
                     renderSynthClassic (out, v, offset, num, outCh);
             }
@@ -1438,6 +1484,144 @@ private:
 
     // KLASSISCH (selbstgebaut): Oszillator (Dreieck/Saege/Puls/Rauschen) + ADSR-
     // Huellkurve + eigenes State-Variable-Filter. Der vertraute RetroTrax-Klang.
+    // --- FM: welcher Operator wirkt auf wen? --------------------------------
+    // Die acht Verschaltungen der OPN/DX-Familie. mod[i] sagt, WOHIN Operator i
+    // hineinmoduliert (-1 = geht direkt zum Ausgang), carrier[i] sagt, ob er
+    // hoerbar ist. Von "alle hintereinander" (0, harte FM-Klaenge) bis "alle
+    // parallel" (7, orgelartig/additiv).
+    struct FmAlgorithm { int mod[4]; bool carrier[4]; };
+
+    static FmAlgorithm fmAlgorithm (int a)
+    {
+        switch (juce::jlimit (0, 7, a))
+        {
+            // 1->2->3->4, nur 4 hoerbar: die klassische Kette, kraeftigste FM.
+            case 0: return { { 1, 2, 3, -1 }, { false, false, false, true } };
+            // (1,2)->3->4: zwei Modulatoren treffen sich, dann weiter.
+            case 1: return { { 2, 2, 3, -1 }, { false, false, false, true } };
+            // 1->4 und 2->3->4: zwei Wege auf denselben Traeger.
+            case 2: return { { 3, 2, 3, -1 }, { false, false, false, true } };
+            // 1->2->4 und 3->4.
+            case 3: return { { 1, 3, 3, -1 }, { false, false, false, true } };
+            // 1->2 (hoerbar) und 3->4 (hoerbar): zwei eigene Paare - E-Piano-Land.
+            case 4: return { { 1, -1, 3, -1 }, { false, true, false, true } };
+            // 1 moduliert 2,3,4 - alle drei hoerbar: glockig, breit.
+            case 5: return { { 1, -1, -1, -1 }, { false, true, true, true } };
+            // 1->2 hoerbar, 3 und 4 einfach dazu: Mischung aus FM und Orgel.
+            case 6: return { { 1, -1, -1, -1 }, { false, true, true, true } };
+            // alle vier parallel, keiner moduliert: rein additiv (Orgel).
+            default: return { { -1, -1, -1, -1 }, { true, true, true, true } };
+        }
+    }
+
+    // --- FM-Klangmotor (4 Operatoren) ---------------------------------------
+    // Jeder Operator ist ein Sinus mit eigener Huellkurve. Modulatoren
+    // verschieben die Phase ihres Ziels, Traeger gehen in den Ausgang. Genau so
+    // arbeiten YM2612 (Mega Drive), OPL (AdLib) und die DX-Reihe - nur dass wir
+    // in Fliesskomma rechnen statt in Chip-Tabellen.
+    void renderSynthFm (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
+    {
+        const auto* inst = v.inst;
+        const float sr   = (float) sampleRate;
+        const auto  alg  = fmAlgorithm (inst->fmAlgo);
+        float trackPk = 0.0f;
+
+        // Huellkurven-Schritte je Operator einmal pro Block ausrechnen.
+        float atkInc[4], decInc[4], relInc[4];
+        for (int o = 0; o < 4; ++o)
+        {
+            atkInc[o] = inst->fmAttack[o]  > 0.0f ? 1.0f / (inst->fmAttack[o]  * sr) : 1.0f;
+            decInc[o] = inst->fmDecay[o]   > 0.0f ? (1.0f - inst->fmSustain[o]) / (inst->fmDecay[o] * sr) : 1.0f;
+            relInc[o] = inst->fmRelease[o] > 0.0f ? 1.0f / (inst->fmRelease[o] * sr) : 1.0f;
+        }
+
+        const float fb = juce::jlimit (0.0f, 1.0f, inst->fmFeedback);
+
+        // Wie viele Traeger gibt es? Danach wird der Ausgang geteilt, damit
+        // Algorithmus 7 (vier parallele) nicht viermal so laut ist wie Nr. 0.
+        int carriers = 0;
+        for (int o = 0; o < 4; ++o) if (alg.carrier[o]) ++carriers;
+        const float outScale = carriers > 0 ? 1.0f / (float) carriers : 1.0f;
+
+        for (int i = 0; i < num; ++i)
+        {
+            // 1) Huellkurven fortschreiben
+            for (int o = 0; o < 4; ++o)
+            {
+                switch (v.fmStage[o])
+                {
+                    case 1: v.fmEnv[o] += atkInc[o];
+                            if (v.fmEnv[o] >= 1.0f) { v.fmEnv[o] = 1.0f; v.fmStage[o] = 2; }
+                            break;
+                    case 2: v.fmEnv[o] -= decInc[o];
+                            if (v.fmEnv[o] <= inst->fmSustain[o]) { v.fmEnv[o] = inst->fmSustain[o]; v.fmStage[o] = 3; }
+                            break;
+                    case 4: v.fmEnv[o] -= relInc[o];
+                            if (v.fmEnv[o] <= 0.0f) { v.fmEnv[o] = 0.0f; v.fmStage[o] = 0; }
+                            break;
+                    default: break;   // 0 = still, 3 = Sustain (haelt)
+                }
+            }
+
+            // 2) Operatoren der Reihe nach rechnen. Weil die Algorithmen so
+            //    aufgebaut sind, dass ein Operator immer nur auf einen SPAETEREN
+            //    zeigt, reicht ein Durchlauf von 0 nach 3.
+            float modIn[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            float outSum = 0.0f;
+
+            for (int o = 0; o < 4; ++o)
+            {
+                double phase = v.fmPhase[o] + (double) modIn[o];
+                float  sig   = std::sin ((float) (phase * 2.0 * juce::MathConstants<double>::pi));
+
+                // Rueckkopplung: Operator 1 auf sich selbst - macht ihn von
+                // sanft nach saegezahnartig/rau (klassischer FM-Regler).
+                if (o == 0 && fb > 0.0f)
+                {
+                    sig = std::sin ((float) ((phase + (double) (v.fmFbMem * fb)) * 2.0 * juce::MathConstants<double>::pi));
+                    v.fmFbMem = sig;
+                }
+
+                sig *= v.fmEnv[o] * inst->fmLevel[o];
+
+                if (alg.mod[o] >= 0 && alg.mod[o] < 4)
+                    modIn[alg.mod[o]] += sig * 2.0f;   // Modulationstiefe
+                if (alg.carrier[o])
+                    outSum += sig;
+
+                v.fmPhase[o] += v.step * (double) inst->fmRatio[o];
+                if (v.fmPhase[o] >= 1.0e7) v.fmPhase[o] = std::fmod (v.fmPhase[o], 1.0);
+            }
+
+            float sample = outSum * outScale * v.vol;
+
+            // Anstiegsblende (wie bei den anderen Motoren: verhindert Knacken)
+            if (v.fadeIn > 0)
+            {
+                sample *= (float) (kFade - v.fadeIn) / (float) kFade;
+                --v.fadeIn;
+            }
+
+            trackPk = juce::jmax (trackPk, std::abs (sample));
+            if (outCh > 0) buffer.getWritePointer (0)[offset + i] += sample * v.gainL;
+            if (outCh > 1) buffer.getWritePointer (1)[offset + i] += sample * v.gainR;
+
+            // Alle Huellkurven durch -> Stimme ist fertig.
+            bool anyAlive = false;
+            for (int o = 0; o < 4; ++o)
+                if (alg.carrier[o] && v.fmStage[o] != 0) { anyAlive = true; break; }
+            if (! anyAlive && v.fmStage[0] == 0)
+            {
+                v.active = false;
+                break;
+            }
+        }
+
+        const int t = v.voiceIdx;
+        if (t >= 0 && t < kTracks)
+            trackLevel[t].store (juce::jmax (trackLevel[t].load(), trackPk));
+    }
+
     void renderSynthClassic (juce::AudioBuffer<float>& buffer, Voice& v, int offset, int num, int outCh)
     {
         const auto* inst = v.inst;
