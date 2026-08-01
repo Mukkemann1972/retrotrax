@@ -34,7 +34,10 @@ private:
     void selectChord (int chord);     // Akkord aus einer Note (0=aus, 1 Dur, ...)
     void updateStackButtons();
     void selectFilter (Filter f);
-    void selectEngine (Engine e); // Klangmotor umschalten (Klassisch / Echter Chip)
+    void selectEngine (Engine e); // Klangmotor umschalten (Klassisch / Echter Chip / FM)
+    void applyFmPreset (int index); // FM-Werksklang auf den Slot legen
+    void writeFmParams();           // die drei FM-Regler in den Slot schreiben
+    void updateFmVisibility();      // FM-Regler zeigen/verbergen, SID-Regler umgekehrt
     void applyPreset (int index); // Werks-Preset auf den aktuellen Slot legen
 
     // Eigene SID-Sounds (analog "Meine Sounds" beim Sampler).
@@ -63,6 +66,7 @@ private:
     juce::Label      engineLabel;
     juce::TextButton engineClassic { "KLASSISCH" };
     juce::TextButton engineChip    { "ECHTER CHIP" };
+    juce::TextButton engineFm      { "FM" };
 
     // Werks-Presets: eine Handvoll fertiger Startklaenge zum Anklicken.
     juce::Label                        presetLabel;
@@ -108,6 +112,16 @@ private:
     // Akkord aus einer Note: AUS / DUR / MOLL / SUS4 / QUINTE / OKTAVE.
     juce::Label      chordLabel;
     juce::ComboBox   chordBox;
+
+    // --- FM (nur sichtbar, wenn der FM-Motor gewaehlt ist) -----------------
+    // Bewusst schlank: acht Werksklaenge zum Anklicken und drei Regler, mit
+    // denen man wirklich etwas anfangen kann. Die 26 Einzelwerte der Operatoren
+    // stecken in den Werksklaengen - wer sie einzeln braucht, bekommt spaeter
+    // einen eigenen Editor.
+    juce::Label                        fmPresetLabel;
+    juce::OwnedArray<juce::TextButton> fmPresetButtons;
+    juce::Label  fmAlgoLabel, fmFbLabel, fmBrightLabel;
+    juce::Slider fmAlgoSlider, fmFbSlider, fmBrightSlider;
 
     juce::Label      hintLabel;
     juce::TextButton testButton  { "TEST" }; // aktuellen Klang anspielen (mit Ausklang)

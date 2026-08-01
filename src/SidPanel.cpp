@@ -1,4 +1,5 @@
 #include "SidPanel.h"
+#include "FmPresets.h"
 
 // --- Werks-Presets ----------------------------------------------------------
 // Ein Preset ist nur ein Satz SID-Reglerwerte mit Namen - eine gute Auswahl an
@@ -52,6 +53,40 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     addAndMakeVisible (engineChip);
     engineClassic.onClick = [this] { selectEngine (Engine::Classic); };
     engineChip.onClick    = [this] { selectEngine (Engine::RealChip); };
+    addAndMakeVisible (engineFm);
+    engineFm.onClick      = [this] { selectEngine (Engine::Fm); };
+
+    // --- FM: Werksklaenge + drei Regler ---------------------------------
+    fmPresetLabel.setFont (rt::mono (12.0f, true));
+    fmPresetLabel.setColour (juce::Label::textColourId, rt::textDim);
+    addChildComponent (fmPresetLabel);
+    {
+        int n = 0;
+        const auto* tbl = FmPresets::table (n);
+        for (int i = 0; i < n; ++i)
+        {
+            auto* b = fmPresetButtons.add (new juce::TextButton (tbl[i].nameDe));
+            b->onClick = [this, i] { applyFmPreset (i); };
+            addChildComponent (*b);
+        }
+    }
+    {
+        auto setupFmSlider = [this] (juce::Slider& sl, juce::Label& lab,
+                                     double lo, double hi, double step, const juce::String& suffix)
+        {
+            sl.setSliderStyle (juce::Slider::LinearBar);
+            sl.setRange (lo, hi, step);
+            sl.setTextValueSuffix (suffix);
+            sl.onValueChange = [this] { if (! loading) writeFmParams(); };
+            addChildComponent (sl);
+            lab.setFont (rt::mono (12.0f, true));
+            lab.setColour (juce::Label::textColourId, rt::textDim);
+            addChildComponent (lab);
+        };
+        setupFmSlider (fmAlgoSlider,   fmAlgoLabel,   0.0, 7.0, 1.0, "");
+        setupFmSlider (fmFbSlider,     fmFbLabel,     0.0, 100.0, 1.0, " %");
+        setupFmSlider (fmBrightSlider, fmBrightLabel, 0.0, 150.0, 1.0, " %");
+    }
 
     // Werks-Presets: eine Reihe Startklaenge. Knoepfe aus der Tabelle erzeugen.
     presetLabel.setFont (rt::mono (12.0f, true));
@@ -171,6 +206,23 @@ void SidPanel::applyLanguage()
     engineLabel.setText (loc::t ("KLANG-MOTOR", "SOUND ENGINE"), juce::dontSendNotification);
     engineClassic.setButtonText (loc::t ("KLASSISCH", "CLASSIC"));
     engineChip.setButtonText    (loc::t ("ECHTER CHIP", "REAL CHIP"));
+    engineFm.setButtonText      (loc::t ("FM", "FM"));
+    engineFm.setTooltip (loc::t ("4-Operatoren-FM: die Klangwelt von Mega Drive, DX7 und AdLib",
+                                 "4-operator FM: the sound world of Mega Drive, DX7 and AdLib"));
+    fmPresetLabel.setText (loc::t ("FM-KLAENGE", "FM SOUNDS"), juce::dontSendNotification);
+    fmAlgoLabel.setText   (loc::t ("ALGORITHMUS", "ALGORITHM"), juce::dontSendNotification);
+    fmFbLabel.setText     (loc::t ("RUECKKOPPLUNG", "FEEDBACK"), juce::dontSendNotification);
+    fmBrightLabel.setText (loc::t ("HELLIGKEIT", "BRIGHTNESS"), juce::dontSendNotification);
+    fmAlgoSlider.setTooltip (loc::t ("Wer moduliert wen: 0 = alle hintereinander (haerteste FM), "
+                                     "4 = zwei Paare (E-Piano), 7 = alle parallel (orgelartig)",
+                                     "Who modulates whom: 0 = all in a chain (hardest FM), "
+                                     "4 = two pairs (e-piano), 7 = all parallel (organ-like)"));
+    fmFbSlider.setTooltip (loc::t ("Operator 1 auf sich selbst - von sanft nach saegezahnartig/rau",
+                                   "Operator 1 onto itself - from gentle to sawtooth-like and rough"));
+    fmBrightSlider.setTooltip (loc::t ("Zieht alle Modulatoren gemeinsam auf oder zu - weich bis scharf. "
+                                       "100 % = wie im Werksklang",
+                                       "Opens or closes all modulators together - soft to sharp. "
+                                       "100 % = as in the factory sound"));
     engineClassic.setTooltip (loc::t ("Selbstgebauter Synth - der vertraute RetroTrax-Klang",
                                       "Self-built synth - the familiar RetroTrax sound"));
     engineChip.setTooltip (loc::t ("Echte reSIDfp-Emulation des MOS-6581-Chips (originaler C64-Sound)",
@@ -264,6 +316,9 @@ void SidPanel::refresh()
         return; // Slot ist (noch) kein SID-Instrument
 
     loading = true; // Regler setzen, ohne dass die Callbacks zurueckschreiben
+    fmAlgoSlider.setValue   ((double) s.fmAlgo,             juce::dontSendNotification);
+    fmFbSlider.setValue     ((double) s.fmFeedback * 100.0, juce::dontSendNotification);
+    fmBrightSlider.setValue ((double) s.fmBright   * 100.0, juce::dontSendNotification);
     pwSlider.setValue      (s.pulseWidth * 100.0, juce::dontSendNotification);
     pwmRateSlider.setValue (s.pwmRate, juce::dontSendNotification);
     pwmDepthSlider.setValue(s.pwmDepth * 100.0, juce::dontSendNotification);
@@ -484,12 +539,89 @@ void SidPanel::selectEngine (Engine e)
     previewNote(); // neuen Klangmotor gleich hoeren
 }
 
+// FM-Werksklang auf den Slot legen (schaltet den Motor gleich mit um).
+void SidPanel::applyFmPreset (int index)
+{
+    if (! proc.isSid (slot))
+        return;
+    proc.editSid (slot, [index] (TrackerEngine::Instrument& i) { FmPresets::apply (i, index); });
+    refresh();
+    if (onChanged) onChanged();
+    previewNote();   // neuen Klang gleich hoeren
+}
+
+// Die drei FM-Regler in den Slot schreiben.
+void SidPanel::writeFmParams()
+{
+    if (! proc.isSid (slot))
+        return;
+    const int   algo   = (int) fmAlgoSlider.getValue();
+    const float fb     = (float) (fmFbSlider.getValue()     / 100.0);
+    const float bright = (float) (fmBrightSlider.getValue() / 100.0);
+    proc.editSid (slot, [algo, fb, bright] (TrackerEngine::Instrument& i)
+    {
+        i.fmAlgo     = algo;
+        i.fmFeedback = fb;
+        i.fmBright   = bright;
+    });
+    if (onChanged) onChanged();
+}
+
+// FM gewaehlt -> FM-Bedienung zeigen, die SID-eigenen Regler verbergen (und
+// umgekehrt). Wellenform, Pulsweite, Filter, Ring/Sync, Stack und Akkord
+// gehoeren zum SID-Oszillator und haetten bei FM gar keine Wirkung - sie
+// stehenzulassen waere nur verwirrend. Die Huellkurve steckt bei FM in den
+// Operatoren selbst, darum auch die ADSR-Regler weg.
+void SidPanel::updateFmVisibility()
+{
+    TrackerEngine::Instrument s;
+    const bool fm = proc.getSid (slot, s) && s.engine == Engine::Fm;
+
+    fmPresetLabel.setVisible (fm);
+    for (auto* b : fmPresetButtons) b->setVisible (fm);
+    for (auto* c : { (juce::Component*) &fmAlgoLabel,   (juce::Component*) &fmAlgoSlider,
+                     (juce::Component*) &fmFbLabel,     (juce::Component*) &fmFbSlider,
+                     (juce::Component*) &fmBrightLabel, (juce::Component*) &fmBrightSlider })
+        c->setVisible (fm);
+
+    for (auto* c : { (juce::Component*) &waveLabel,  (juce::Component*) &waveTri,
+                     (juce::Component*) &waveSaw,    (juce::Component*) &wavePulse,
+                     (juce::Component*) &waveNoise,  (juce::Component*) &pwLabel,
+                     (juce::Component*) &pwSlider,   (juce::Component*) &pwmRateLabel,
+                     (juce::Component*) &pwmRateSlider, (juce::Component*) &pwmDepthLabel,
+                     (juce::Component*) &pwmDepthSlider, (juce::Component*) &filterLabel,
+                     (juce::Component*) &filtOff,    (juce::Component*) &filtLow,
+                     (juce::Component*) &filtHigh,   (juce::Component*) &filtBand,
+                     (juce::Component*) &cutoffLabel, (juce::Component*) &cutoffSlider,
+                     (juce::Component*) &resoLabel,  (juce::Component*) &resoSlider,
+                     (juce::Component*) &modLabel,   (juce::Component*) &ringButton,
+                     (juce::Component*) &syncButton, (juce::Component*) &modTuneLabel,
+                     (juce::Component*) &modTuneSlider, (juce::Component*) &stackLabel,
+                     (juce::Component*) &stack1,     (juce::Component*) &stack2,
+                     (juce::Component*) &stack3,     (juce::Component*) &detuneLabel,
+                     (juce::Component*) &detuneSlider, (juce::Component*) &chordLabel,
+                     (juce::Component*) &chordBox,   (juce::Component*) &attackLabel,
+                     (juce::Component*) &attackSlider, (juce::Component*) &decayLabel,
+                     (juce::Component*) &decaySlider, (juce::Component*) &sustainLabel,
+                     (juce::Component*) &sustainSlider, (juce::Component*) &releaseLabel,
+                     (juce::Component*) &releaseSlider })
+        c->setVisible (! fm);
+
+    // Die SID-Werksklaenge passen nur zum SID-Oszillator.
+    presetLabel.setVisible (! fm);
+    for (auto* b : presetButtons) b->setVisible (! fm);
+
+    resized();
+}
+
 void SidPanel::updateEngineButtons()
 {
     TrackerEngine::Instrument s;
     const Engine e = proc.getSid (slot, s) ? s.engine : Engine::Classic;
     engineClassic.setToggleState (e == Engine::Classic,  juce::dontSendNotification);
     engineChip.setToggleState    (e == Engine::RealChip, juce::dontSendNotification);
+    engineFm.setToggleState      (e == Engine::Fm,       juce::dontSendNotification);
+    updateFmVisibility();
 }
 
 void SidPanel::selectWave (Wave w)
@@ -685,6 +817,8 @@ void SidPanel::resized()
     titleLabel.setBounds (top.removeFromLeft (240));
     slotLabel.setBounds  (top.removeFromLeft (120));
     // Klangmotor-Umschalter rechts in der Kopfzeile.
+    engineFm.setBounds      (top.removeFromRight (70));
+    top.removeFromRight (6);
     engineChip.setBounds    (top.removeFromRight (120));
     top.removeFromRight (6);
     engineClassic.setBounds (top.removeFromRight (120));
@@ -693,14 +827,19 @@ void SidPanel::resized()
     area.removeFromTop (10);
 
     // Werks-Presets: eine Reihe gleich breiter Knoepfe quer ueber die Breite.
-    presetLabel.setBounds (area.removeFromTop (16));
+    // Bei FM stehen hier die FM-Klaenge statt der SID-Presets (der jeweils
+    // andere Satz ist unsichtbar, siehe updateFmVisibility).
+    const bool fmMode = engineFm.getToggleState();
+    auto& useLabel = fmMode ? fmPresetLabel : presetLabel;
+    auto& useBtns  = fmMode ? fmPresetButtons : presetButtons;
+    useLabel.setBounds (area.removeFromTop (16));
     {
         auto row = area.removeFromTop (28);
-        const int n = presetButtons.size();
+        const int n = useBtns.size();
         if (n > 0)
         {
             const int bw = (row.getWidth() - (n - 1) * 6) / n;
-            for (auto* b : presetButtons)
+            for (auto* b : useBtns)
             {
                 b->setBounds (row.removeFromLeft (bw));
                 row.removeFromLeft (6);
@@ -764,6 +903,24 @@ void SidPanel::resized()
         cb.setBounds (row);
         col.removeFromTop (8);
     };
+
+    if (fmMode)
+    {
+        // FM braucht nur drei Regler - die stehen links, rechts bleibt frei
+        // (Wellenform/Filter/ADSR gehoeren zum SID-Oszillator und sind hier
+        // ausgeblendet, weil sie auf FM gar nicht wirken wuerden).
+        sliderRow (left, fmAlgoLabel,   fmAlgoSlider);
+        sliderRow (left, fmFbLabel,     fmFbSlider);
+        sliderRow (left, fmBrightLabel, fmBrightSlider);
+
+        auto bot = getLocalBounds().reduced (14).removeFromBottom (30);
+        closeButton.setBounds (bot.removeFromRight (120).reduced (0, 2));
+        bot.removeFromRight (8);
+        testButton.setBounds (bot.removeFromRight (90).reduced (0, 2));
+        bot.removeFromRight (12);
+        hintLabel.setBounds (bot);
+        return;
+    }
 
     // Linke Spalte: Klangerzeugung.
     buttonRow (left, waveLabel, { &waveTri, &waveSaw, &wavePulse, &waveNoise });

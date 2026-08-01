@@ -1297,6 +1297,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
                 // FM: Algorithmus, Rueckkopplung und die vier Operatoren.
                 e->setAttribute ("fmAlgo", ip->fmAlgo);
                 e->setAttribute ("fmFb",   ip->fmFeedback);
+                e->setAttribute ("fmBright", ip->fmBright);
                 for (int o = 0; o < TrackerEngine::Instrument::kFmOps; ++o)
                 {
                     const juce::String k ("fm" + juce::String (o));
@@ -1499,6 +1500,7 @@ void RetroTraxProcessor::applyStateXml (const juce::XmlElement& xml, juce::Strin
                 {
                     inst->fmAlgo     = juce::jlimit (0, 7, e->getIntAttribute ("fmAlgo", 0));
                     inst->fmFeedback = (float) e->getDoubleAttribute ("fmFb", 0.0);
+                    inst->fmBright   = (float) e->getDoubleAttribute ("fmBright", 1.0);
                     for (int o = 0; o < TrackerEngine::Instrument::kFmOps; ++o)
                     {
                         const juce::String k ("fm" + juce::String (o));

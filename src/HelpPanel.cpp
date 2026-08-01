@@ -595,9 +595,56 @@ void HelpPanel::rebuild()
             "after a restart). REMOVE takes one out again - your files are left\n"
             "untouched.") });
 
-    topics.add ({ loc::t ("FX: Akai-Sampler-Effekte", "FX: Akai sampler effects"),
+    topics.add ({ loc::t ("FM-Synthese (Mega Drive / DX7)", "FM synthesis (Mega Drive / DX7)"),
         loc::t (
-            "Der FX-Knopf hat zwei Reiter. Der Reiter AKAI-SAMPLER-EFFEKTE bearbeitet\n"
+            "Neben dem KLASSISCHEN Oszillator und dem ECHTEN CHIP (C64-SID) gibt es\n"
+            "einen dritten Klangmotor: FM. Das ist die Klangwelt von Mega Drive,\n"
+            "DX7 und AdLib - E-Pianos, Glocken, knackige Baesse, Blaeser.\n\n"
+            "So geht's: SID-Fenster oeffnen, oben rechts auf FM klicken. Darunter\n"
+            "stehen acht fertige Klaenge - einmal draufklicken, fertig. Genau so\n"
+            "haben es die alten Geraete auch gemacht, denn FM von Null aufzubauen\n"
+            "endet meistens in Krach.\n\n"
+            "Wie FM funktioniert (kurz): Es gibt vier Operatoren, jeder ein\n"
+            "einfacher Sinuston. Zeigt ein Operator auf einen anderen, verbiegt er\n"
+            "dessen Schwingung - aus zwei langweiligen Sinussen wird ein reicher\n"
+            "Klang. Wer am Ende steht, ist hoerbar; die anderen arbeiten im\n"
+            "Verborgenen.\n\n"
+            "Die drei Regler:\n"
+            "- ALGORITHMUS (0-7): wer auf wen wirkt. 0 = alle hintereinander\n"
+            "  (haerteste FM), 4 = zwei Paare (das ist E-Piano-Land), 7 = alle\n"
+            "  parallel ohne Modulation (orgelartig). Einfach durchprobieren.\n"
+            "- RUECKKOPPLUNG: Operator 1 wirkt auf sich selbst - dreht den Klang\n"
+            "  von sanft nach saegezahnartig und rau. Der Regler fuer den Dreck.\n"
+            "- HELLIGKEIT: zieht alle Modulatoren gemeinsam auf oder zu, also von\n"
+            "  weich nach scharf. 100 % = so wie der Werksklang gedacht war.\n\n"
+            "Alles wird im Song mitgespeichert. FM-Instrumente klingen auch im\n"
+            "Web-Player und im gepackten .rtx.",
+
+            "Next to the CLASSIC oscillator and the REAL CHIP (C64 SID) there is a\n"
+            "third sound engine: FM. This is the sound world of the Mega Drive,\n"
+            "DX7 and AdLib - e-pianos, bells, punchy basses, brass.\n\n"
+            "How: open the SID window, click FM at the top right. Below it are\n"
+            "eight ready-made sounds - one click and you are there. The old\n"
+            "machines did exactly the same, because building FM from scratch\n"
+            "usually ends in noise.\n\n"
+            "How FM works (briefly): there are four operators, each a simple sine\n"
+            "tone. When one operator points at another, it bends that one's wave -\n"
+            "and two boring sines become a rich sound. Whoever sits at the end is\n"
+            "audible; the others work behind the scenes.\n\n"
+            "The three controls:\n"
+            "- ALGORITHM (0-7): who affects whom. 0 = all in a chain (hardest FM),\n"
+            "  4 = two pairs (that is e-piano land), 7 = all parallel with no\n"
+            "  modulation (organ-like). Just try them out.\n"
+            "- FEEDBACK: operator 1 onto itself - turns the sound from gentle to\n"
+            "  sawtooth-like and rough. The dirt control.\n"
+            "- BRIGHTNESS: opens or closes all modulators together, soft to sharp.\n"
+            "  100 % = the way the factory sound was meant to be.\n\n"
+            "Everything is saved with the song. FM instruments also play in the web\n"
+            "player and in the packed .rtx.") });
+
+    topics.add ({ loc::t ("FX: Sampler-Effekte", "FX: sampler effects"),
+        loc::t (
+            "Der FX-Knopf hat zwei Reiter. Der Reiter SAMPLER-EFFEKTE bearbeitet\n"
             "das Sample im aktuellen Slot - der warme, druckvolle Klang der alten\n"
             "Sampler. (Der zweite Reiter MASTER-EFFEKTE wirkt auf den ganzen Mix.)\n\n"
             "- FILTER AN schaltet einen resonanten Tiefpass dazu (24 dB/Okt).\n"
@@ -630,7 +677,7 @@ void HelpPanel::rebuild()
             "Standard ist AUS, dein Sample bleibt also unveraendert, bis du den\n"
             "Filter einschaltest. Die Einstellung wird im Song (.retrotrax)\n"
             "mitgespeichert. TEST spielt ein C-5 mit dem aktuellen Klang.",
-            "The FX button has two tabs. The AKAI SAMPLER FX tab edits the sample in\n"
+            "The FX button has two tabs. The SAMPLER FX tab edits the sample in\n"
             "the current slot - the warm, punchy sound of the old samplers. (The\n"
             "second tab, MASTER FX, affects the whole mix.)\n\n"
             "- FILTER ON adds a resonant low-pass (24 dB/oct).\n"
@@ -945,7 +992,7 @@ void HelpPanel::rebuild()
         loc::t (
             "Der FX-Knopf, Reiter MASTER-EFFEKTE, wirkt auf den GANZEN Mix\n"
             "(alle Spuren zusammen), wie der Master-Track in Renoise. (Der erste\n"
-            "Reiter AKAI-SAMPLER-EFFEKTE bearbeitet nur das aktuelle Sample.)\n\n"
+            "Reiter SAMPLER-EFFEKTE bearbeitet nur das aktuelle Sample.)\n\n"
             "Die Effekte laufen in dieser Reihenfolge durch - so wie man auch an\n"
             "einem Mischpult aufbauen wuerde: erst wird der Klang GEFORMT, dann\n"
             "BEWEGT, dann in den RAUM gestellt, im TON zurechtgerueckt und ganz\n"
@@ -978,8 +1025,8 @@ void HelpPanel::rebuild()
             "ALLE stehen auf MIX 0 = aus, dein Klang bleibt also unveraendert, bis du\n"
             "aufdrehst. Die Einstellungen werden im Song (.retrotrax) mitgespeichert.",
             "The FX button, MASTER FX tab, affects the WHOLE mix (all tracks\n"
-            "together), like the master track in Renoise. (The first tab, AKAI\n"
-            "SAMPLER FX, edits only the current sample.)\n\n"
+            "together), like the master track in Renoise. (The first tab, SAMPLER\n"
+            "FX, edits only the current sample.)\n\n"
             "The effects run in this order - the way you would build things on a\n"
             "mixing desk: first the sound is SHAPED, then MOVED, then placed in a\n"
             "ROOM, adjusted in TONE, and finally HELD TOGETHER.\n\n"
@@ -1033,13 +1080,15 @@ void HelpPanel::rebuild()
             "Single-Cycle-Welle (Sinus / Saege / Rechteck / Dreieck / Puls) in den\n"
             "aktuellen Slot. Sie ist auf Loop gestellt und klingt dauerhaft wie ein\n"
             "Oszillator - so baust du dir Synth-Sounds ganz ohne Sample. Mit dem\n"
-            "Akai-Filter, Drive usw. (AKAI-Knopf) formst du sie weiter, oder du\n"
+            "Akai-Filter, Drive usw. (FX-Knopf, Reiter SAMPLER-EFFEKTE) formst du sie\n"
+            "weiter, oder du\n"
             "zeichnest sie im FAIRLIGHT-Werkzeug mit FREIHAND selbst.",
             "In the LOAD menu under \"Generate waveform\" you put a simple single-cycle\n"
             "wave (sine / saw / square / triangle / pulse) into the current slot. It is\n"
             "set to loop and sounds continuously like an oscillator - so you build\n"
             "synth sounds with no sample at all. Shape it further with the Akai filter,\n"
-            "drive etc. (AKAI button), or draw your own with FREEHAND in the FAIRLIGHT\n"
+            "drive etc. (FX button, SAMPLER FX tab), or draw your own with FREEHAND in\n"
+            "the FAIRLIGHT\n"
             "tool.") });
 
     topics.add ({ loc::t ("Zufallsmelodie (WUERFEL)", "Random melody (DICE)"),

@@ -1140,8 +1140,8 @@ void RetroTraxEditor::applyLanguage()
     recButton.setTooltip (loc::t ("Aufnahme scharf schalten: nur dann landen live gespielte Noten im Pattern",
                                   "Arm recording: only then do live-played notes land in the pattern"));
     fxButton.setButtonText (loc::t ("FX", "FX"));
-    fxButton.setTooltip (loc::t ("FX: Akai-Sampler-Effekte (pro Sample) + Master-Effekte (Echo/Hall/EQ) - zwei Reiter",
-                                 "FX: Akai sampler effects (per sample) + master effects (echo/reverb/EQ) - two tabs"));
+    fxButton.setTooltip (loc::t ("FX: Sampler-Effekte (pro Sample) + Master-Effekte (ganze Kette) - zwei Reiter",
+                                 "FX: sampler effects (per sample) + master effects (full chain) - two tabs"));
     fxPanel.applyLanguage();
 
     refreshInstrumentBox();   // "(leer)"/"(empty)" nachziehen

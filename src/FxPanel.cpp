@@ -27,12 +27,14 @@ FxPanel::FxPanel (RetroTraxProcessor& processor)
 
 void FxPanel::applyLanguage()
 {
-    tabSampler.setButtonText (loc::t ("AKAI-SAMPLER-EFFEKTE", "AKAI SAMPLER FX"));
+    tabSampler.setButtonText (loc::t ("SAMPLER-EFFEKTE", "SAMPLER FX"));
     tabMaster.setButtonText  (loc::t ("MASTER-EFFEKTE", "MASTER FX"));
-    tabSampler.setTooltip (loc::t ("Effekte fuer das aktuelle Sample (Filter, 12-Bit, Vintage-Charaktere ...)",
-                                   "Effects for the current sample (filter, 12-bit, vintage characters ...)"));
-    tabMaster.setTooltip (loc::t ("Effekte fuer den ganzen Mix (Echo, Hall, EQ)",
-                                  "Effects for the whole mix (echo, reverb, EQ)"));
+    tabSampler.setTooltip (loc::t ("Effekte fuer das aktuelle Sample - Akai-Filter, 12-Bit/8-Bit, Drive, "
+                                   "Loop und die Vintage-Charaktere (S950, SP-1200, EMU II, Mirage, Fairlight, Mellotron)",
+                                   "Effects for the current sample - Akai filter, 12-bit/8-bit, drive, loop "
+                                   "and the vintage characters (S950, SP-1200, EMU II, Mirage, Fairlight, Mellotron)"));
+    tabMaster.setTooltip (loc::t ("Effekte fuer den ganzen Mix - Zerre, Flanger, Phaser, Echo, Hall, EQ, Kompressor",
+                                  "Effects for the whole mix - distortion, flanger, phaser, echo, reverb, EQ, compressor"));
     closeButton.setButtonText (loc::t ("SCHLIESSEN", "CLOSE"));
     samplerFx.applyLanguage();
     masterFx.applyLanguage();

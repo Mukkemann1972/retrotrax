@@ -166,6 +166,12 @@ public:
         float fmRelease[kFmOps] = { 0.25f, 0.25f, 0.25f, 0.25f };
         int   fmAlgo      = 0;      // 0..7, siehe fmAlgorithm()
         float fmFeedback  = 0.0f;   // Rueckkopplung von Operator 1 auf sich selbst
+        // HELLIGKEIT: ein Regler fuer alles. Zieht die Staerke ALLER Modulatoren
+        // gemeinsam auf oder zu - genau das, was den Klang von weich nach scharf
+        // bringt. Welche Operatoren gerade Modulatoren sind, haengt vom
+        // Algorithmus ab; das weiss nur der Klangmotor, darum wird hier nur der
+        // Faktor gemerkt und beim Rendern angewandt. 1.0 = wie im Werksklang.
+        float fmBright    = 1.0f;
         Wave  wave        = Wave::Pulse;
         float pulseWidth  = 0.5f;   // 0..1, nur fuer die Puls-Welle
         float attack      = 0.004f; // Huellkurve in Sekunden / Sustain als Pegel 0..1
@@ -1582,7 +1588,10 @@ private:
                     v.fmFbMem = sig;
                 }
 
-                sig *= v.fmEnv[o] * inst->fmLevel[o];
+                // Modulatoren bekommen zusaetzlich die HELLIGKEIT aufmultipliziert,
+                // Traeger nicht - sonst waere es blosse Lautstaerke.
+                const bool isMod = (alg.mod[o] >= 0 && alg.mod[o] < 4);
+                sig *= v.fmEnv[o] * inst->fmLevel[o] * (isMod ? inst->fmBright : 1.0f);
 
                 if (alg.mod[o] >= 0 && alg.mod[o] < 4)
                     modIn[alg.mod[o]] += sig * 2.0f;   // Modulationstiefe
