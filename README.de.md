@@ -6,11 +6,32 @@
 
 **[⬇ Download (Windows / macOS / Linux)](https://github.com/Mukkemann1972/retrotrax/releases/latest)**
 
-Ein VST3-/CLAP-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II und OctaMED —
+Ein VST3-/CLAP-/AU-/LV2-Plugin und Standalone-Programm im Stil von ProTracker, FastTracker II und OctaMED —
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.85 — MIDI-Velocity + Humanize: echter Anschlag zaehlt jetzt
+## Stand: v0.89 — FM-Synthese, volle Effektkette, AU & LV2
+
+- **🟢 FM-Synthese (v0.89):** ein dritter Klangmotor neben dem klassischen
+  Oszillator und dem echten C64-Chip — die Klangwelt von Mega Drive, DX7 und
+  AdLib. Vier Operatoren, die klassischen acht Algorithmen, Rückkopplung. Und
+  weil FM von Null aufzubauen meistens in Krach endet, kommt es mit **acht
+  fertigen Klängen** (E-Piano, Glocke, Bass, Bläser, Lead, Orgel, Marimba,
+  Blip) plus drei Reglern, mit denen man wirklich etwas anfangen kann:
+  Algorithmus, Rückkopplung, Helligkeit
+- **🟢 Volle Master-Effektkette (v0.89):** Zerre → Flanger → Phaser → Echo →
+  Hall → EQ → Kompressor. Alles Neue startet auf `MIX 0 = aus`, bestehende
+  Songs klingen also unverändert
+- **🟢 AU und LV2 (v0.89):** Logic und GarageBand konnten RetroTrax vorher
+  **gar nicht laden** — jetzt schon. LV2 deckt Ardour, Qtractor und Carla
+  unter Linux ab
+- **🟢 Gepacktes `.rtx`-Format (v0.88):** ein zweites, gepacktes Songformat
+  neben `.retrotrax` — dieselbe Musik, Ton für Ton, bei etwa einem Drittel der
+  Größe (43 KB → 15 KB beim Demo-Song). Beim Speichern einfach eine Endung
+  `.rtx` tippen. Klassische Amiga-Samples sind 8-Bit, wurden aber als 16-Bit
+  gespeichert; RetroTrax erkennt das jetzt pro Sample und halbiert nur dann —
+  **ohne ein einziges Bit Verlust**. Zum Weiterarbeiten bleibt `.retrotrax`,
+  `.rtx` ist zum Mitschicken und Einbauen, und der Web-Player liest es direkt
 
 - **🟢 MIDI-Velocity + Humanize (v0.85):** ein angeschlossenes MIDI-Keyboard/
   Pad-Controller wurde bisher komplett ignoriert (immer volle Lautstaerke) —
@@ -127,7 +148,8 @@ Ein Projekt aus dem Mukkemann-Universum.
 - Pattern-Grid im ProTracker-Look: Cursor-Zeile bleibt in der Mitte, das Pattern scrollt
 - Tastatur als Klavier (deutsches QWERTZ-Layout)
 - MIDI-Eingang zum Vorhören
-- Läuft als VST3 **und** CLAP in jeder DAW **und** als eigenständiges Programm
+- Läuft als **VST3, CLAP, AU** (macOS — Logic, GarageBand) und **LV2** (Linux —
+  Ardour) in jeder DAW **und** als eigenständiges Programm
 
 ## Fahrplan
 
@@ -201,6 +223,27 @@ Ein Projekt aus dem Mukkemann-Universum.
 | `Strg+Z` / `Strg+Y` | Rückgängig / Wiederholen |
 | `Strg+C` / `Strg+V` / `Strg+X` | Spur kopieren / einfügen / ausschneiden |
 
+## Installieren
+
+Das Paket für dein System bei den [Releases](https://github.com/Mukkemann1972/retrotrax/releases)
+holen, entpacken, und den passenden Ordner kopieren:
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| **Standalone** | von überall starten | von überall starten | von überall starten |
+| **VST3** | `C:\Programme\Common Files\VST3` | `~/Library/Audio/Plug-Ins/VST3` | `~/.vst3` |
+| **CLAP** | `C:\Programme\Common Files\CLAP` | `~/Library/Audio/Plug-Ins/CLAP` | `~/.clap` |
+| **AU** (Logic, GarageBand) | — | `~/Library/Audio/Plug-Ins/Components` | — |
+| **LV2** (Ardour, Qtractor) | — | — | `~/.lv2` |
+
+**macOS:** Die Pakete sind nicht signiert und nicht notariell beglaubigt. macOS
+steckt heruntergeladene Plugins deshalb in Quarantäne — die DAW zeigt sie dann
+schlicht **gar nicht an**. Ein Befehl pro Datei löst das, zum Beispiel:
+
+```bash
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Mukkemann RetroTrax.component"
+```
+
 ## Selbst bauen
 
 Benötigt: CMake ≥ 3.22, einen C++17-Compiler, unter Linux die üblichen
@@ -215,7 +258,9 @@ cmake --build build -j2
 ```
 
 Ergebnisse landen in `build/RetroTrax_artefacts/Release/`:
-`Standalone/` (Programm), `VST3/` und `CLAP/` (Plugins für die DAW).
+`Standalone/` (Programm), `VST3/` und `CLAP/` (Plugins für die DAW), dazu `AU/`
+beim Bauen auf macOS und `LV2/` beim Bauen unter Linux. Die beiden kommen
+automatisch für das System dazu, das sie gebrauchen kann — ohne Zusatzschalter.
 
 ## Unterstützen ❤️
 
