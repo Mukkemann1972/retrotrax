@@ -10,7 +10,20 @@ A VST3/CLAP/AU/LV2 plugin and standalone app in the spirit of ProTracker, FastTr
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.88 — `.rtx`: songs small enough to pass around
+## Status: v0.89 — FM synthesis, full effect chain, AU & LV2
+
+- **🟢 FM synthesis (v0.89):** a third sound engine next to the classic
+  oscillator and the real C64 chip — the world of the Mega Drive, DX7 and
+  AdLib. Four operators, the classic eight algorithms, feedback. And because
+  building FM from scratch usually ends in noise, it comes with **eight
+  ready-made sounds** (e-piano, bell, bass, brass, lead, organ, marimba, blip)
+  plus three controls that actually matter: algorithm, feedback, brightness
+- **🟢 Full master effect chain (v0.89):** distortion → flanger → phaser →
+  echo → reverb → EQ → compressor. All new ones start at `MIX 0 = off`, so
+  existing songs sound unchanged
+- **🟢 AU and LV2 (v0.89):** Logic and GarageBand could not load RetroTrax at
+  all before — now they can. LV2 covers Ardour, Qtractor and Carla on Linux
+
 
 - **🟢 Packed `.rtx` format (v0.88):** a second, packed song format next to
   `.retrotrax` — same music, note for note, at roughly a third of the size
