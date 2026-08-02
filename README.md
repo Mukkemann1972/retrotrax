@@ -10,8 +10,13 @@ A VST3/CLAP/AU/LV2 plugin and standalone app in the spirit of ProTracker, FastTr
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.89 — FM synthesis, full effect chain, AU & LV2
+## Status: v0.90 — real velocity for the drum pads
 
+- **🟢 Real pad velocity (v0.90):** clicking a pad in the drum sampler now
+  records with its real click-height velocity straight into the pattern
+  while REC is on — live while playing, or step by step while stopped. The
+  keyboard drum input (1234/QWER/ASDF/ZXCV) still works as before, with
+  Humanize for a light random variation since a keyboard has no real touch
 - **🟢 FM synthesis (v0.89):** a third sound engine next to the classic
   oscillator and the real C64 chip — the world of the Mega Drive, DX7 and
   AdLib. Four operators, the classic eight algorithms, feedback. And because

@@ -37,6 +37,12 @@ public:
     // Drum-Eingabe-Modus (im Drumsampler-Panel geschaltet, Flag im Processor):
     // die 16 Pad-Tasten (4x4) schreiben das jeweilige Pad/Slot direkt in die Spur.
 
+    // Vom Drumsampler-Panel aufgerufen, wenn dort ein Pad mit der Maus
+    // angeschlagen wird: schreibt Pad+echte Klick-Velocity ins Pattern, genau
+    // wie die Tastatur-Drum-Eingabe (live mitschreiben bei REC+Play, sonst
+    // Schritt-Eingabe an der Cursorzeile). velocity 1..64, oder -1 = voll.
+    void recordDrumHit (int pad, int velocity);
+
 private:
     void timerCallback() override;
     void togglePlay();

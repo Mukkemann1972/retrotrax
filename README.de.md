@@ -10,8 +10,14 @@ Ein VST3-/CLAP-/AU-/LV2-Plugin und Standalone-Programm im Stil von ProTracker, F
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.89 — FM-Synthese, volle Effektkette, AU & LV2
+## Stand: v0.90 — echte Velocity für die Drum-Pads
 
+- **🟢 Echte Pad-Velocity (v0.90):** ein Pad im Drumsampler anklicken schreibt
+  jetzt mit der echten Klick-Anschlagstärke direkt ins Pattern, wenn REC an
+  ist — live beim Abspielen oder Schritt für Schritt im Stopp. Die
+  Tastatur-Drum-Eingabe (1234/QWER/ASDF/YXCV) funktioniert wie gewohnt weiter,
+  mit HUMANIZE für eine leichte Zufallsschwankung, da eine Tastatur keinen
+  echten Anschlag kennt
 - **🟢 FM-Synthese (v0.89):** ein dritter Klangmotor neben dem klassischen
   Oszillator und dem echten C64-Chip — die Klangwelt von Mega Drive, DX7 und
   AdLib. Vier Operatoren, die klassischen acht Algorithmen, Rückkopplung. Und

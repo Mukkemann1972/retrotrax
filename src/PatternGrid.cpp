@@ -423,6 +423,14 @@ void PatternGrid::enterDrum (int pad)
     const int humanVol = proc.humanizeVelocity.load()
         ? 46 + juce::Random::getSystemRandom().nextInt (19) // 46..64
         : -1;
+    recordDrumHit (pad, humanVol);
+}
+
+void PatternGrid::recordDrumHit (int pad, int velocity)
+{
+    if (pad < 0 || pad >= TrackerEngine::kInstruments)
+        return;
+    const int vol = velocity < 0 ? -1 : juce::jlimit (1, 64, velocity);
     if (engine.playing.load())
     {
         if (engine.recording.load())
@@ -435,19 +443,19 @@ void PatternGrid::enterDrum (int pad)
                 auto& cell = engine.patterns[ppat][rrow][cursorTrack];
                 cell.note       = 60;
                 cell.instrument = pad;
-                cell.volume     = humanVol;
+                cell.volume     = vol;
             }
         }
         repaint();
         return;
     }
     if (! engine.recording.load())
-        return; // ohne REC nur vorhoeren (oben schon angespielt), nicht schreiben
+        return; // ohne REC nur vorhoeren, nicht schreiben
     pushUndo();
     auto& cell = engine.cells[cursorRow][cursorTrack];
     cell.note       = 60;
     cell.instrument = pad;
-    cell.volume     = humanVol;
+    cell.volume     = vol;
     moveCursor (1, 0);
 }
 

@@ -354,6 +354,12 @@ RetroTraxEditor::RetroTraxEditor (RetroTraxProcessor& p)
         kitButton.setToggleState (false, juce::dontSendNotification);
         grid.grabKeyboardFocus();
     };
+    // Pad im Panel mit der Maus angeschlagen: bei REC (Play oder Schritt-Eingabe
+    // im Stopp) landet der Anschlag mit echter Klick-Velocity im Pattern.
+    kitPanel.onPadHit = [this] (int pad, int velocity)
+    {
+        grid.recordDrumHit (pad, velocity);
+    };
 
     editButton.onClick = [this]
     {
@@ -1174,8 +1180,8 @@ void RetroTraxEditor::paint (juce::Graphics& g)
     // Tagline mittig im freien Bereich zwischen Titel und den Song-Knoepfen.
     g.setFont (rt::mono (12.0f));
     g.setColour (rt::text.withAlpha (0.85f));
-    g.drawText (loc::t ("v0.87 | SPRACH: eigene Formant-Sprachsynthese (SAM/Narrator)",
-                        "v0.87 | SPEECH: built-in formant speech synth (SAM/Narrator)"),
+    g.drawText (loc::t ("v0.90 | DRUM-PADS: echte Anschlag-Velocity landet live im Pattern",
+                        "v0.90 | DRUM PADS: real hit velocity now lands live in the pattern"),
                 360, 0, juce::jmax (0, getWidth() - 360 - 300), header.getHeight(),
                 juce::Justification::centred);
 }

@@ -301,7 +301,10 @@ void DrumKitPanel::mouseDown (const juce::MouseEvent& e)
                 // Anschlagdynamik aus der Klickhoehe: oben = hart/laut, unten = leise.
                 const float rel = juce::jlimit (0.0f, 1.0f,
                     (float) (r.getBottom() - e.y) / (float) juce::jmax (1, r.getHeight()));
-                triggerPad (p, 10 + (int) (rel * 54.0f));
+                const int velocity = 10 + (int) (rel * 54.0f);
+                triggerPad (p, velocity);
+                if (onPadHit)
+                    onPadHit (p, velocity); // bei REC/Play landet der Anschlag auch im Pattern
             }
             else if (e.getNumberOfClicks() >= 2)
                 loadIntoSelected();        // Doppelklick auf leeres Pad = laden

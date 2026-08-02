@@ -27,6 +27,12 @@ public:
 
     std::function<void()> onClose;
 
+    // Wird bei jedem Mausklick auf ein belegtes Pad mit der echten
+    // Klick-Anschlagstaerke (1..64) aufgerufen - der Editor haengt hier das
+    // Aufnehmen ins Pattern ein (wie bei der Tastatur-Drum-Eingabe, nur mit
+    // echter Velocity statt Zufalls-Humanize).
+    std::function<void(int pad, int velocity)> onPadHit;
+
 private:
     void timerCallback() override;       // Pad-Leuchten ausblenden
     void triggerPad (int pad, int velocity = 64); // Pad anschlagen (Velocity 0..64) + aufleuchten
