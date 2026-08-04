@@ -1495,6 +1495,10 @@ private:
     // hineinmoduliert (-1 = geht direkt zum Ausgang), carrier[i] sagt, ob er
     // hoerbar ist. Von "alle hintereinander" (0, harte FM-Klaenge) bis "alle
     // parallel" (7, orgelartig/additiv).
+    // Oeffentlich (kurz public, danach wieder private), weil der FM-Operatoren-
+    // Editor (FmOperatorPanel) dieselbe Verschaltung braucht, um live zu zeigen,
+    // welcher Operator gerade hoerbar ist - rein lesend, kein Engine-Zustand.
+public:
     struct FmAlgorithm { int mod[4]; bool carrier[4]; };
 
     static FmAlgorithm fmAlgorithm (int a)
@@ -1519,6 +1523,7 @@ private:
             default: return { { -1, -1, -1, -1 }, { true, true, true, true } };
         }
     }
+private:
 
     // --- FM-Klangmotor (4 Operatoren) ---------------------------------------
     // Jeder Operator ist ein Sinus mit eigener Huellkurve. Modulatoren

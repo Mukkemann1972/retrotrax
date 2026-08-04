@@ -5,14 +5,16 @@
 #include "RetroLookAndFeel.h"
 #include "Localisation.h"
 
-// Kleiner Editor fuer ein SID-Synth-Instrument: Wellenform waehlen, Pulsweite
-// und die ADSR-Huellkurve einstellen. Liegt als Overlay ueber dem Grid, genau
-// wie der Hilfe- und der Sample-Browser. Aenderungen wirken sofort (live) auf
-// das Instrument im aktuell gewaehlten Slot.
-class SidPanel : public juce::Component
+// Editor fuer ein Synth-Instrument, alle drei Klangmotoren: selbstgebaut
+// (Wellenform + ADSR), echter SID-Chip, oder FM (Presets + Makro-Regler -
+// der volle Operatoren-Editor ist ein eigenes Panel, s. FmOperatorPanel).
+// Liegt als Overlay ueber dem Grid, genau wie der Hilfe- und der Sample-
+// Browser. Aenderungen wirken sofort (live) auf das Instrument im aktuell
+// gewaehlten Slot.
+class SynthPanel : public juce::Component
 {
 public:
-    explicit SidPanel (RetroTraxProcessor& processor);
+    explicit SynthPanel (RetroTraxProcessor& processor);
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -23,6 +25,7 @@ public:
 
     std::function<void()> onClose;
     std::function<void()> onChanged; // Editor zieht den Instrument-Namen nach
+    std::function<void()> onOpenFmOperators; // "OPERATOREN"-Knopf: voller FM-Editor
 
 private:
     using Wave   = TrackerEngine::Instrument::Wave;
@@ -122,6 +125,7 @@ private:
     juce::OwnedArray<juce::TextButton> fmPresetButtons;
     juce::Label  fmAlgoLabel, fmFbLabel, fmBrightLabel;
     juce::Slider fmAlgoSlider, fmFbSlider, fmBrightSlider;
+    juce::TextButton fmOperatorsButton { "OPERATOREN" }; // oeffnet den vollen FM-Editor
 
     juce::Label      hintLabel;
     juce::TextButton testButton  { "TEST" }; // aktuellen Klang anspielen (mit Ausklang)
@@ -129,5 +133,5 @@ private:
 
     bool loading = false; // true, waehrend refresh() die Regler setzt (keine Callbacks)
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SidPanel)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SynthPanel)
 };

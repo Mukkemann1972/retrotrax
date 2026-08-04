@@ -10,8 +10,15 @@ Ein VST3-/CLAP-/AU-/LV2-Plugin und Standalone-Programm im Stil von ProTracker, F
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.90 — echte Velocity für die Drum-Pads
+## Stand: v0.91 — voller FM-Operatoren-Editor
 
+- **🟢 Voller FM-Operatoren-Editor (v0.91):** die acht Werksklänge waren erst
+  der Anfang — ein neuer **OPERATOREN**-Knopf im Synth-Editor öffnet Ratio,
+  Pegel und die volle Hüllkurve für jeden der vier Operatoren einzeln, dazu
+  eine Live-Erklärung, was der gewählte Algorithmus tatsächlich macht und
+  welche Operatoren gerade hörbar sind. Nebenbei einen Fehler behoben, bei
+  dem die angezeigten Algorithmus-/Rückkopplungs-/Operatoren-Werte nach dem
+  Laden eines Werksklangs nicht immer zu dem passten, was tatsächlich erklang
 - **🟢 Echte Pad-Velocity (v0.90):** ein Pad im Drumsampler anklicken schreibt
   jetzt mit der echten Klick-Anschlagstärke direkt ins Pattern, wenn REC an
   ist — live beim Abspielen oder Schritt für Schritt im Stopp. Die

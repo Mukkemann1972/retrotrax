@@ -1,4 +1,4 @@
-#include "SidPanel.h"
+#include "SynthPanel.h"
 #include "FmPresets.h"
 
 // --- Werks-Presets ----------------------------------------------------------
@@ -34,7 +34,7 @@ namespace
     constexpr int kNumPresets = (int) (sizeof (kSidPresets) / sizeof (kSidPresets[0]));
 }
 
-SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
+SynthPanel::SynthPanel (RetroTraxProcessor& processor) : proc (processor)
 {
     setWantsKeyboardFocus (true);
 
@@ -87,6 +87,8 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
         setupFmSlider (fmFbSlider,     fmFbLabel,     0.0, 100.0, 1.0, " %");
         setupFmSlider (fmBrightSlider, fmBrightLabel, 0.0, 150.0, 1.0, " %");
     }
+    fmOperatorsButton.onClick = [this] { if (onOpenFmOperators) onOpenFmOperators(); };
+    addChildComponent (fmOperatorsButton);
 
     // Werks-Presets: eine Reihe Startklaenge. Knoepfe aus der Tabelle erzeugen.
     presetLabel.setFont (rt::mono (12.0f, true));
@@ -200,7 +202,7 @@ SidPanel::SidPanel (RetroTraxProcessor& processor) : proc (processor)
     applyLanguage();
 }
 
-void SidPanel::applyLanguage()
+void SynthPanel::applyLanguage()
 {
     titleLabel.setText (loc::t ("SID-SYNTHESIZER", "SID SYNTHESIZER"), juce::dontSendNotification);
     engineLabel.setText (loc::t ("KLANG-MOTOR", "SOUND ENGINE"), juce::dontSendNotification);
@@ -223,6 +225,11 @@ void SidPanel::applyLanguage()
                                        "100 % = wie im Werksklang",
                                        "Opens or closes all modulators together - soft to sharp. "
                                        "100 % = as in the factory sound"));
+    fmOperatorsButton.setButtonText (loc::t ("OPERATOREN", "OPERATORS"));
+    fmOperatorsButton.setTooltip (loc::t ("Voller Editor: Ratio/Pegel/Huellkurve fuer jeden der vier "
+                                          "Operatoren einzeln, plus Algorithmus-Erklaerung",
+                                          "Full editor: ratio/level/envelope for each of the four "
+                                          "operators individually, plus an algorithm explanation"));
     engineClassic.setTooltip (loc::t ("Selbstgebauter Synth - der vertraute RetroTrax-Klang",
                                       "Self-built synth - the familiar RetroTrax sound"));
     engineChip.setTooltip (loc::t ("Echte reSIDfp-Emulation des MOS-6581-Chips (originaler C64-Sound)",
@@ -305,7 +312,7 @@ void SidPanel::applyLanguage()
     closeButton.setButtonText (loc::t ("SCHLIESSEN", "CLOSE"));
 }
 
-void SidPanel::refresh()
+void SynthPanel::refresh()
 {
     slot = proc.currentInstrument.load();
     slotLabel.setText (loc::t ("Slot ", "Slot ") + juce::String::formatted ("%02d", slot + 1),
@@ -340,7 +347,7 @@ void SidPanel::refresh()
     refreshMineList();
 }
 
-void SidPanel::applyPreset (int index)
+void SynthPanel::applyPreset (int index)
 {
     if (index < 0 || index >= kNumPresets || ! proc.isSid (slot))
         return;
@@ -365,13 +372,13 @@ void SidPanel::applyPreset (int index)
 // --- Eigene SID-Sounds ------------------------------------------------------
 // Gespeichert als kleine .sidpreset-XML-Dateien (gleiche Attribute wie im Song),
 // eine Datei je Klang, im App-Datenordner neben "Meine Sounds" beim Sampler.
-juce::File SidPanel::mySidDir() const
+juce::File SynthPanel::mySidDir() const
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
              .getChildFile ("MukkemannRetroTrax").getChildFile ("SID-Presets");
 }
 
-void SidPanel::refreshMineList()
+void SynthPanel::refreshMineList()
 {
     const auto chosen = mineBox.getText(); // nach dem Neuaufbau wieder waehlen
     mineBox.clear (juce::dontSendNotification);
@@ -394,7 +401,7 @@ void SidPanel::refreshMineList()
     deleteMineButton.setEnabled (! files.isEmpty());
 }
 
-void SidPanel::saveMine()
+void SynthPanel::saveMine()
 {
     if (! proc.isSid (slot))
         return;
@@ -419,7 +426,7 @@ void SidPanel::saveMine()
         }), false);
 }
 
-void SidPanel::writeMine (const juce::String& name)
+void SynthPanel::writeMine (const juce::String& name)
 {
     TrackerEngine::Instrument s;
     if (! proc.getSid (slot, s))
@@ -457,7 +464,7 @@ void SidPanel::writeMine (const juce::String& name)
     deleteMineButton.setEnabled (true);
 }
 
-void SidPanel::loadMine()
+void SynthPanel::loadMine()
 {
     if (! proc.isSid (slot))
         return;
@@ -520,7 +527,7 @@ void SidPanel::loadMine()
     previewNote();
 }
 
-void SidPanel::deleteMine()
+void SynthPanel::deleteMine()
 {
     const auto name = mineBox.getText();
     if (name.isEmpty())
@@ -531,7 +538,7 @@ void SidPanel::deleteMine()
     refreshMineList();
 }
 
-void SidPanel::selectEngine (Engine e)
+void SynthPanel::selectEngine (Engine e)
 {
     proc.editSid (slot, [e] (TrackerEngine::Instrument& i) { i.engine = e; });
     updateEngineButtons();
@@ -540,7 +547,7 @@ void SidPanel::selectEngine (Engine e)
 }
 
 // FM-Werksklang auf den Slot legen (schaltet den Motor gleich mit um).
-void SidPanel::applyFmPreset (int index)
+void SynthPanel::applyFmPreset (int index)
 {
     if (! proc.isSid (slot))
         return;
@@ -551,7 +558,7 @@ void SidPanel::applyFmPreset (int index)
 }
 
 // Die drei FM-Regler in den Slot schreiben.
-void SidPanel::writeFmParams()
+void SynthPanel::writeFmParams()
 {
     if (! proc.isSid (slot))
         return;
@@ -572,7 +579,7 @@ void SidPanel::writeFmParams()
 // gehoeren zum SID-Oszillator und haetten bei FM gar keine Wirkung - sie
 // stehenzulassen waere nur verwirrend. Die Huellkurve steckt bei FM in den
 // Operatoren selbst, darum auch die ADSR-Regler weg.
-void SidPanel::updateFmVisibility()
+void SynthPanel::updateFmVisibility()
 {
     TrackerEngine::Instrument s;
     const bool fm = proc.getSid (slot, s) && s.engine == Engine::Fm;
@@ -581,7 +588,8 @@ void SidPanel::updateFmVisibility()
     for (auto* b : fmPresetButtons) b->setVisible (fm);
     for (auto* c : { (juce::Component*) &fmAlgoLabel,   (juce::Component*) &fmAlgoSlider,
                      (juce::Component*) &fmFbLabel,     (juce::Component*) &fmFbSlider,
-                     (juce::Component*) &fmBrightLabel, (juce::Component*) &fmBrightSlider })
+                     (juce::Component*) &fmBrightLabel, (juce::Component*) &fmBrightSlider,
+                     (juce::Component*) &fmOperatorsButton })
         c->setVisible (fm);
 
     for (auto* c : { (juce::Component*) &waveLabel,  (juce::Component*) &waveTri,
@@ -614,7 +622,7 @@ void SidPanel::updateFmVisibility()
     resized();
 }
 
-void SidPanel::updateEngineButtons()
+void SynthPanel::updateEngineButtons()
 {
     TrackerEngine::Instrument s;
     const Engine e = proc.getSid (slot, s) ? s.engine : Engine::Classic;
@@ -624,7 +632,7 @@ void SidPanel::updateEngineButtons()
     updateFmVisibility();
 }
 
-void SidPanel::selectWave (Wave w)
+void SynthPanel::selectWave (Wave w)
 {
     proc.editSid (slot, [w] (TrackerEngine::Instrument& i) { i.wave = w; });
     updateWaveButtons();
@@ -632,7 +640,7 @@ void SidPanel::selectWave (Wave w)
     previewNote(); // neue Wellenform gleich hoeren
 }
 
-void SidPanel::updateWaveButtons()
+void SynthPanel::updateWaveButtons()
 {
     TrackerEngine::Instrument s;
     const Wave w = proc.getSid (slot, s) ? s.wave : Wave::Pulse;
@@ -648,7 +656,7 @@ void SidPanel::updateWaveButtons()
     pwmDepthSlider.setEnabled (pulse);
 }
 
-void SidPanel::selectFilter (Filter f)
+void SynthPanel::selectFilter (Filter f)
 {
     proc.editSid (slot, [f] (TrackerEngine::Instrument& i) { i.filter = f; });
     updateFilterButtons();
@@ -656,7 +664,7 @@ void SidPanel::selectFilter (Filter f)
     previewNote();
 }
 
-void SidPanel::updateFilterButtons()
+void SynthPanel::updateFilterButtons()
 {
     TrackerEngine::Instrument s;
     const Filter f = proc.getSid (slot, s) ? s.filter : Filter::Off;
@@ -671,7 +679,7 @@ void SidPanel::updateFilterButtons()
     resoSlider.setEnabled (on);
 }
 
-void SidPanel::toggleRing()
+void SynthPanel::toggleRing()
 {
     const bool on = ! ringButton.getToggleState();
     proc.editSid (slot, [on] (TrackerEngine::Instrument& i) { i.ringMod = on; });
@@ -680,7 +688,7 @@ void SidPanel::toggleRing()
     previewNote();
 }
 
-void SidPanel::toggleSync()
+void SynthPanel::toggleSync()
 {
     const bool on = ! syncButton.getToggleState();
     proc.editSid (slot, [on] (TrackerEngine::Instrument& i) { i.sync = on; });
@@ -689,7 +697,7 @@ void SidPanel::toggleSync()
     previewNote();
 }
 
-void SidPanel::updateModButtons()
+void SynthPanel::updateModButtons()
 {
     TrackerEngine::Instrument s;
     const bool have = proc.getSid (slot, s);
@@ -702,7 +710,7 @@ void SidPanel::updateModButtons()
     modTuneSlider.setEnabled (ring || sync);
 }
 
-void SidPanel::selectStack (int voices)
+void SynthPanel::selectStack (int voices)
 {
     proc.editSid (slot, [voices] (TrackerEngine::Instrument& i) { i.unison = voices; });
     updateStackButtons();
@@ -710,7 +718,7 @@ void SidPanel::selectStack (int voices)
     previewNote(); // neuen Stack gleich hoeren
 }
 
-void SidPanel::selectChord (int chord)
+void SynthPanel::selectChord (int chord)
 {
     proc.editSid (slot, [chord] (TrackerEngine::Instrument& i) { i.chord = chord; });
     updateStackButtons();
@@ -718,7 +726,7 @@ void SidPanel::selectChord (int chord)
     previewNote(); // den Akkord gleich hoeren
 }
 
-void SidPanel::updateStackButtons()
+void SynthPanel::updateStackButtons()
 {
     TrackerEngine::Instrument s;
     const bool ok    = proc.getSid (slot, s);
@@ -740,7 +748,7 @@ void SidPanel::updateStackButtons()
     chordBox.setSelectedId (chord + 1, juce::dontSendNotification);
 }
 
-void SidPanel::writeParams()
+void SynthPanel::writeParams()
 {
     if (loading)
         return;
@@ -774,7 +782,7 @@ void SidPanel::writeParams()
     if (onChanged) onChanged();
 }
 
-void SidPanel::previewNote()
+void SynthPanel::previewNote()
 {
     if (! proc.isSid (slot))
         return;
@@ -792,7 +800,7 @@ void SidPanel::previewNote()
     proc.engine.audition (60, slot, gate); // C-5 anschlagen, halten, loslassen
 }
 
-bool SidPanel::keyPressed (const juce::KeyPress& key)
+bool SynthPanel::keyPressed (const juce::KeyPress& key)
 {
     if (key.getKeyCode() == juce::KeyPress::escapeKey && onClose != nullptr)
     {
@@ -802,14 +810,14 @@ bool SidPanel::keyPressed (const juce::KeyPress& key)
     return false;
 }
 
-void SidPanel::paint (juce::Graphics& g)
+void SynthPanel::paint (juce::Graphics& g)
 {
     g.fillAll (rt::bg);
     g.setColour (rt::steel.withAlpha (0.7f));
     g.drawRect (getLocalBounds(), 1);
 }
 
-void SidPanel::resized()
+void SynthPanel::resized()
 {
     auto area = getLocalBounds().reduced (14);
 
@@ -912,6 +920,8 @@ void SidPanel::resized()
         sliderRow (left, fmAlgoLabel,   fmAlgoSlider);
         sliderRow (left, fmFbLabel,     fmFbSlider);
         sliderRow (left, fmBrightLabel, fmBrightSlider);
+        left.removeFromTop (10);
+        fmOperatorsButton.setBounds (left.removeFromTop (34).removeFromLeft (200));
 
         auto bot = getLocalBounds().reduced (14).removeFromBottom (30);
         closeButton.setBounds (bot.removeFromRight (120).reduced (0, 2));

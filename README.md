@@ -10,8 +10,15 @@ A VST3/CLAP/AU/LV2 plugin and standalone app in the spirit of ProTracker, FastTr
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.90 — real velocity for the drum pads
+## Status: v0.91 — full FM operator editor
 
+- **🟢 Full FM operator editor (v0.91):** the eight factory FM sounds were
+  only the start — a new **OPERATORS** button inside the synth editor opens
+  ratio, level and the full envelope for each of the four operators
+  individually, plus a live explanation of what the current algorithm
+  actually does and which operators are audible right now. Also fixed a bug
+  where the algorithm/feedback/operator values shown after loading a preset
+  didn't always match what was actually playing
 - **🟢 Real pad velocity (v0.90):** clicking a pad in the drum sampler now
   records with its real click-height velocity straight into the pattern
   while REC is on — live while playing, or step by step while stopped. The

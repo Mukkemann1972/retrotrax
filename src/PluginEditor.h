@@ -6,7 +6,8 @@
 #include "RetroLookAndFeel.h"
 #include "SampleDiskBrowser.h"
 #include "HelpPanel.h"
-#include "SidPanel.h"
+#include "SynthPanel.h"
+#include "FmOperatorPanel.h"
 #include "SpeechPanel.h"
 #include "DrumKitPanel.h"
 #include "SampleEditPanel.h"
@@ -52,7 +53,7 @@ private:
     juce::TextButton playButton { "PLAY" }; // Umschalter: PLAY <-> STOP
     juce::TextButton recButton  { "REC" };  // Aufnahme scharf schalten (rot, wenn aktiv)
     juce::TextButton loadMenuButton { "LADEN" }; // Aufklapp-Menue: Sample/Song laden + Importieren
-    juce::TextButton sidButton { "SID" }; // aktuellen Slot zu einem SID-Synth machen
+    juce::TextButton synthButton { "SYNTH" }; // Synth-Editor oeffnen (SID / echter Chip / FM)
     juce::TextButton speechButton { "SPRACH" }; // aktuellen Slot zu einer Sprachsynthese (Robo-Stimme) machen
     juce::TextButton kitButton { "KIT" }; // Drum-Kit (16 Pads, MPC60/SP-1200-Stil)
     juce::TextButton editButton { "FAIRLIGHT" }; // Sample-Werkzeug (trimmen/zeichnen/choppen)
@@ -102,7 +103,8 @@ private:
     PatternGrid grid;
     SampleDiskBrowser diskBrowser;
     HelpPanel helpPanel;
-    SidPanel sidPanel;
+    SynthPanel synthPanel;
+    FmOperatorPanel fmOperatorPanel;
     SpeechPanel speechPanel;
     DrumKitPanel kitPanel;
     SampleEditPanel editPanel;

@@ -739,6 +739,18 @@ bool RetroTraxProcessor::getSid (int slot, TrackerEngine::Instrument& out) const
     out.modTune    = p->modTune;
     out.pwmRate    = p->pwmRate;
     out.pwmDepth   = p->pwmDepth;
+    out.fmAlgo     = p->fmAlgo;
+    out.fmFeedback = p->fmFeedback;
+    out.fmBright   = p->fmBright;
+    for (int o = 0; o < TrackerEngine::Instrument::kFmOps; ++o)
+    {
+        out.fmRatio[o]   = p->fmRatio[o];
+        out.fmLevel[o]   = p->fmLevel[o];
+        out.fmAttack[o]  = p->fmAttack[o];
+        out.fmDecay[o]   = p->fmDecay[o];
+        out.fmSustain[o] = p->fmSustain[o];
+        out.fmRelease[o] = p->fmRelease[o];
+    }
     return true;
 }
 
