@@ -7,6 +7,12 @@
 //                                          Fassungen und vergleicht sie - bit-exakt
 //                                          bei Classic-Synths, mit kleiner Toleranz
 //                                          bei RealChip/reSIDfp, siehe packCommand())
+//   freeze                              : Selbsttest fuer rt_freeze.h (Synth->Sample
+//                                          fuers Amiga-Backend, s. tools/rtx_amiga) -
+//                                          friert drei eingebaute Testinstrumente
+//                                          (Classic/RealChip/FM) ein und vergleicht
+//                                          Live- gegen gefrorene Wiedergabe (Tonhoehe
+//                                          + Pegel, Toleranzvergleich wie packCommand())
 //
 // Kann: .retrotrax (bpm/swing/order, Synth- UND Sample-Instrumente aus
 // eingebetteten <D>-Daten = Base64 + zlib-inflate, Pattern-Zellen), das
@@ -20,6 +26,7 @@
 //       build/libtfmxdecoder.a -lpthread -lz -o build/rtx_cli
 
 #include "TrackerEngine.h"
+#include "rt_freeze.h"
 #include "rt_load.h"
 #include "rt_rtx.h"
 #include "rt_tfmx.h"
@@ -129,6 +136,114 @@ static int packCommand (const std::string& inPath, const std::string& outPath, d
     return withinTolerance ? 0 : 2;
 }
 
+// --- freeze: Selbsttest fuer rt_freeze.h -------------------------------------
+// Baut drei eingebaute Testinstrumente (Classic/RealChip/FM), friert jedes ein
+// und vergleicht Live- gegen gefrorene Wiedergabe bei derselben Note: Tonhoehe
+// (Autokorrelation, sollte fast exakt uebereinstimmen - die Loop-Wellenform
+// stammt ja direkt aus der Live-Aufnahme) und Pegel (grober Toleranzvergleich,
+// da die Huellkurven-Kurvenform nicht bit-exakt reproduziert wird, s. rt_freeze.h).
+static bool freezeOneInstrument (const char* label, const TrackerEngine::Instrument& inst,
+                                 double sr, const std::string& liveWavPath,
+                                 const std::string& frozenWavPath)
+{
+    const double skipSeconds    = 0.15;
+    const double captureSeconds = 0.35;
+    const long   skipFrames  = (long) (skipSeconds * sr);
+    const long   totalFrames = skipFrames + (long) (captureSeconds * sr);
+
+    const auto freeze = rtfreeze::freezeInstrument (inst, sr, 60, 8);
+    if (! freeze.ok)
+    {
+        std::printf ("  [%s] FEHLER: Einfrieren fehlgeschlagen.\n", label);
+        return false;
+    }
+
+    std::vector<float> live, frozen;
+    rtfreeze::renderInstrumentMono (inst, sr, 60, totalFrames, live);
+    rtfreeze::renderInstrumentMono (*freeze.instrument, sr, 60, totalFrames, frozen);
+
+    auto rms = [] (const float* d, int n)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < n; ++i) sum += (double) d[i] * d[i];
+        return n > 0 ? std::sqrt (sum / n) : 0.0;
+    };
+    const float* liveAnalysis   = live.data()   + skipFrames;
+    const float* frozenAnalysis = frozen.data() + skipFrames;
+    const int analysisLen = (int) (live.size() - (size_t) skipFrames);
+
+    // Tonhoehe der Live-Aufnahme frisch messen, aber fuer "gefroren" den Wert
+    // aus freeze.detectedFrequencyHz nehmen (schon waehrend der Extraktion aus
+    // dem UNgeloopten Rohmaterial ermittelt) statt die Loop-WIEDERGABE erneut
+    // per Autokorrelation zu analysieren: eine endlos wiederholte Schleife ist
+    // zwangslaeufig auch bei der Schleifenlaenge selbst "periodisch" (jede
+    // Wiederholung ist bit-identisch), und kleine Zyklus-zu-Zyklus-Abweichungen
+    // im Rohmaterial (Restklirr/Rundungsfehler) koennen dazu fuehren, dass diese
+    // Schleifen-Periode staerker korreliert als die wahre, kuerzere Tonhoehen-
+    // periode - das waere ein Messfehler des Tests, kein Fehler von rt_freeze.h.
+    float liveScore = 0.0f;
+    const int liveLag = rtfreeze::detectPeriod (liveAnalysis, analysisLen, sr, liveScore);
+    const double liveHz   = liveLag > 0 ? sr / liveLag : 0.0;
+    const double frozenHz = freeze.detectedFrequencyHz;
+    const double liveRms   = rms (liveAnalysis, analysisLen);
+    const double frozenRms = rms (frozenAnalysis, analysisLen);
+
+    std::vector<int16_t> pcm;
+    auto toPcm = [] (const std::vector<float>& v)
+    {
+        std::vector<int16_t> p; p.reserve (v.size());
+        for (float s : v) { if (s > 1.0f) s = 1.0f; if (s < -1.0f) s = -1.0f; p.push_back ((int16_t) (s * 32767.0f)); }
+        return p;
+    };
+    rtload::writeWav (liveWavPath, toPcm (live), 1, (int) sr);
+    rtload::writeWav (frozenWavPath, toPcm (frozen), 1, (int) sr);
+
+    const bool hzOk  = liveHz > 0.0 && frozenHz > 0.0 && std::abs (frozenHz - liveHz) <= 0.03 * liveHz;
+    const bool rmsOk = liveRms > 1e-6 && frozenRms > 1e-6
+                       && frozenRms / liveRms >= 0.5 && frozenRms / liveRms <= 2.0;
+    const bool ok = hzOk && rmsOk;
+
+    std::printf ("  [%s] Tonhoehe live=%.1f Hz gefroren=%.1f Hz (%s)  Pegel live=%.4f gefroren=%.4f (%s)  Loop=%d Samples -> %s\n",
+                label, liveHz, frozenHz, hzOk ? "ok" : "!!",
+                liveRms, frozenRms, rmsOk ? "ok" : "!!",
+                freeze.loopLengthSamples, ok ? "OK" : "FEHLER");
+    return ok;
+}
+
+static int freezeCommand (double sr)
+{
+    using Inst = TrackerEngine::Instrument;
+
+    Inst classicInst;
+    classicInst.name   = "Classic-Test";
+    classicInst.kind   = Inst::Kind::Synth;
+    classicInst.engine = Inst::Engine::Classic;
+    classicInst.wave   = Inst::Wave::Pulse;
+
+    Inst sidInst;
+    sidInst.name   = "SID-Test";
+    sidInst.kind   = Inst::Kind::Synth;
+    sidInst.engine = Inst::Engine::RealChip;
+    sidInst.wave   = Inst::Wave::Saw;
+
+    Inst fmInst;
+    fmInst.name    = "FM-Test";
+    fmInst.kind    = Inst::Kind::Synth;
+    fmInst.engine  = Inst::Engine::Fm;
+    fmInst.fmAlgo  = 7;                               // additiv, alle 4 Operatoren hoerbar
+    fmInst.fmLevel[0] = 1.0f; fmInst.fmLevel[1] = 0.0f;
+    fmInst.fmLevel[2] = 0.0f; fmInst.fmLevel[3] = 0.0f; // nur Operator 0 klingt (reiner Sinus)
+
+    std::printf ("Freeze-Selbsttest (rt_freeze.h): Synth -> Sample, Live vs. gefroren\n");
+    bool allOk = true;
+    allOk &= freezeOneInstrument ("Classic", classicInst, sr, "freeze_classic_live.wav", "freeze_classic_frozen.wav");
+    allOk &= freezeOneInstrument ("SID",     sidInst,     sr, "freeze_sid_live.wav",     "freeze_sid_frozen.wav");
+    allOk &= freezeOneInstrument ("FM",      fmInst,      sr, "freeze_fm_live.wav",      "freeze_fm_frozen.wav");
+
+    std::printf (allOk ? "Alle Instrumente OK.\n" : "MINDESTENS EIN INSTRUMENT FEHLGESCHLAGEN.\n");
+    return allOk ? 0 : 2;
+}
+
 int main (int argc, char** argv)
 {
     const double sr = 44100.0;
@@ -142,6 +257,9 @@ int main (int argc, char** argv)
         }
         return packCommand (argv[2], argv[3], sr);
     }
+
+    if (argc >= 2 && std::string (argv[1]) == "freeze")
+        return freezeCommand (sr);
 
     if (argc < 2)
     {

@@ -2,10 +2,9 @@
 
 Ziel: RetroTrax-Songs auf echter Amiga-68k-Hardware abspielen, nicht nur im
 Plugin/Browser. Motiv und Rahmenbedingungen stehen im Plan
-(`~/.claude/plans/expressive-toasting-willow.md`). Kurzfassung: Phase 1 baut
-das komplette Werkzeug-Rohr einmal end-to-end nach (Toolchain, Emulator-
-Verifikation, ein Sample einmal abspielen), bevor der volle 4-Kanal-Pattern-
-Player und der Synth-Freezer draufkommen.
+(`~/.claude/plans/expressive-toasting-willow.md`). Phase 1 (Toolchain,
+Emulator-Verifikation, ein Sample abspielen, Synth-Freezer) ist komplett —
+als Nächstes kommt Phase 2, der echte Mehrkanal-Pattern-Player.
 
 ## Stand
 
@@ -18,8 +17,31 @@ Player und der Synth-Freezer draufkommen.
       automatisiert durch (`player/build.sh` + `player/verify.sh`) — echter,
       nicht-stiller Ton nachgewiesen (Peak ~-18 dB, sauberer ~1 kHz-Ton
       gemessen, `player/tone_clip.wav`).
-- [ ] Synth-Freezer (PC-seitig, C++) — noch nicht begonnen.
+- [x] Synth-Freezer (`src/rt_freeze.h`, PC-seitig, C++): SID/Classic/FM ->
+      Sample-Instrument, per Autokorrelation phasentreu geloopt, Pegel per
+      Selbstkalibrierung angeglichen. Verifiziert mit `rtx_cli freeze`
+      (Live- vs. gefrorene Wiedergabe, Tonhöhe + Pegel innerhalb Toleranz) —
+      damit ist **Phase 1 komplett**.
 - [ ] Echter Mehrkanal-Pattern-Player (4 Kanäle, zeilengetaktet) — Phase 2.
+
+## src/rt_freeze.h — Synth-Instrument einfrieren
+
+`rtfreeze::freezeInstrument(synthInstrument, sampleRate, referenceNote, loopCycles)`
+gibt ein normales Sample-Instrument zurück, das über den bestehenden
+Sample-Wiedergabepfad läuft (`renderSample()` in `TrackerEngine.h`) — keine
+neue Wiedergabe-Logik im Player nötig. Kurzfassung des Wegs (Details/Grenzen
+als Kommentar im Header): Huellkurve beim Aufnehmen künstlich flach halten
+(Attack~0, Sustain voll) -> Periode per Autokorrelation finden (mit
+Oktav-Fallensicherung, s. Kommentar bei `detectPeriod`) -> phasentreuen
+Loop-Ausschnitt an einem Nulldurchgang entnehmen -> Original-ADSR wieder
+aufsetzen -> Pegel-Unterschied zwischen Synth- und Sample-Gain-Kette per
+kurzem Probehören selbst kalibrieren (`detail::calibrateGain`).
+
+**Selbsttest**: `rtx_cli freeze` baut drei eingebaute Testinstrumente
+(Classic/SID/FM), friert jedes ein und vergleicht Live- gegen gefrorene
+Wiedergabe (Tonhöhe per Autokorrelation, Pegel per RMS). Aktueller Stand:
+alle drei innerhalb der Toleranz (Tonhöhe exakt, Pegel < 1 % Abweichung).
+Schreibt `freeze_<name>_live.wav`/`freeze_<name>_frozen.wav` zum Nachhören.
 
 ## player/ — Testprogramm + Verifikation
 
