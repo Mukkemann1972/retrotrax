@@ -1,0 +1,4 @@
+echo "RTX-AMIGA START"
+tone_test_prog
+echo "RTX-AMIGA DONE"
+endcli
