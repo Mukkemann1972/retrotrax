@@ -23,6 +23,8 @@ namespace ModImport
         juce::AudioBuffer<float> data; // mono, -1..1
         double sourceRate = 8287.0;
         int    volume = 64;            // 0..64 (Standard-Lautstaerke des Samples)
+        bool   loop = false;           // Loop-Laenge > 1 Wort im Header?
+        float  loopStart = 0.0f;       // Bruchteil 0..1 der Sample-Laenge (TrackerEngine-Konvention)
     };
 
     struct Cell { int note = -1, instrument = -1, volume = -1, effect = -1, effectParam = 0; };
@@ -84,7 +86,7 @@ namespace ModImport
         s.title = juce::String::fromUTF8 ((const char*) d, 20).trim();
 
         // 31 Sample-Koepfe ab Offset 20, je 30 Bytes.
-        struct Hdr { int lenBytes = 0, volume = 64; juce::String name; };
+        struct Hdr { int lenBytes = 0, volume = 64, loopStartBytes = 0, loopLenBytes = 0; juce::String name; };
         Hdr hdr[31];
         size_t o = 20;
         for (int i = 0; i < 31; ++i)
@@ -93,6 +95,8 @@ namespace ModImport
             hdr[i].name    = juce::String::fromUTF8 ((const char*) h, 22).trim();
             hdr[i].lenBytes = be16 (h + 22) * 2;          // Laenge steht in Worten
             hdr[i].volume   = juce::jlimit (0, 64, (int) h[25]);
+            hdr[i].loopStartBytes = be16 (h + 26) * 2;
+            hdr[i].loopLenBytes   = be16 (h + 28) * 2;
             o += 30;
         }
 
@@ -158,6 +162,19 @@ namespace ModImport
                     {
                         const int sv = (int) (juce::int8) d[sofs + (size_t) k];
                         w[k] = ((float) sv / 128.0f) * vscale;
+                    }
+                    // Loop: MOD-Konvention - Loop-Laenge <= 1 Wort (2 Bytes) heisst
+                    // "kein Loop". TrackerEngine kennt nur Anfang+"bis zum Ende"
+                    // (Instrument::loopStart als Bruchteil 0..1, s. TrackerEngine.h),
+                    // keinen separaten Endpunkt - ein Loop, der schon vor dem
+                    // Sample-Ende aufhoert, wird deshalb bis zum Ende verlaengert
+                    // (Naeherung, betrifft in der Praxis fast nur "ganzer Sample
+                    // ist die Loop"-Faelle wie bei rt_freeze.h erzeugten Samples).
+                    if (hdr[i].loopLenBytes > 2 && avail > 1)
+                    {
+                        const int startSamp = juce::jlimit (0, avail - 1, hdr[i].loopStartBytes);
+                        s.samples[i].loop      = true;
+                        s.samples[i].loopStart = (float) startSamp / (float) (avail - 1);
                     }
                 }
                 sofs += (size_t) len;

@@ -1,10 +1,73 @@
-# rtx_amiga — nativer Amiga-68k-Player (Phase 1)
+# rtx_amiga — nativer Amiga-68k-Player (Phase 1 + 2a)
 
 Ziel: RetroTrax-Songs auf echter Amiga-68k-Hardware abspielen, nicht nur im
 Plugin/Browser. Motiv und Rahmenbedingungen stehen im Plan
 (`~/.claude/plans/expressive-toasting-willow.md`). Phase 1 (Toolchain,
-Emulator-Verifikation, ein Sample abspielen, Synth-Freezer) ist komplett —
-als Nächstes kommt Phase 2, der echte Mehrkanal-Pattern-Player.
+Emulator-Verifikation, ein Sample abspielen, Synth-Freezer) ist komplett.
+Phase 2a (PC-seitiges Export-Tool) ist komplett — als Nächstes kommt Phase 2b,
+der echte 4-Kanal-68k-Pattern-Player, der `export/`s `.mod`-Dateien liest.
+
+## Phase 2a — Export-Tool (`export/rtx_to_mod.cpp`)
+
+**Bewusste Design-Entscheidung:** kein neues eigenes Amiga-Binärformat, sondern
+Export als klassisches **4-Kanal-31-Sample-ProTracker-`.MOD`** — das uralte,
+extrem gut dokumentierte Amiga-Standardformat. Vorteile: die Amiga-Szene kennt
+`.MOD` bereits (passt zum Ziel, Format+Player frei an die Szene zu geben), und
+der bestehende Importer (`ModImport.h`) kann den Export sofort wieder einlesen
+— ein Rundreise-Test ist damit möglich, ganz ohne 68k-Code.
+
+```sh
+g++ -std=c++17 -O2 -DRETROTRAX_NO_JUCE -DHAVE_CXX17 -I src -I libs/residfp \
+    tools/rtx_amiga/export/rtx_to_mod.cpp build/libresidfp.a -lpthread -lz \
+    -o build/rtx_to_mod
+./build/rtx_to_mod song.retrotrax song.mod
+```
+
+**Ablauf:** Song laden (.retrotrax oder .rtx) → alle Synth-Instrumente
+automatisch einfrieren (`rt_freeze.h`) → höchstens 4 gleichzeitig belegte
+Spuren prüfen (Paula hat nur 4 DMA-Kanäle — mehr führt zu einer klaren
+Fehlermeldung, kein stilles Kappen) → als `.mod` schreiben → **Selbstprüfung:**
+Datei mit dem bestehenden Importer wieder einlesen, Original und Reimport
+rendern und über den Pegel (RMS) vergleichen (kein Sample-für-Sample-Diff,
+das wäre blind für den Phasenversatz zwischen Live-Synthese und
+Sample-Wiedergabe-Loop — s. Kommentar im Tool).
+
+**Drei echte Bugs beim ersten Durchlauf gefunden und gefixt** (nicht nur
+Theorie — jeder einzelne hätte beim Export lautlos falsch geklungen):
+1. **Kanal-Kennung vs. tatsächlich geschriebene Kanaldaten:** die `"M.K."`-
+   Signatur sagt jedem Leser fest 4 Kanäle zu — wurden nur so viele
+   Kanal-Bytes geschrieben wie Spuren belegt waren (z. B. 1), verschob sich
+   beim Wiedereinlesen alles. Fix: **immer 4 Kanäle schreiben**, ungenutzte
+   bleiben leer (robuster als eine variable Kanalzahl-Kennung).
+2. **Instrument-`gain` fehlte:** `Instrument::gain` ist im Plugin ein reiner
+   Playback-Multiplikator (nicht in den rohen Sample-Daten enthalten) —
+   `rt_freeze.h`s `calibrateGain()` setzt dort oft einen deutlichen Faktor.
+   Ohne ihn in die PCM-Daten einzurechnen, klangen gefrorene Instrumente
+   beim Export viel zu leise.
+3. **MOD-Loop-Punkte wurden von `ModImport.h` nie gelesen** (bestehende
+   Lücke, nicht durch den Export verursacht) — jedes gefrorene
+   Synth-Instrument ist aber genau eine Loop (`rt_freeze.h` liefert immer
+   `Loop::Forward` mit `loopStart=0`), ohne die klang jede gehaltene Note nur
+   wie ein kurzer Klick statt eines gehaltenen Tons. Gefixt in `ModImport.h`
+   (liest jetzt Loop-Start/-Länge) + `XmImport.h` (nur das Feld ergänzt,
+   XM-Loop-Auswertung selbst bleibt offen) + `rt_mod.h` (übernimmt die
+   Loop-Felder in die Engine) — nützt jetzt auch echten MOD-Importen im
+   Plugin/CLI/Web-Player, nicht nur diesem Export-Tool.
+
+**Effekt-Abdeckung:** nur Codes mit 1:1-MOD-Äquivalent (Arpeggio, Slides,
+Vibrato, Sample-Offset, Vol-Slide, Position-Jump, Set-Volume, Pattern-Break,
+Speed/Tempo) werden übernommen — alles andere landet als Warnung im Report,
+nicht stillschweigend verworfen. Eine Zellen-Lautstaerke ohne eigenen Effekt
+wird zum `0xC`-Effekt; kollidiert sie mit einem echten Effekt in derselben
+Zelle, wird sie verworfen (klassisches MOD hat nur eine Effekt-Spalte pro
+Zelle) und das steht im Report.
+
+**Getestet:** Ein-Spur-Song (Classic-Synth) und Zwei-Spur-Song
+(nicht-fortlaufende Instrument-Slots, zwei Instrumente) — beide Rundreisen
+bestehen. Songs mit mehr als 4 gleichzeitig belegten Spuren (z. B.
+"Neon Drift", "Startrekker Groove") liefern korrekt die Fehlermeldung statt
+falsch zu exportieren — die Web-Player-Demos sind bewusst NICHT auf
+Amiga-Hardware-Limits ausgelegt.
 
 ## Stand
 
@@ -128,7 +191,8 @@ hängenblieb.
 
 ## Nächster Schritt
 
-Phase 1 ist inhaltlich bewiesen (Toolchain, Emulator-Verifikation, ein
-Sample abspielen — alles automatisiert in `player/build.sh` +
-`player/verify.sh`). Weiter geht's mit dem Synth-Freezer (`src/rt_freeze.h`,
-s. Plan) und danach dem echten 4-Kanal-Pattern-Player.
+Phase 1 (Toolchain, Emulator-Verifikation, ein Sample abspielen, Synth-
+Freezer) und Phase 2a (Export-Tool, s. oben) sind fertig. Weiter geht's mit
+**Phase 2b: der echte 4-Kanal-68k-Pattern-Player**, der die von `rtx_to_mod`
+erzeugten `.mod`-Dateien liest — Zeilen-getaktet über CIA/VBlank-Interrupt,
+alle 4 Paula-Kanäle direkt angesteuert (kein AmigaOS-Sample-Player-Umweg).

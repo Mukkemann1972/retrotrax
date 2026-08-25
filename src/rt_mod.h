@@ -44,6 +44,11 @@ namespace rtmod
                 inst->name       = samples[(size_t) i].name.isNotEmpty()
                                      ? samples[(size_t) i].name
                                      : juce::String ("Sample ") + juce::String (i + 1);
+                if (samples[(size_t) i].loop)
+                {
+                    inst->loopMode  = TrackerEngine::Instrument::Loop::Forward;
+                    inst->loopStart = samples[(size_t) i].loopStart;
+                }
                 engine.setInstrument (i, std::move (inst));
                 ++loaded;
             }
@@ -72,6 +77,11 @@ namespace rtmod
                 inst->name       = samples[(size_t) i].name.isNotEmpty()
                                      ? samples[(size_t) i].name
                                      : juce::String ("Sample ") + juce::String (i + 1);
+                if (samples[(size_t) i].loop)
+                {
+                    inst->loopMode  = TrackerEngine::Instrument::Loop::Forward;
+                    inst->loopStart = samples[(size_t) i].loopStart;
+                }
                 engine.setInstrument (i, std::move (inst));
                 ++loaded;
             }

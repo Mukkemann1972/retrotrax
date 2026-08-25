@@ -32,6 +32,12 @@ namespace XmImport
         juce::AudioBuffer<float> data; // mono, -1..1
         double sourceRate = 16726.0;
         int    volume = 64;            // 0..64 (Standard-Lautstaerke, schon eingebacken)
+        // Loop-Felder fuer applySamples()/applySamplesCopy() in rt_mod.h (gemeinsame
+        // Struktur mit ModImport::Sample) - XM-Loop-Punkte selbst werden bisher NICHT
+        // ausgewertet (bleibt false/0, unveraendertes Verhalten), nur das Feld ist da,
+        // damit derselbe Vorlagen-Code fuer MOD UND XM funktioniert.
+        bool   loop = false;
+        float  loopStart = 0.0f;       // Bruchteil 0..1 der Sample-Laenge
     };
 
     struct Cell { int note = -1, instrument = -1, volume = -1, effect = -1, effectParam = 0; };

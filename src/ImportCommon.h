@@ -19,6 +19,12 @@ namespace ImportCommon
         juce::String name;
         juce::AudioBuffer<float> data; // mono, -1..1
         double sourceRate = 8363.0;    // Abspielrate bei Note 60 (C-5)
+        // Loop-Felder fuer applySamples()/applySamplesCopy() in rt_mod.h (gemeinsame
+        // Struktur mit ModImport::Sample/XmImport::Sample) - S3M/IT-Loop-Punkte
+        // werden bisher NICHT ausgewertet (bleibt false/0, unveraendertes Verhalten),
+        // nur das Feld ist da, damit derselbe Vorlagen-Code fuer alle Importer geht.
+        bool   loop = false;
+        float  loopStart = 0.0f;       // Bruchteil 0..1 der Sample-Laenge
     };
 
     struct Cell { int note = -1, instrument = -1, volume = -1, effect = -1, effectParam = 0; };
