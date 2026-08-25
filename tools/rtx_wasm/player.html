@@ -200,6 +200,8 @@
   const TFMX_SECONDS = 120;      // TFMX läuft endlos -> feste Spieldauer wie bisher
   const CHUNK_FRAMES = 8192;     // Häppchengröße fürs Streaming (~0,19 s bei 44,1 kHz)
   const AHEAD_SECONDS = 4;       // so viel Vorlauf hält der Player im Ohr
+  const PROBE_CHUNKS = 6;        // Häppchen fürs Tempo-Antesten vor dem Streaming-Start
+  const PROBE_SAFETY = 0.6;      // ein Häppchen darf hoechstens 60% seiner eigenen Spieldauer Rechenzeit brauchen
 
   let Module, audioCtx, gain, analyser;
   let playing = false;
@@ -502,6 +504,96 @@
     return n;
   }
 
+  // ── Tempo-Antest: kann DIESES Geraet DIESEN Song in Echtzeit streamen? ──
+  // Manche Songs (viele gleichzeitige echte SID-Chips/Akkorde) sind fuer
+  // Echtzeit-Streaming zu rechenintensiv - das aeussert sich als Knacksen/
+  // Leiern, weil der Nachschub-Puffer leerlaeuft. Fix: vor dem Streaming-
+  // Start ein paar echte Haeppchen rendern und die Rechenzeit gegen ihre
+  // eigene Spieldauer messen. Reicht die Leistung nicht, komplett vorab
+  // rendern (renderFullYielding) statt live mitzuhalten.
+  function probeStreamSpeed (bufs) {
+    const mdat = bufs.find(b => isTfmx(b.bytes));
+    if (mdat) return true;                        // TFMX unveraendert lassen (eigener, gedeckelter Weg)
+    const sr = audioCtx.sampleRate;
+    const h = Module.ccall('rtx_create', 'number', ['number'], [sr]);
+    try {
+      const b = bufs[0].bytes;
+      const packed = isRtx(b), mk = packed ? 0 : modKind(b);
+      if (packed)  loadPackedBytes(h, b);
+      else if (mk) loadModBytes(h, b, mk);
+      else         Module.ccall('rtx_load_retrotrax', 'number', ['number','string'],
+                                [h, new TextDecoder().decode(b)]);
+      Module.ccall('rtx_stream_start', 'number', ['number'], [h]);
+      const chunkMs = (CHUNK_FRAMES / sr) * 1000;
+      let worstMs = 0;
+      for (let i = 0; i < PROBE_CHUNKS; i++) {
+        const t0 = performance.now();
+        const got = Module.ccall('rtx_stream_render', 'number', ['number','number'], [h, CHUNK_FRAMES]);
+        const ms = performance.now() - t0;
+        if (got <= 0) break;                      // Song kuerzer als die Probe -> ohnehin unkritisch
+        if (i > 0) worstMs = Math.max(worstMs, ms); // ersten Haeppchen (Anlauf/JIT) nicht werten
+      }
+      return worstMs < chunkMs * PROBE_SAFETY;
+    } catch (e) {
+      return true;                                 // im Zweifel Streaming versuchen (bisheriges Verhalten)
+    } finally {
+      Module.ccall('rtx_destroy', null, ['number'], [h]);
+    }
+  }
+
+  // ── Komplett vorab rendern, aber ohne die Seite einfrieren zu lassen ──
+  // Gleiche Rechenlast wie Streaming, nur vorgezogen - deshalb haeppchenweise
+  // ueber dieselbe Stream-API (bit-identisch zum Live-Rendern) UND alle paar
+  // Haeppchen kurz an den Browser abgeben (setTimeout 0), damit Tab/Anzeige
+  // reagieren und ein Fortschritt gezeigt werden kann statt zu "haengen".
+  async function renderFullYielding (bufs, onProgress) {
+    const mdat = bufs.find(b => isTfmx(b.bytes));
+    if (mdat) {
+      const smpl = bufs.find(b => b !== mdat);
+      if (!smpl) throw new Error('TFMX braucht ZWEI Dateien: mdat.* UND smpl.* (beide zusammen auswählen).');
+      return { ...renderTfmx(mdat.bytes, smpl.bytes), label: mdat.name };
+    }
+    const sr = 44100;
+    const h = Module.ccall('rtx_create', 'number', ['number'], [sr]);
+    try {
+      const b = bufs[0].bytes;
+      const packed = isRtx(b), mk = packed ? 0 : modKind(b);
+      let nInst;
+      if (packed)   nInst = loadPackedBytes(h, b);
+      else if (mk)  nInst = loadModBytes(h, b, mk);
+      else          nInst = Module.ccall('rtx_load_retrotrax', 'number', ['number','string'],
+                                        [h, new TextDecoder().decode(b)]);
+      if (nInst < 0) throw new Error('Datei nicht lesbar (.retrotrax, .rtx, .mod, .xm, .s3m oder .it erwartet).');
+      Module.ccall('rtx_stream_start', 'number', ['number'], [h]);
+      const estSec = Math.max(1, Module.ccall('rtx_estimate_seconds', 'number', ['number'], [h]));
+
+      const chunks = [];
+      let totalFrames = 0, safety = 0;
+      while (true) {
+        const got = Module.ccall('rtx_stream_render', 'number', ['number','number'], [h, CHUNK_FRAMES]);
+        if (got <= 0) break;
+        const ptr = Module.ccall('rtx_buffer', 'number', ['number'], [h]);
+        const base = ptr >> 2, heap = Module.HEAPF32;
+        const l = new Float32Array(got), r = new Float32Array(got);
+        for (let i = 0; i < got; i++) { l[i] = heap[base + 2*i]; r[i] = heap[base + 2*i + 1]; }
+        chunks.push({ l, r, n: got });
+        totalFrames += got;
+        if (onProgress) onProgress(Math.min(0.99, totalFrames / sr / estSec));
+        if (++safety % 3 === 0) await new Promise(res => setTimeout(res, 0)); // Tab am Leben halten
+        if (safety > 20000) break;                // Sicherheitsnetz gegen Endlosschleifen
+      }
+      const buf = audioCtx.createBuffer(2, Math.max(1, totalFrames), sr);
+      const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      let off = 0;
+      for (const c of chunks) { L.set(c.l, off); R.set(c.r, off); off += c.n; }
+      if (onProgress) onProgress(1);
+      return { buf, label: bufs[0].name,
+               info: nInst + (mk ? ' Sample(s), ' + KIND_NAME[mk] : ' Instrument(e)' + (packed ? ', gepackt' : '')) };
+    } finally {
+      Module.ccall('rtx_destroy', null, ['number'], [h]);
+    }
+  }
+
   // ── Song laden (gemeinsamer Weg für Dateiauswahl UND Demo-Knopf) ────
   async function loadBuffers (bufs) {
     stopPlayback();
@@ -510,11 +602,16 @@
     try {
       await ensureAudio();
       let label, info, dur, durPrefix = '';
-      if (canStream) {                            // Streaming: Start sofort
+      if (canStream && probeStreamSpeed(bufs)) {  // Streaming: Start sofort
         const s = openStream(bufs);
         label = s.label; info = s.info; dur = s.duration;
         if (!s.durationExact) durPrefix = '~';
-      } else {                                    // Rückfall: komplett vorrendern
+      } else if (canStream) {                     // Zu rechenintensiv fuer Echtzeit -> vorab rendern
+        set('Song ist rechenintensiv fuer Echtzeit-Streaming – rendere einmal komplett vor…', 'busy');
+        const r = await renderFullYielding(bufs, (p) =>
+          set('Rendere vor… ' + Math.round(p * 100) + ' % (einmalig, danach butterweich)', 'busy'));
+        audioBuffer = r.buf; info = r.info; dur = audioBuffer.duration; label = r.label;
+      } else {                                    // Rückfall: komplett vorrendern (kein AudioWorklet)
         const mdat = bufs.find(b => isTfmx(b.bytes));
         let r;
         if (mdat) {
