@@ -10,8 +10,15 @@ A VST3/CLAP/AU/LV2 plugin and standalone app in the spirit of ProTracker, FastTr
 OctaMED — but modern, beginner-friendly, and available for Windows, macOS and Linux.
 A project from the Mukkemann universe.
 
-## Status: v0.91 — full FM operator editor
+## Status: v0.92 — MOD import: loop points fixed
 
+- **🟢 MOD loop points fixed (v0.92):** importing a classic `.mod` with a
+  looping sample used to lose the loop entirely — the sample played once and
+  went silent instead of sustaining for as long as the note was held. Now
+  fixed for real MOD imports (Plugin/CLI/Web player); the same fix also
+  benefits the new PC-side Amiga export tool (`tools/rtx_amiga/export/`,
+  turns a RetroTrax song into a classic 4-channel `.mod` — first step
+  towards a native Amiga-68k player)
 - **🟢 Full FM operator editor (v0.91):** the eight factory FM sounds were
   only the start — a new **OPERATORS** button inside the synth editor opens
   ratio, level and the full envelope for each of the four operators

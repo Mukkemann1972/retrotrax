@@ -10,8 +10,16 @@ Ein VST3-/CLAP-/AU-/LV2-Plugin und Standalone-Programm im Stil von ProTracker, F
 aber modern, anfängerfreundlich und für Windows, macOS und Linux.
 Ein Projekt aus dem Mukkemann-Universum.
 
-## Stand: v0.91 — voller FM-Operatoren-Editor
+## Stand: v0.92 — MOD-Import: Loop-Punkte repariert
 
+- **🟢 MOD-Loop-Punkte repariert (v0.92):** beim Import eines klassischen
+  `.mod` mit einem gelooppten Sample ging der Loop bisher komplett verloren —
+  das Sample spielte einmal ab und verstummte dann, statt so lange zu halten
+  wie die Note gehalten wurde. Jetzt behoben für echte MOD-Importe
+  (Plugin/CLI/Web-Player); derselbe Fix nützt auch dem neuen PC-seitigen
+  Amiga-Export-Tool (`tools/rtx_amiga/export/`, wandelt einen RetroTrax-Song
+  in ein klassisches 4-Kanal-`.mod` — erster Schritt zu einem nativen
+  Amiga-68k-Player)
 - **🟢 Voller FM-Operatoren-Editor (v0.91):** die acht Werksklänge waren erst
   der Anfang — ein neuer **OPERATOREN**-Knopf im Synth-Editor öffnet Ratio,
   Pegel und die volle Hüllkurve für jeden der vier Operatoren einzeln, dazu
