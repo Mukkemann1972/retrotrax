@@ -1,0 +1,4 @@
+echo "RTX-AMIGA MOD-PLAYER START"
+mod_player_prog
+echo "RTX-AMIGA MOD-PLAYER DONE"
+endcli

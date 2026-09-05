@@ -1,11 +1,14 @@
-# rtx_amiga — nativer Amiga-68k-Player (Phase 1 + 2a)
+# rtx_amiga — nativer Amiga-68k-Player (Phase 1 + 2a + 2b-Grundstein)
 
 Ziel: RetroTrax-Songs auf echter Amiga-68k-Hardware abspielen, nicht nur im
 Plugin/Browser. Motiv und Rahmenbedingungen stehen im Plan
 (`~/.claude/plans/expressive-toasting-willow.md`). Phase 1 (Toolchain,
 Emulator-Verifikation, ein Sample abspielen, Synth-Freezer) ist komplett.
-Phase 2a (PC-seitiges Export-Tool) ist komplett — als Nächstes kommt Phase 2b,
-der echte 4-Kanal-68k-Pattern-Player, der `export/`s `.mod`-Dateien liest.
+Phase 2a (PC-seitiges Export-Tool) ist komplett. Phase 2b (der echte
+4-Kanal-68k-Pattern-Player) hat jetzt einen ersten funktionierenden, aber
+bewusst noch eingeschränkten Grundstein - Details unten unter "Phase 2b".
+Das ist ein mehrwöchiges Vorhaben laut Plan; das hier ist der erste
+Ausschnitt, nicht der fertige Player.
 
 ## Phase 2a — Export-Tool (`export/rtx_to_mod.cpp`)
 
@@ -69,6 +72,102 @@ bestehen. Songs mit mehr als 4 gleichzeitig belegten Spuren (z. B.
 falsch zu exportieren — die Web-Player-Demos sind bewusst NICHT auf
 Amiga-Hardware-Limits ausgelegt.
 
+**Bekannter Fehler entdeckt (05.09., beim Bau von Phase 2b aufgefallen,
+NICHT von Phase 2b verursacht):** `c64-daydream.retrotrax` (3 Spuren, sollte
+also exportierbar sein) besteht die Rundreise-Selbstprüfung NICHT - Original
+2117120 Frames vs. Reimport 1693696 Frames (Längen-Toleranz gerissen).
+Pegel/Verhältnis sind ok, nur die Länge weicht deutlich ab. Vermutung
+ungeprüft: irgendein Effekt/Pattern-Konstrukt in diesem Song, das beim
+Reimport eine andere Songlänge ergibt als beim Original-Rendern - noch nicht
+eingegrenzt, welcher. Betrifft nur den Amiga-Export, NICHT den Web-Player
+(dort läuft der Song normal). Separater Fixpunkt, nicht Teil dieser Session.
+
+## Phase 2b — der echte Pattern-Player (`player/mod_core.h` + `mod_player.c`)
+
+**Architektur (nach Repo-Konvention "erst nativ prüfen, bevor der
+Zielcode/68k vertraut wird", wie schon bei `rtx_wasm`):** die eigentliche
+Abspiellogik (Order/Pattern/Zeilen/Tick-Fortschritt, Notenauslösung,
+Effekte) steckt in `player/mod_core.h` - portables ANSI-C ohne jede
+Hardware-/OS-Abhängigkeit. Ein Hardware-Backend (`ModHw`: `trigger`/
+`setVolume`/`waitTick`) wird beim Init übergeben. Zwei Backends nutzen
+denselben Kern:
+- `player/host_test.c`: Software-Paula-Mixer (nicht-interpoliert, wie die
+  echte DAC), rendert ein echtes `.mod` komplett zu WAV - kein 68k nötig.
+  Bauen: `gcc -std=c89 -O2 -o build/rtx_amiga_host_test player/host_test.c -lm`,
+  Nutzung: `build/rtx_amiga_host_test song.mod out.wav`.
+- `player/mod_player.c`: echte Paula-Register (68k, AmigaOS-CLI-Programm wie
+  Phase 1s `tone_test.c` - der rohe Bootblock-Weg hängte AROS beim Booten
+  auf, s. Phase-1-Notiz oben). Der Song steckt eingebettet im Executable
+  (`player/mod2c.py song.mod song_data.h`, kein AmigaDOS-Dateizugriff nötig).
+  Bauen + auf ADF packen: `player/build_mod.sh song.mod`. Headless testen:
+  `player/verify_mod.sh`.
+
+**Ein echter Bug beim Bauen gefunden und gefixt** (nicht nur Theorie - hätte
+Pattern-Break/Position-Jump beim ersten echten Einsatz lautlos falsch
+gemacht): `mcStep()` hielt das Ziel eines 0xB/0xD-Effekts zunächst in einer
+LOKALEN Variable, die aber erst beim LETZTEN Tick der Zeile ausgewertet wird
+- also in einem SPÄTEREN `mcStep()`-Aufruf, der die Effekt-Zeile selbst gar
+nicht mehr sieht. Der Sprung ging dadurch komplett verloren (Song spielte
+einfach stur weiter statt zu springen). Fix: Ziel jetzt in
+`pl->pendingPosJump`/`pl->pendingPatBreak` (Player-Zustand statt lokale
+Variable). Gefunden über einen selbstgebauten Kontrollfluss-Test
+(`trace_test.c`, nicht im Repo - reine Verifikationshilfe): eine handgebaute
+Mini-MOD-Datei mit genau diesen beiden Effekten zeigte den Fehler sofort im
+Trigger-Log; nach dem Fix läuft die Order-Reihenfolge exakt wie erwartet
+(inklusive des Grenzfalls "Pattern-Break landet genau auf dem Songende ->
+Order wickelt korrekt um").
+
+**Verifiziert:**
+- `host_test.c` gegen `tools/rtx_cli/test_song.retrotrax` (per `rtx_to_mod`
+  exportiert, 1 Spur, besteht dessen eigene Rundreise-Prüfung): 338688
+  gerenderte Ausgabe-Frames (7,68 s) - nahezu identisch zu den 338944 Frames,
+  die die Referenz-Engine beim Rundreise-Test dafür meldet (Differenz < 6 ms,
+  reine Rundungstoleranz an den Song-Rändern). Peak-Pegel -1,8 dB, klar
+  hörbares Signal.
+- `mod_player.c` bootet und läuft headless in FS-UAE (`verify_mod.sh`,
+  gleiches Muster wie Phase 1s `verify.sh`): reales, nicht-stilles
+  Audiosignal aus echten Paula-Registerschreibzugriffen nachgewiesen.
+- **Offene Einschränkung der Verifikation (ehrlich, nicht schöngeredet):**
+  die per FS-UAE/Xvfb aufgenommene WAV-Datei zeigt Lücken/Aussetzer statt
+  durchgehendem Ton. Nachgeprüft mit einem isolierten Minimaltest (exakt
+  Phase 1s Ein-Trigger-Ansatz, ohne jede Player-Logik): **derselbe
+  Lücken-Effekt tritt dort genauso auf**, und FS-UAEs eigenes Log zeigt in
+  BEIDEN Fällen (altem `tone_test` UND neuem `mod_player`) dieselbe Zeile
+  `WARNING: Emulation frame rate may suffer` (dazu `CPU scaling governor is
+  'ondemand', not 'performance'`) - der Pi schafft headless (Xvfb, kein
+  GPU-Treiber) offenbar nicht durchgehend Echtzeit-Emulationstempo, das reißt
+  Löcher in die WAV-Aufnahme. Das ist also eine **vorbestehende Grenze der
+  Headless-Verifikationsmethode selbst** (bestand schon bei Phase 1, fiel
+  dort nur nicht auf, weil `verify.sh` nur auf "irgendwo Pegel > -60 dB"
+  prüft, nicht auf Durchgehendigkeit) - keine neue Regression von Phase 2b.
+  **Heisst konkret:** die Abspiellogik selbst ist solide (Host-Test + der
+  gefixte Kontrollfluss-Bug beweisen das unabhängig von FS-UAE), aber ob der
+  Klang auf echter/besser emulierter Hardware wirklich durchgehend UND im
+  richtigen Tempo läuft, ist durch die Headless-Prüfung allein nicht
+  abschließend bestätigt - ein echtes Zuhören (oder ein Testlauf mit
+  `performance`-CPU-Governor / mit echtem Display statt Xvfb) wäre der
+  nächste echte Beleg.
+
+**Bewusst noch nicht in dieser Stufe (siehe Kommentare in `mod_core.h` /
+`mod_player.c`):**
+- Effekte: nur 0xC (Set-Volume), 0xB (Position-Jump), 0xD (Pattern-Break),
+  0xF (Speed/Tempo) - Arpeggio/Slides/Vibrato/Sample-Offset fehlen.
+- Sustain-Loop-Nachladen (AUDxIP-Interrupt): Paula wiederholt beim
+  Puffer-Ende automatisch DENSELBEN Puffer - das ist bei allen aus
+  RetroTrax eingefrorenen Synth-Instrumenten schon exakt richtig (deren
+  Loop ist immer der GANZE Sample, s. `rt_freeze.h`), würde aber bei einem
+  echten externen MOD mit kurzem Sustain-Loop nach längerem Attack falsch
+  loopen (wiederholt dann den ganzen Sample inkl. Attack).
+- Tempo: Tick-Dauer wird in ganzen VBlanks (50 Hz PAL) angenähert statt per
+  CIA-Timer-Interrupt - bei Standard-Tempo 125 BPM exakt (=1 VBlank/Tick),
+  bei anderen Tempi gerundet (und nach oben durch 1 VBlank/Tick gedeckelt -
+  sehr hohe BPM laufen dadurch langsamer als am PC/Web-Player).
+- Noch kein "richtiger" Demo-Song exportiert - `test_song.retrotrax` (der
+  einzige aktuell zuverlässig exportierbare Song) ist ein technischer
+  Testsong, kein vorzeigbares Musikstück. Sobald der oben genannte
+  `c64-daydream`-Bug gefunden/gefixt ist, wäre der ein guter Kandidat (3
+  Spuren, passt unter das 4-Kanal-Limit).
+
 ## Stand
 
 - [x] Cross-Toolchain installiert und geprüft (Hello-World compiliert zu
@@ -85,7 +184,16 @@ Amiga-Hardware-Limits ausgelegt.
       Selbstkalibrierung angeglichen. Verifiziert mit `rtx_cli freeze`
       (Live- vs. gefrorene Wiedergabe, Tonhöhe + Pegel innerhalb Toleranz) —
       damit ist **Phase 1 komplett**.
-- [ ] Echter Mehrkanal-Pattern-Player (4 Kanäle, zeilengetaktet) — Phase 2.
+- [x] PC-seitiges Export-Tool RetroTrax -> klassisches Amiga-`.mod`
+      (`export/rtx_to_mod.cpp`) mit Rundreise-Selbstprüfung — **Phase 2a
+      komplett** (bis auf den oben notierten `c64-daydream`-Einzelfall).
+- [~] Echter Mehrkanal-Pattern-Player (4 Kanäle, zeilengetaktet) — **Phase
+      2b begonnen**: Kern (`player/mod_core.h`) läuft und ist host-verifiziert
+      (inkl. eines gefundenen+gefixten Kontrollfluss-Bugs), der echte
+      68k-Player (`player/mod_player.c`) bootet und erzeugt echten
+      Paula-Ton in FS-UAE. Noch offen: mehr Effekte, Sustain-Loop-Nachladen,
+      CIA-genaues Tempo, ein vorzeigbarer Demo-Song, und eine Verifikation
+      jenseits der (nachweislich lückenhaften) Headless-Audioaufnahme.
 
 ## src/rt_freeze.h — Synth-Instrument einfrieren
 
