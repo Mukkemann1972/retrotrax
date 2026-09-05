@@ -24,10 +24,10 @@ HelpPanel::HelpPanel()
     // Freiwillig, nie aufdringlich: oeffnet die Ko-fi-Seite im Browser.
     kofiButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff72a4f2)); // Ko-fi-Blau
     kofiButton.setColour (juce::TextButton::textColourOffId, rt::bg);
-    kofiButton.setTooltip ("ko-fi.com/mukkemann81924");
+    kofiButton.setTooltip ("ko-fi.com/mukkemann1972");
     kofiButton.onClick = []
     {
-        juce::URL ("https://ko-fi.com/mukkemann81924").launchInDefaultBrowser();
+        juce::URL ("https://ko-fi.com/mukkemann1972").launchInDefaultBrowser();
     };
     addAndMakeVisible (kofiButton);
 
@@ -1174,7 +1174,7 @@ void HelpPanel::rebuild()
             "  RetroTrax bleibt kostenlos, offen (GPL-3.0) und werbefrei, ohne Abo und\n"
             "  ohne versteckte Kosten - kein Zwang, nur wer mag. Auf Ko-fi kannst du\n"
             "  einen Kaffee spendieren, falls dir das hier hilft.\n"
-            "  Der Knopf unten links oeffnet die Seite: ko-fi.com/mukkemann81924\n\n"
+            "  Der Knopf unten links oeffnet die Seite: ko-fi.com/mukkemann1972\n\n"
             "Musik machen statt Musik kaufen - fuer alle, ohne teure Hardware.",
 
             "HOW RETROTRAX IS MADE - REAL EXPERIENCE MEETS AI\n"
@@ -1198,7 +1198,7 @@ void HelpPanel::rebuild()
             "  RetroTrax stays free, open (GPL-3.0) and ad-free, no subscription and\n"
             "  no hidden costs - no pressure, only if you feel like it. On Ko-fi you\n"
             "  can buy a coffee if this thing helps you.\n"
-            "  The button at the bottom left opens the page: ko-fi.com/mukkemann81924\n\n"
+            "  The button at the bottom left opens the page: ko-fi.com/mukkemann1972\n\n"
             "Make music instead of buying it - for everyone, without expensive gear.") });
 
     currentTopic = juce::jlimit (0, topics.size() - 1, keep);
