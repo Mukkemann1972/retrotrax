@@ -8,7 +8,11 @@ gebaut; `player.html` rendert einen Song und spielt ihn über WebAudio.
 - `rtx_wasm.cpp` — schlanke C-API (create / load / render / buffer) um die Engine.
 - `native_test.cpp` — prüft dieselbe C-API **nativ mit g++** (ohne Emscripten).
 - `build.sh` — baut `rtx_wasm.js` + `rtx_wasm.wasm` mit `emcc`.
-- `player.html` — Browser-Player (Datei wählen → abspielen).
+- `render-worker.js` — laedt das WASM-Modul und rendert alle Haeppchen; laeuft
+  in einem eigenen Web Worker (siehe unten).
+- `player.html` — Browser-Player (Datei wählen → abspielen). Beruehrt das
+  WASM-Modul selbst nicht mehr direkt, sondern schickt nur noch Kommandos an
+  `render-worker.js`.
 
 ## Nativ prüfen (jederzeit, ohne Emscripten)
 ```bash
@@ -59,5 +63,19 @@ cd tools/rtx_wasm && python3 -m http.server 8099
   `kind` 0=automatisch/1=MOD/2=XM/3=S3M/4=IT; die Bytes legt der Player wie bei
   TFMX ins virtuelle Dateisystem. Der Player erkennt das Format an der Kennung
   (XM vorn, S3M "SCRM" bei 44, IT "IMPM" vorn, MOD-Signatur bei 1080).
-- Noch offen (Ideen): Rendern in einen Worker auslagern (falls schwache Handys
-  beim Nachschub ruckeln).
+- **Rendern im Web Worker (`render-worker.js`):** Modul laden, Tempo-Antest,
+  Haeppchen-Rendern und Komplett-Vorrender laufen jetzt komplett in einem
+  eigenen Worker statt auf dem Haupt-Thread — bei rechenintensiven Songs
+  friert die Seite (Scope-Anzeige, Knopf-Klicks) dadurch nicht mehr ein, auch
+  auf schwachen Handys nicht. `player.html` schickt kleine Kommandos
+  (`init`/`probe`/`open`/`render`/`seek`/`destroy`/`renderFull`) per
+  `postMessage` rein und bekommt fertige Float32Array-Häppchen zurück
+  (Transfer statt Kopieren); der AudioWorklet-FIFO fürs eigentliche Abspielen
+  bleibt unverändert auf dem Haupt-Thread (der ist ohnehin ein eigener
+  Echtzeit-Audio-Thread des Browsers). Der alte `setTimeout(0)`-Yielding-Trick
+  beim Komplett-Vorrender entfällt, weil ein Worker den Tab sowieso nie
+  blockiert. Verifiziert headless mit Node (Worker-Umgebung per `vm`
+  vorgetäuscht, `self.postMessage`/`onmessage`/`importScripts` gestubbt):
+  alle Kommandos gegen echte Demo-Songs (`.rtx`) UND ein echtes TFMX-Modul
+  (Apidya lvl1) durchgetestet — Ton, Instrumentenzahl, Länge und Streaming/
+  Renderfull-Fortschritt wie zuvor.
