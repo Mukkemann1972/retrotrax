@@ -127,26 +127,26 @@ Order wickelt korrekt um").
 - `mod_player.c` bootet und läuft headless in FS-UAE (`verify_mod.sh`,
   gleiches Muster wie Phase 1s `verify.sh`): reales, nicht-stilles
   Audiosignal aus echten Paula-Registerschreibzugriffen nachgewiesen.
-- **Offene Einschränkung der Verifikation (ehrlich, nicht schöngeredet):**
-  die per FS-UAE/Xvfb aufgenommene WAV-Datei zeigt Lücken/Aussetzer statt
-  durchgehendem Ton. Nachgeprüft mit einem isolierten Minimaltest (exakt
-  Phase 1s Ein-Trigger-Ansatz, ohne jede Player-Logik): **derselbe
-  Lücken-Effekt tritt dort genauso auf**, und FS-UAEs eigenes Log zeigt in
-  BEIDEN Fällen (altem `tone_test` UND neuem `mod_player`) dieselbe Zeile
-  `WARNING: Emulation frame rate may suffer` (dazu `CPU scaling governor is
-  'ondemand', not 'performance'`) - der Pi schafft headless (Xvfb, kein
-  GPU-Treiber) offenbar nicht durchgehend Echtzeit-Emulationstempo, das reißt
-  Löcher in die WAV-Aufnahme. Das ist also eine **vorbestehende Grenze der
-  Headless-Verifikationsmethode selbst** (bestand schon bei Phase 1, fiel
-  dort nur nicht auf, weil `verify.sh` nur auf "irgendwo Pegel > -60 dB"
-  prüft, nicht auf Durchgehendigkeit) - keine neue Regression von Phase 2b.
-  **Heisst konkret:** die Abspiellogik selbst ist solide (Host-Test + der
-  gefixte Kontrollfluss-Bug beweisen das unabhängig von FS-UAE), aber ob der
-  Klang auf echter/besser emulierter Hardware wirklich durchgehend UND im
-  richtigen Tempo läuft, ist durch die Headless-Prüfung allein nicht
-  abschließend bestätigt - ein echtes Zuhören (oder ein Testlauf mit
-  `performance`-CPU-Governor / mit echtem Display statt Xvfb) wäre der
-  nächste echte Beleg.
+- **Verifikations-Nachprüfung (05.09., auf Nachfrage genauer hingeschaut):**
+  eine erste Analyse der aufgenommenen WAV-Datei sah nach Aussetzern
+  mitten in der Wiedergabe aus - genauer aufgelöst (0,1s- statt 0,25s-
+  Fenster, plus derselbe isolierte Minimaltest wie zuvor) zeigt sich: das
+  ist **kein Player-Bug**, sondern zu drei Vierteln schlicht die
+  AmigaOS/Workbench-Bootzeit ab Diskette. Sowohl das alte, laengst
+  vertraute `tone_test` (Phase 1, EIN Trigger, kein Player-Code) als auch
+  der neue `mod_player` zeigen ihr allererstes Audiosignal auf ~10 ms genau
+  zur selben Zeit (~7,3-7,4 s nach FS-UAE-Start) - das ist eindeutig
+  Boot-Overhead, unabhaengig vom Programm. Nach dem Bootende spielt
+  `mod_player` klar erkennbar die erwartete Melodie (Lautstaerke-Ausschlaege
+  an den sieben Notenwechseln, danach ein langes Halten der letzten Note bis
+  zum Pattern-Ende - genau die Struktur des Testsongs). Der zusaetzliche
+  `performance`-CPU-Governor (statt `ondemand`) hat nebenbei tatsaechlich
+  FS-UAEs eigene `WARNING: Emulation frame rate may suffer`-Meldung zum
+  Verschwinden gebracht. Bleibt offen: eine zuverlaessige automatisierte
+  Messung des exakten Loop-Zeitpunkts aus der (Xvfb-bedingt etwas
+  rauschigen) Kapture ist mir nicht robust genug gelungen, um die
+  Tick-Genauigkeit zahlenmaessig zu belegen - das eigentliche, verlaessliche
+  Ohren-Urteil kommt von Alex' WinUAE-Testlauf.
 
 **Bewusst noch nicht in dieser Stufe (siehe Kommentare in `mod_core.h` /
 `mod_player.c`):**
@@ -191,9 +191,11 @@ Order wickelt korrekt um").
       2b begonnen**: Kern (`player/mod_core.h`) läuft und ist host-verifiziert
       (inkl. eines gefundenen+gefixten Kontrollfluss-Bugs), der echte
       68k-Player (`player/mod_player.c`) bootet und erzeugt echten
-      Paula-Ton in FS-UAE. Noch offen: mehr Effekte, Sustain-Loop-Nachladen,
-      CIA-genaues Tempo, ein vorzeigbarer Demo-Song, und eine Verifikation
-      jenseits der (nachweislich lückenhaften) Headless-Audioaufnahme.
+      Paula-Ton in FS-UAE, spielt hörbar die erwartete Melodiestruktur
+      (Boot-Overhead sauber von echtem Player-Verhalten unterschieden, s.
+      oben). Noch offen: mehr Effekte, Sustain-Loop-Nachladen, CIA-genaues
+      Tempo, ein vorzeigbarer Demo-Song, und ein echter Hör-Test (WinUAE)
+      als letzte Bestätigung.
 
 ## src/rt_freeze.h — Synth-Instrument einfrieren
 

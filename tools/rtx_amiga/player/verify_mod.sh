@@ -24,7 +24,7 @@ file=$(pwd)/$OUT
 EOF
 
 ALSOFT_CONF=/tmp/rtx_amiga_mod_alsoft.conf DISPLAY="$DISP" \
-    timeout 15 fs-uae --kickstart_file=internal --amiga_model=A500 \
+    timeout 24 fs-uae --kickstart_file=internal --amiga_model=A500 \
     --fullscreen=0 --floppy_drive_0=mod_disk.adf > /tmp/rtx_amiga_mod_fsuae.log 2>&1 || true
 
 if [ ! -s "$OUT" ]; then
