@@ -117,10 +117,15 @@ private:
             }
             else if (memcmp (id, "BODY", 4) == 0)
             {
-                if (sz > 0)
+                // Die Groesse steht in der Datei: nie mehr reservieren, als noch an Bytes da ist,
+                // und nur die wirklich gelesenen Bytes behalten (abgeschnittene Datei).
+                const juce::int64 rest = input->getTotalLength() - input->getPosition();
+                if (sz > 0 && rest > 0)
                 {
-                    body.resize ((size_t) sz);
-                    input->read (body.data(), sz);
+                    const int lesen = (int) juce::jmin ((juce::int64) sz, rest);
+                    body.resize ((size_t) lesen);
+                    const int gelesen = input->read (body.data(), lesen);
+                    body.resize ((size_t) juce::jmax (0, gelesen));
                 }
             }
 

@@ -954,6 +954,7 @@ bool RetroTraxProcessor::saveKit (const juce::File& file, juce::String& message)
 {
     auto xml = std::make_unique<juce::XmlElement> ("RETROKIT");
     int n = 0;
+    std::vector<std::pair<juce::XmlElement*, juce::AudioBuffer<float>>> offeneSamples; // Packen erst ohne Audio-Sperre
     {
         const juce::ScopedLock sl (engine.lock);
         for (int p = 0; p < TrackerEngine::kPads; ++p)
@@ -973,10 +974,12 @@ bool RetroTraxProcessor::saveKit (const juce::File& file, juce::String& message)
             e->setAttribute ("comp", pad->companding ? 1 : 0);
             e->setAttribute ("srr", pad->srReduction);
             e->setAttribute ("vint", pad->vintagePitch ? 1 : 0);
-            e->createNewChildElement ("D")->addTextElement (encodeSamples (pad->data));
+            offeneSamples.emplace_back (e->createNewChildElement ("D"), pad->data);
             ++n;
         }
     }
+    for (auto& offen : offeneSamples)
+        offen.first->addTextElement (encodeSamples (offen.second));
     if (n == 0) { message = "Das Kit ist leer."; return false; }
     if (! xml->writeTo (file, {})) { message = "Kit speichern fehlgeschlagen."; return false; }
     message = juce::String (n) + " Pads als Kit gespeichert.";
@@ -1233,16 +1236,24 @@ static juce::String encodeSamples (const juce::AudioBuffer<float>& buf)
 
 static bool decodeSamples (const juce::String& b64, int ch, int n, juce::AudioBuffer<float>& out)
 {
-    if (ch < 1 || n < 1 || b64.isEmpty())
+    // Grenzen gegen kaputte oder boesartige Song-/State-Dateien: Die Angaben ch/n stammen aus der Datei.
+    // Ohne Grenze koennte ch * n * 2 ueberlaufen oder ein GZIP-"Bombe" den Speicher fuellen.
+    constexpr int          kMaxKanaele  = 8;
+    constexpr juce::int64  kMaxBytes    = 1LL << 30;  // 1 GiB PCM sind weit mehr als jedes echte Sample
+    if (ch < 1 || n < 1 || b64.isEmpty() || ch > kMaxKanaele)
         return false;
+    const juce::int64 erwartet = (juce::int64) ch * (juce::int64) n * 2;
+    if (erwartet > kMaxBytes)
+        return false;
+
     juce::MemoryOutputStream gz;
     if (! juce::Base64::convertFromBase64 (gz, b64))
         return false;
     juce::MemoryInputStream gzin (gz.getData(), gz.getDataSize(), false);
     juce::GZIPDecompressorInputStream dec (gzin);
-    juce::MemoryBlock pcm;
-    dec.readIntoMemoryBlock (pcm);
-    if ((int) pcm.getSize() < ch * n * 2)
+    juce::MemoryBlock pcm ((size_t) erwartet);
+    // Nur so viele Bytes lesen, wie nach den Angaben gebraucht werden - mehr wird nie entpackt.
+    if ((juce::int64) dec.read (pcm.getData(), (int) erwartet) < erwartet)
         return false;
     const auto* s = (const int16_t*) pcm.getData();
     out.setSize (ch, n);
@@ -1289,6 +1300,10 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
         xml->setAttribute ("songMode", engine.songMode.load() ? 1 : 0);
         xml->setAttribute ("editPattern", engine.editPattern.load());
     }
+
+    // Sample-Kompression (GZIP 9 + Base64) dauert; sie darf NICHT unter der Audio-Sperre laufen,
+    // sonst stockt der Audio-Thread beim Speichern. Unter der Sperre wird nur kopiert, gepackt wird danach.
+    std::vector<std::pair<juce::XmlElement*, juce::AudioBuffer<float>>> offeneSamples;
 
     for (int i = 0; i < TrackerEngine::kInstruments; ++i)
     {
@@ -1351,7 +1366,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("dch", ip->data.getNumChannels());
             e->setAttribute ("dlen", ip->data.getNumSamples());
             e->setAttribute ("drate", ip->sourceRate);
-            e->createNewChildElement ("D")->addTextElement (encodeSamples (ip->data));
+            offeneSamples.emplace_back (e->createNewChildElement ("D"), ip->data);
             // Akai-Filter nur sichern, wenn er ueberhaupt benutzt wird -> normale
             // Sample-Slots bleiben in der Datei unveraendert (alte Songs laden weiter).
             if (ip->akaiOn || ip->akai12bit || ip->akai8bit || ip->companding || ip->reverse || ip->srReduction > 0.0f
@@ -1411,7 +1426,7 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             e->setAttribute ("path", pad->filePath);
         e->setAttribute ("dch", pad->data.getNumChannels());
         e->setAttribute ("dlen", pad->data.getNumSamples());
-        e->createNewChildElement ("D")->addTextElement (encodeSamples (pad->data));
+        offeneSamples.emplace_back (e->createNewChildElement ("D"), pad->data);
         e->setAttribute ("akon", pad->akaiOn ? 1 : 0);
         e->setAttribute ("akcut", pad->akaiCutoff);
         e->setAttribute ("akres", pad->akaiResonance);
@@ -1454,6 +1469,10 @@ std::unique_ptr<juce::XmlElement> RetroTraxProcessor::stateToXml()
             }
         }
     }
+
+    // Jetzt, ohne Audio-Sperre, die Samples packen.
+    for (auto& offen : offeneSamples)
+        offen.first->addTextElement (encodeSamples (offen.second));
 
     return xml;
 }

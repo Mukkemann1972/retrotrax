@@ -79,7 +79,9 @@ inline Bank readBank (const juce::File& file)
 
                     if (memcmp (sid, "shdr", 4) == 0)
                     {
-                        const int count = (int) (ssize / 46); // jeder shdr-Eintrag ist 46 Bytes
+                        // Die Groesse steht in der Datei: nicht mehr Eintraege lesen, als Bytes uebrig sind.
+                        const juce::int64 restBytes = juce::jmax ((juce::int64) 0, in.getTotalLength() - in.getPosition());
+                        const int count = (int) (juce::jmin ((juce::int64) ssize, restBytes) / 46); // jeder shdr-Eintrag ist 46 Bytes
                         for (int i = 0; i < count; ++i)
                         {
                             char nm[21] = { 0 };
@@ -132,8 +134,10 @@ inline bool readSamplePCM (const juce::File& file, const Bank& bank, const Sampl
     if (! in.openedOk())
         return false;
 
+    // Die Sample-Rate steht in der Datei (bis 4 Mrd.): deckeln, sonst wird (int) unten undefiniert
+    // und n * 2 kann ueberlaufen. 192 kHz x 60 s sind weit mehr als jedes echte Sample.
     const juce::int64 frames    = s.end - s.start;
-    const juce::int64 maxFrames = (juce::int64) (s.sampleRate * 60.0);
+    const juce::int64 maxFrames = (juce::int64) (juce::jmin ((double) s.sampleRate, 192000.0) * 60.0);
     const int n = (int) juce::jmin (frames, maxFrames);
     if (n < 2)
         return false;

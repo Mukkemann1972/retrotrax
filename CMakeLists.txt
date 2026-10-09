@@ -127,3 +127,15 @@ if(RETROTRAX_HAVE_CLAP)
 else()
     message(STATUS "RetroTrax: clap-juce-extensions nicht gefunden - CLAP wird uebersprungen")
 endif()
+
+# Optional: Haertetest fuer die Importer (kaputte MOD/S3M/IT/SF2/8SVX-Dateien). Standardmaessig AUS,
+# damit der normale Bau und die CI unveraendert bleiben:  cmake -B build -DRETROTRAX_BUILD_TESTS=ON
+option(RETROTRAX_BUILD_TESTS "Haertetest fuer Importer mitbauen" OFF)
+if(RETROTRAX_BUILD_TESTS)
+    juce_add_console_app(RetroTraxImportTests PRODUCT_NAME "RetroTraxImportTests")
+    target_sources(RetroTraxImportTests PRIVATE tools/tests/import_hardening_test.cpp)
+    target_compile_definitions(RetroTraxImportTests PRIVATE
+        JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_USE_MP3AUDIOFORMAT=0 JUCE_STANDALONE_APPLICATION=1)
+    target_link_libraries(RetroTraxImportTests
+        PRIVATE juce::juce_audio_formats juce::juce_recommended_config_flags)
+endif()

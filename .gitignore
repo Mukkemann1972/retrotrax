@@ -3,3 +3,4 @@ libs/JUCE/
 libs/clap-juce-extensions/
 .cache/
 *.user
+build-tests/

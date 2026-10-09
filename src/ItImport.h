@@ -69,6 +69,9 @@ namespace ItImport
         const size_t smpPtrOff = o; o += (size_t) smpNum * 4;
         const size_t patPtrOff = o; o += (size_t) patNum * 4;
         if (o > n) { s.message = "IT-Tabellen abgeschnitten"; return s; }
+        // IT erlaubt hoechstens 200 Patterns. Ohne Grenze reserviert patNum (bis 65535) unten
+        // je 64x64 Zellen vorab - mehrere GB aus einer kleinen Datei.
+        if (patNum > 256) { s.message = "IT: zu viele Patterns"; return s; }
 
         // Reihenfolge (254 = Marker, 255 = Ende -> auslassen).
         for (int i = 0; i < ordNum; ++i)

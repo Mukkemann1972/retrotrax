@@ -78,6 +78,9 @@ namespace S3mImport
         const size_t insParaOff = o; o += (size_t) insNum * 2;
         const size_t patParaOff = o; o += (size_t) patNum * 2;
         if (o > n) { s.message = "S3M-Tabellen abgeschnitten"; return s; }
+        // S3M erlaubt hoechstens 100 Patterns. Ohne Grenze reserviert patNum (bis 65535) unten
+        // je 64 Zeilen x Kanaele vorab.
+        if (patNum > 256) { s.message = "S3M: zu viele Patterns"; return s; }
 
         // Reihenfolge (254 = Marker, 255 = Ende -> auslassen).
         for (int i = 0; i < ordNum; ++i)
